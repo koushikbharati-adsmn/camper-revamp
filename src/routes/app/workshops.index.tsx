@@ -29,7 +29,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { createFileRoute } from "@tanstack/react-router"
+import { createFileRoute, Link } from "@tanstack/react-router"
 import {
   ClipboardIcon,
   CopyIcon,
@@ -44,7 +44,7 @@ import {
   UserIcon,
 } from "lucide-react"
 
-export const Route = createFileRoute("/app/workshops")({
+export const Route = createFileRoute("/app/workshops/")({
   component: RouteComponent,
 })
 
@@ -87,7 +87,7 @@ function RouteComponent() {
             </SelectGroup>
           </SelectContent>
         </Select>
-        <Button>
+        <Button render={<Link to="/app/workshops/new" />}>
           <PlusIcon />
           New Workshop
         </Button>

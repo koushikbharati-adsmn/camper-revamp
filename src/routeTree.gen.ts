@@ -11,7 +11,8 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AppRouteRouteImport } from './routes/app/route'
-import { Route as AppWorkshopsRouteImport } from './routes/app/workshops'
+import { Route as AppWorkshopsIndexRouteImport } from './routes/app/workshops.index'
+import { Route as AppWorkshopsNewRouteImport } from './routes/app/workshops.new'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -23,34 +24,42 @@ const AppRouteRoute = AppRouteRouteImport.update({
   path: '/app',
   getParentRoute: () => rootRouteImport,
 } as any)
-const AppWorkshopsRoute = AppWorkshopsRouteImport.update({
-  id: '/workshops',
-  path: '/workshops',
+const AppWorkshopsIndexRoute = AppWorkshopsIndexRouteImport.update({
+  id: '/workshops/',
+  path: '/workshops/',
+  getParentRoute: () => AppRouteRoute,
+} as any)
+const AppWorkshopsNewRoute = AppWorkshopsNewRouteImport.update({
+  id: '/workshops/new',
+  path: '/workshops/new',
   getParentRoute: () => AppRouteRoute,
 } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/app': typeof AppRouteRouteWithChildren
-  '/app/workshops': typeof AppWorkshopsRoute
+  '/app/workshops/new': typeof AppWorkshopsNewRoute
+  '/app/workshops/': typeof AppWorkshopsIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/app': typeof AppRouteRouteWithChildren
-  '/app/workshops': typeof AppWorkshopsRoute
+  '/app/workshops/new': typeof AppWorkshopsNewRoute
+  '/app/workshops': typeof AppWorkshopsIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/app': typeof AppRouteRouteWithChildren
-  '/app/workshops': typeof AppWorkshopsRoute
+  '/app/workshops/new': typeof AppWorkshopsNewRoute
+  '/app/workshops/': typeof AppWorkshopsIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/app' | '/app/workshops'
+  fullPaths: '/' | '/app' | '/app/workshops/new' | '/app/workshops/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/app' | '/app/workshops'
-  id: '__root__' | '/' | '/app' | '/app/workshops'
+  to: '/' | '/app' | '/app/workshops/new' | '/app/workshops'
+  id: '__root__' | '/' | '/app' | '/app/workshops/new' | '/app/workshops/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -74,22 +83,31 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppRouteRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/app/workshops': {
-      id: '/app/workshops'
+    '/app/workshops/': {
+      id: '/app/workshops/'
       path: '/workshops'
-      fullPath: '/app/workshops'
-      preLoaderRoute: typeof AppWorkshopsRouteImport
+      fullPath: '/app/workshops/'
+      preLoaderRoute: typeof AppWorkshopsIndexRouteImport
+      parentRoute: typeof AppRouteRoute
+    }
+    '/app/workshops/new': {
+      id: '/app/workshops/new'
+      path: '/workshops/new'
+      fullPath: '/app/workshops/new'
+      preLoaderRoute: typeof AppWorkshopsNewRouteImport
       parentRoute: typeof AppRouteRoute
     }
   }
 }
 
 interface AppRouteRouteChildren {
-  AppWorkshopsRoute: typeof AppWorkshopsRoute
+  AppWorkshopsNewRoute: typeof AppWorkshopsNewRoute
+  AppWorkshopsIndexRoute: typeof AppWorkshopsIndexRoute
 }
 
 const AppRouteRouteChildren: AppRouteRouteChildren = {
-  AppWorkshopsRoute: AppWorkshopsRoute,
+  AppWorkshopsNewRoute: AppWorkshopsNewRoute,
+  AppWorkshopsIndexRoute: AppWorkshopsIndexRoute,
 }
 
 const AppRouteRouteWithChildren = AppRouteRoute._addFileChildren(
