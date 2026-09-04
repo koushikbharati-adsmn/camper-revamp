@@ -234,11 +234,7 @@ function RouteComponent() {
                     disabled={!isAvailable}
                     onClick={() => setActiveStep(index)}
                     className={`group flex w-full items-start gap-3 p-2 text-left transition-colors disabled:cursor-not-allowed ${
-                      isActive
-                        ? "_bg-primary _text-primary-foreground"
-                        : isComplete
-                          ? "text-foreground"
-                          : "text-muted-foreground"
+                      isComplete ? "text-foreground" : "text-muted-foreground"
                     }`}
                   >
                     <span
@@ -288,7 +284,7 @@ function RouteComponent() {
             {renderStep(activeStep, workshop, update, setWorkshop, errors)}
           </div>
 
-          <div className="flex shrink-0 justify-between gap-2 border-t bg-background pt-4">
+          <div className="flex shrink-0 justify-between gap-2 bg-background">
             <Button
               type="button"
               variant="outline"
