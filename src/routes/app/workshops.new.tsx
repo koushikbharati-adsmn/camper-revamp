@@ -1,5 +1,3 @@
-/* eslint-disable react-refresh/only-export-components */
-
 import { Button } from "@/components/ui/button"
 import {
   Card,
@@ -206,7 +204,7 @@ function RouteComponent() {
   }
 
   return (
-    <div className="flex h-full w-full max-w-5xl flex-col overflow-hidden">
+    <div className="w-full max-w-5xl">
       <header className="mb-8 shrink-0">
         <h1 className="text-2xl font-bold">New Workshop</h1>
         <p className="text-sm text-muted-foreground">
@@ -214,8 +212,8 @@ function RouteComponent() {
         </p>
       </header>
 
-      <div className="grid min-h-0 flex-1 gap-8 md:grid-cols-[220px_auto_minmax(0,1fr)]">
-        <nav aria-label="Workshop creation steps" className="overflow-y-auto">
+      <div className="grid gap-8 md:grid-cols-[220px_auto_minmax(0,1fr)]">
+        <nav aria-label="Workshop creation steps">
           <ol className="relative space-y-2 before:absolute before:top-6 before:bottom-6 before:left-5 before:w-px before:bg-border">
             {steps.map((step, index) => {
               const isActive = index === activeStep
@@ -231,16 +229,16 @@ function RouteComponent() {
                     onClick={() => setActiveStep(index)}
                     className={`group flex w-full items-start gap-3 p-2 text-left transition-colors disabled:cursor-not-allowed ${
                       isActive
-                        ? "bg-primary text-primary-foreground"
+                        ? "_bg-primary _text-primary-foreground"
                         : isComplete
                           ? "text-foreground"
                           : "text-muted-foreground"
                     }`}
                   >
                     <span
-                      className={`z-10 flex size-6 drop-shadow-xs shrink-0 items-center justify-center rounded-full border bg-background text-[10px] font-medium ${
+                      className={`z-10 flex size-6 shrink-0 items-center justify-center rounded-full border bg-background text-[10px] font-medium drop-shadow-xs ${
                         isActive
-                          ? "border-primary-foreground text-foreground"
+                          ? "bg-primary text-primary-foreground ring-2 ring-primary"
                           : isComplete
                             ? "border-primary bg-primary text-primary-foreground"
                             : "border-border"
@@ -269,10 +267,7 @@ function RouteComponent() {
 
         <Separator orientation="vertical" className="hidden h-full md:block" />
 
-        <form
-          onSubmit={submit}
-          className="flex min-h-0 min-w-0 flex-col overflow-hidden"
-        >
+        <form onSubmit={submit} className="flex min-w-0 flex-col">
           <header className="shrink-0">
             <h2 className="font-semibold">
               Step {activeStep + 1}: {steps[activeStep].title}
@@ -283,7 +278,7 @@ function RouteComponent() {
             </p>
           </header>
 
-          <div className="min-h-0 flex-1 overflow-y-auto py-6 pr-2 pl-0.5">
+          <div className="py-6 pr-2 pl-0.5">
             {renderStep(activeStep, workshop, update, setWorkshop, errors)}
           </div>
 

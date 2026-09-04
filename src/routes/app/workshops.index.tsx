@@ -94,7 +94,7 @@ function RouteComponent() {
       </section>
 
       <div className="grid grid-cols-[repeat(auto-fill,minmax(300px,1fr))] gap-4">
-        {Array.from({ length: 6 }).map((_, i) => (
+        {Array.from({ length: 16 }).map((_, i) => (
           <Card key={i}>
             <CardHeader>
               <div className="flex items-center gap-2">

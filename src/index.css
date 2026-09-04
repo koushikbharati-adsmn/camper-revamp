@@ -118,7 +118,22 @@
 }
 
 @layer base {
+  ::-webkit-scrollbar {
+    width: var();
+  }
+
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: var(--border);
+    border-radius: var(--radius);
+  }
+
   * {
+    scrollbar-width: auto;
+    scrollbar-color: var(--border) transparent;
     @apply border-border outline-ring/50;
   }
   body {
