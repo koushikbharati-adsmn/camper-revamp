@@ -133,21 +133,23 @@
   }
 }
 
-.color-picker .react-colorful__saturation {
+.color-picker-layout .react-colorful__saturation {
   border-radius: 0px;
+  margin: 14px 0;
 }
-.color-picker .react-colorful__hue {
-  border-radius: 0px;
-  height: 14px;
-  /* margin: 12px 0; */
+
+.color-picker-layout .react-colorful__hue {
+  order: -1;
 }
-.color-picker .react-colorful__alpha {
+
+.color-picker-layout .react-colorful__hue,
+.color-picker-layout .react-colorful__alpha {
   border-radius: 0px;
   height: 14px;
 }
 
-.color-picker .react-colorful__hue-pointer,
-.color-picker .react-colorful__alpha-pointer {
+.color-picker-layout .react-colorful__hue-pointer,
+.color-picker-layout .react-colorful__alpha-pointer {
   width: 20px;
   height: 20px;
 }

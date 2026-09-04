@@ -495,6 +495,12 @@ function ColorPickerField({
     else setDraftHex(input)
   }
 
+  const handlePickerChange = (nextValue: string) => {
+    const nextColor = fromPickerColor(nextValue)
+    onChange(nextColor)
+    setDraftHex(nextColor.hex)
+  }
+
   return (
     <Field label={label} error={error}>
       <Popover open={open} onOpenChange={setOpen}>
@@ -521,13 +527,14 @@ function ColorPickerField({
         </div>
         <PopoverContent
           sideOffset={8}
-          className="w-fit border border-border bg-popover p-3 text-popover-foreground shadow-md"
+          className="h-full w-fit border border-border bg-popover p-3 text-popover-foreground shadow-md"
         >
-          <HexAlphaColorPicker
-            className="color-picker"
-            color={toPickerColor(value)}
-            onChange={(nextValue) => onChange(fromPickerColor(nextValue))}
-          />
+          <div className="color-picker-layout">
+            <HexAlphaColorPicker
+              color={toPickerColor(value)}
+              onChange={handlePickerChange}
+            />
+          </div>
         </PopoverContent>
       </Popover>
     </Field>
