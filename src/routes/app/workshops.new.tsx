@@ -206,19 +206,16 @@ function RouteComponent() {
   }
 
   return (
-    <div className="w-full max-w-5xl">
-      <header className="mb-8">
+    <div className="flex h-full w-full max-w-5xl flex-col overflow-hidden">
+      <header className="mb-8 shrink-0">
         <h1 className="text-2xl font-bold">New Workshop</h1>
         <p className="text-sm text-muted-foreground">
           Build a workshop by switching things on.
         </p>
       </header>
 
-      <div className="grid gap-8 md:grid-cols-[220px_auto_minmax(0,1fr)] md:items-start">
-        <nav
-          aria-label="Workshop creation steps"
-          className="md:sticky md:top-4"
-        >
+      <div className="grid min-h-0 flex-1 gap-8 md:grid-cols-[220px_auto_minmax(0,1fr)]">
+        <nav aria-label="Workshop creation steps" className="overflow-y-auto">
           <ol className="relative space-y-2 before:absolute before:top-6 before:bottom-6 before:left-5 before:w-px before:bg-border">
             {steps.map((step, index) => {
               const isActive = index === activeStep
@@ -232,10 +229,22 @@ function RouteComponent() {
                     aria-current={isActive ? "step" : undefined}
                     disabled={!isAvailable}
                     onClick={() => setActiveStep(index)}
-                    className={`group _disabled:opacity-50 flex w-full items-start gap-3 p-2 text-left transition-colors disabled:cursor-not-allowed ${isActive ? "bg-primary text-primary-foreground" : isComplete ? "text-foreground hover:bg-primary/5" : "text-muted-foreground"}`}
+                    className={`group flex w-full items-start gap-3 p-2 text-left transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${
+                      isActive
+                        ? "bg-primary text-primary-foreground"
+                        : isComplete
+                          ? "text-foreground hover:bg-primary/5"
+                          : "text-muted-foreground"
+                    }`}
                   >
                     <span
-                      className={`z-10 flex size-6 shrink-0 items-center justify-center rounded-full border bg-background text-[10px] font-medium ${isActive ? "border-primary-foreground text-foreground" : isComplete ? "border-primary bg-primary text-primary-foreground" : "border-border"}`}
+                      className={`z-10 flex size-6 shrink-0 items-center justify-center rounded-full border bg-background text-[10px] font-medium ${
+                        isActive
+                          ? "border-primary-foreground text-foreground"
+                          : isComplete
+                            ? "border-primary bg-primary text-primary-foreground"
+                            : "border-border"
+                      }`}
                     >
                       {isComplete ? (
                         <CheckIcon className="size-3" />
@@ -258,20 +267,27 @@ function RouteComponent() {
           </ol>
         </nav>
 
-        <Separator orientation="vertical" className="hidden md:block" />
+        <Separator orientation="vertical" className="hidden h-full md:block" />
 
-        <form onSubmit={submit} className="min-w-0">
-          <Separator className="mb-6 md:hidden" />
-          <header className="mb-6">
+        <form
+          onSubmit={submit}
+          className="flex min-h-0 min-w-0 flex-col overflow-hidden"
+        >
+          <header className="shrink-0 border-b pb-4">
             <h2 className="font-semibold">
               Step {activeStep + 1}: {steps[activeStep].title}
             </h2>
+
             <p className="text-sm text-muted-foreground">
               {steps[activeStep].description}
             </p>
           </header>
-          {renderStep(activeStep, workshop, update, setWorkshop, errors)}
-          <div className="mt-8 flex justify-between gap-2 border-t pt-4">
+
+          <div className="min-h-0 flex-1 overflow-y-auto py-6 pr-2">
+            {renderStep(activeStep, workshop, update, setWorkshop, errors)}
+          </div>
+
+          <div className="flex shrink-0 justify-between gap-2 border-t bg-background pt-4">
             <Button
               type="button"
               variant="outline"
@@ -286,7 +302,8 @@ function RouteComponent() {
               </Button>
             ) : (
               <Button type="submit">
-                <CheckIcon /> Create workshop
+                <CheckIcon />
+                Create workshop
               </Button>
             )}
           </div>
