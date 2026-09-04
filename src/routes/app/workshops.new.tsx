@@ -12,7 +12,7 @@ import {
   InputOTPGroup,
   InputOTPSlot,
 } from "@/components/ui/input-otp"
-import { Field as UiField, FieldError, FieldLabel } from "@/components/ui/field"
+import { Field, FieldError, FieldLabel } from "@/components/ui/field"
 import {
   Select,
   SelectContent,
@@ -210,7 +210,7 @@ function RouteComponent() {
   }
 
   return (
-    <div className="flex min-h-[calc(100svh-2rem)] w-full max-w-5xl flex-col">
+    <div className="w-full max-w-5xl">
       <header className="mb-8 shrink-0">
         <h1 className="text-2xl font-bold">New Workshop</h1>
         <p className="text-sm text-muted-foreground">
@@ -218,7 +218,7 @@ function RouteComponent() {
         </p>
       </header>
 
-      <div className="grid min-h-0 flex-1 gap-8 md:grid-cols-[220px_auto_minmax(0,1fr)]">
+      <div className="grid gap-8 md:grid-cols-[220px_auto_minmax(0,1fr)]">
         <nav aria-label="Workshop creation steps">
           <ol className="relative space-y-2 before:absolute before:top-6 before:bottom-6 before:left-5 before:w-px before:bg-border">
             {steps.map((step, index) => {
@@ -273,7 +273,7 @@ function RouteComponent() {
 
         <Separator orientation="vertical" className="hidden h-full md:block" />
 
-        <form onSubmit={submit} className="flex min-h-full min-w-0 flex-col">
+        <form onSubmit={submit} className="flex min-w-0 flex-col">
           <header className="shrink-0">
             <h2 className="font-semibold">
               Step {activeStep + 1}: {steps[activeStep].title}
@@ -288,7 +288,7 @@ function RouteComponent() {
             {renderStep(activeStep, workshop, update, setWorkshop, errors)}
           </div>
 
-          <div className="sticky bottom-0 z-10 mt-auto grid grid-cols-[1fr_auto] gap-2 border-t bg-background py-4">
+          <div className="flex shrink-0 justify-between gap-2 border-t bg-background pt-4">
             <Button
               type="button"
               variant="outline"
@@ -351,24 +351,6 @@ function renderStep(
   )
 }
 
-function Field({
-  label,
-  error,
-  children,
-}: {
-  label: string
-  error?: string
-  children: React.ReactNode
-}) {
-  return (
-    <UiField data-invalid={!!error}>
-      <FieldLabel>{label}</FieldLabel>
-      {children}
-      {error && <FieldError>{error}</FieldError>}
-    </UiField>
-  )
-}
-
 function isHexColor(value: string) {
   return /^#[0-9a-f]{6}$/i.test(value)
 }
@@ -398,14 +380,17 @@ function IdentityStep({
 }) {
   return (
     <div className="grid grid-cols-2 gap-5">
-      <Field label="Title" error={errors.title}>
+      <Field data-invalid={!!errors.title}>
+        <FieldLabel>Title</FieldLabel>
         <Input
           value={workshop.title}
           onChange={(event) => update("title", event.target.value)}
           placeholder="Workshop title"
         />
+        {errors.title && <FieldError>{errors.title}</FieldError>}
       </Field>
-      <Field label="Assignee" error={errors.assignee}>
+      <Field data-invalid={!!errors.assignee}>
+        <FieldLabel>Assignee</FieldLabel>
         <Select
           value={workshop.assignee}
           onValueChange={(value) => update("assignee", value ?? "")}
@@ -421,34 +406,43 @@ function IdentityStep({
             ))}
           </SelectContent>
         </Select>
+        {errors.assignee && <FieldError>{errors.assignee}</FieldError>}
       </Field>
-      <Field label="Brand" error={errors.brand}>
+      <Field data-invalid={!!errors.brand}>
+        <FieldLabel>Brand</FieldLabel>
         <Input
           value={workshop.brand}
           onChange={(event) => update("brand", event.target.value)}
           placeholder="Brand name"
         />
+        {errors.brand && <FieldError>{errors.brand}</FieldError>}
       </Field>
-      <Field label="Subtitle" error={errors.subtitle}>
+      <Field data-invalid={!!errors.subtitle}>
+        <FieldLabel>Subtitle</FieldLabel>
         <Input
           value={workshop.subtitle}
           onChange={(event) => update("subtitle", event.target.value)}
           placeholder="A short supporting line"
         />
+        {errors.subtitle && <FieldError>{errors.subtitle}</FieldError>}
       </Field>
-      <Field label="Workshop context" error={errors.context}>
+      <Field data-invalid={!!errors.context}>
+        <FieldLabel>Workshop context</FieldLabel>
         <Textarea
           value={workshop.context}
           onChange={(event) => update("context", event.target.value)}
           placeholder="What should participants know?"
         />
+        {errors.context && <FieldError>{errors.context}</FieldError>}
       </Field>
-      <Field label="Brand guidelines" error={errors.guidelines}>
+      <Field data-invalid={!!errors.guidelines}>
+        <FieldLabel>Brand guidelines</FieldLabel>
         <Textarea
           value={workshop.guidelines}
           onChange={(event) => update("guidelines", event.target.value)}
           placeholder="Tone, do's and don'ts, or visual guidance"
         />
+        {errors.guidelines && <FieldError>{errors.guidelines}</FieldError>}
       </Field>
     </div>
   )
@@ -534,7 +528,8 @@ function ColorPickerField({
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
-      <Field label={label} error={error}>
+      <Field data-invalid={!!error}>
+        <FieldLabel>{label}</FieldLabel>
         <div className="flex h-8 items-center gap-2 border border-input px-2">
           <PopoverTrigger
             aria-label={`Choose ${label.toLowerCase()}`}
@@ -556,6 +551,7 @@ function ColorPickerField({
           />
           <span className="text-xs text-muted-foreground">{value.alpha}%</span>
         </div>
+        {error && <FieldError>{error}</FieldError>}
       </Field>
       <PopoverContent
         sideOffset={8}
@@ -597,7 +593,8 @@ function FileField({
   }
 
   return (
-    <Field label={label} error={error}>
+    <Field data-invalid={!!error}>
+      <FieldLabel>{label}</FieldLabel>
       <input
         ref={inputRef}
         type="file"
@@ -638,6 +635,7 @@ function FileField({
           Choose {label.toLowerCase()}
         </Button>
       )}
+      {error && <FieldError>{error}</FieldError>}
     </Field>
   )
 }
@@ -710,21 +708,29 @@ function PillarsStep({
               )}
             </CardHeader>
             <CardContent className="grid gap-4">
-              <Field label="Title" error={errors[`pillar-${index}-title`]}>
+              <Field data-invalid={!!errors[`pillar-${index}-title`]}>
+                <FieldLabel>Title</FieldLabel>
                 <Input
                   value={pillar.title}
                   onChange={(event) =>
                     change(index, "title", event.target.value)
                   }
                 />
+                {errors[`pillar-${index}-title`] && (
+                  <FieldError>{errors[`pillar-${index}-title`]}</FieldError>
+                )}
               </Field>
-              <Field label="Context" error={errors[`pillar-${index}-context`]}>
+              <Field data-invalid={!!errors[`pillar-${index}-context`]}>
+                <FieldLabel>Context</FieldLabel>
                 <Textarea
                   value={pillar.context}
                   onChange={(event) =>
                     change(index, "context", event.target.value)
                   }
                 />
+                {errors[`pillar-${index}-context`] && (
+                  <FieldError>{errors[`pillar-${index}-context`]}</FieldError>
+                )}
               </Field>
             </CardContent>
           </Card>
@@ -811,13 +817,17 @@ function TeamsStep({
               )}
             </CardHeader>
             <CardContent className="grid grid-cols-1 gap-4">
-              <Field label="Name" error={errors[`team-${index}-name`]}>
+              <Field data-invalid={!!errors[`team-${index}-name`]}>
+                <FieldLabel>Name</FieldLabel>
                 <Input
                   value={team.name}
                   onChange={(event) =>
                     change(index, "name", event.target.value)
                   }
                 />
+                {errors[`team-${index}-name`] && (
+                  <FieldError>{errors[`team-${index}-name`]}</FieldError>
+                )}
               </Field>
               <ColorPickerField
                 label={`Team ${index + 1} color`}
@@ -831,22 +841,21 @@ function TeamsStep({
                 onChange={(file) => change(index, "thumbnail", file)}
                 error={errors[`team-${index}-thumbnail`]}
               />
-              <Field
-                label="Description"
-                error={errors[`team-${index}-description`]}
-              >
+              <Field data-invalid={!!errors[`team-${index}-description`]}>
+                <FieldLabel>Description</FieldLabel>
                 <Textarea
                   value={team.description}
                   onChange={(event) =>
                     change(index, "description", event.target.value)
                   }
                 />
+                {errors[`team-${index}-description`] && (
+                  <FieldError>{errors[`team-${index}-description`]}</FieldError>
+                )}
               </Field>
               {workshop.usePasscode && (
-                <Field
-                  label="Four-digit passcode"
-                  error={errors[`team-${index}-passcode`]}
-                >
+                <Field data-invalid={!!errors[`team-${index}-passcode`]}>
+                  <FieldLabel>Four-digit passcode</FieldLabel>
                   <InputOTP
                     maxLength={4}
                     inputMode="numeric"
@@ -862,6 +871,9 @@ function TeamsStep({
                       <InputOTPSlot index={3} />
                     </InputOTPGroup>
                   </InputOTP>
+                  {errors[`team-${index}-passcode`] && (
+                    <FieldError>{errors[`team-${index}-passcode`]}</FieldError>
+                  )}
                 </Field>
               )}
             </CardContent>
@@ -913,10 +925,8 @@ function CoachesStep({
               className="size-12 rounded-full object-cover"
             />
             <div className="min-w-0 flex-1 space-y-2">
-              <Field
-                label={`Coach ${index + 1}`}
-                error={errors[`coach-${index}`]}
-              >
+              <Field data-invalid={!!errors[`coach-${index}`]}>
+                <FieldLabel>Coach {index + 1}</FieldLabel>
                 <Input
                   value={coach.name}
                   onChange={(event) =>
@@ -930,6 +940,9 @@ function CoachesStep({
                     }))
                   }
                 />
+                {errors[`coach-${index}`] && (
+                  <FieldError>{errors[`coach-${index}`]}</FieldError>
+                )}
               </Field>
               <div className="flex gap-1">
                 {dummyAvatars.map((avatar) => (
