@@ -32,7 +32,7 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover"
 import { createFileRoute } from "@tanstack/react-router"
-import { HexColorPicker } from "react-colorful"
+import { HexAlphaColorPicker } from "react-colorful"
 import {
   ArrowLeftIcon,
   ArrowRightIcon,
@@ -342,6 +342,20 @@ function isHexColor(value: string) {
   return /^#[0-9a-f]{6}$/i.test(value)
 }
 
+function toPickerColor(value: ColorValue) {
+  const alpha = Math.round((value.alpha / 100) * 255)
+    .toString(16)
+    .padStart(2, "0")
+  return `${value.hex}${alpha}`
+}
+
+function fromPickerColor(value: string): ColorValue {
+  return {
+    hex: value.slice(0, 7).toUpperCase(),
+    alpha: Math.round((parseInt(value.slice(7, 9), 16) / 255) * 100),
+  }
+}
+
 function IdentityStep({
   workshop,
   update,
@@ -481,11 +495,6 @@ function ColorPickerField({
     else setDraftHex(input)
   }
 
-  const updateAlpha = (input: string) => {
-    const alpha = Math.max(0, Math.min(100, Number(input) || 0))
-    onChange({ ...value, alpha })
-  }
-
   return (
     <Field label={label} error={error}>
       <Popover open={open} onOpenChange={setOpen}>
@@ -512,37 +521,13 @@ function ColorPickerField({
         </div>
         <PopoverContent
           sideOffset={8}
-          className="w-64 space-y-4 border border-border bg-popover p-3 text-popover-foreground shadow-md"
+          className="w-fit border border-border bg-popover p-3 text-popover-foreground shadow-md"
         >
-          <HexColorPicker color={value.hex} onChange={updateHex} />
-          <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <Label htmlFor={`${label}-alpha`}>Opacity</Label>
-              <span className="text-xs text-muted-foreground">
-                {value.alpha}%
-              </span>
-            </div>
-            <div className="flex items-center gap-3">
-              <input
-                id={`${label}-alpha`}
-                type="range"
-                min="0"
-                max="100"
-                value={value.alpha}
-                onChange={(event) => updateAlpha(event.target.value)}
-                className="w-full accent-primary"
-              />
-              <Input
-                aria-label={`${label} opacity percentage`}
-                type="number"
-                min="0"
-                max="100"
-                value={value.alpha}
-                onChange={(event) => updateAlpha(event.target.value)}
-                className="w-16"
-              />
-            </div>
-          </div>
+          <HexAlphaColorPicker
+            className="color-picker"
+            color={toPickerColor(value)}
+            onChange={(nextValue) => onChange(fromPickerColor(nextValue))}
+          />
         </PopoverContent>
       </Popover>
     </Field>
