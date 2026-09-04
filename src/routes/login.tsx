@@ -13,7 +13,7 @@ import {
 } from "@/components/ui/input-otp"
 import { cn } from "@/lib/utils"
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router"
-import { useState } from "react"
+import { useEffect, useState } from "react"
 
 export const Route = createFileRoute("/login")({
   component: RouteComponent,
@@ -34,11 +34,30 @@ function LoginForm({ className, ...props }: React.ComponentProps<"div">) {
   const [email, setEmail] = useState("")
   const [otp, setOtp] = useState("")
   const [isOtpStep, setIsOtpStep] = useState(false)
+  const [resendDelay, setResendDelay] = useState(0)
+
+  useEffect(() => {
+    if (!isOtpStep) return
+
+    const timer = window.setInterval(() => {
+      setResendDelay((seconds) => {
+        if (seconds <= 1) {
+          window.clearInterval(timer)
+          return 0
+        }
+
+        return seconds - 1
+      })
+    }, 1000)
+
+    return () => window.clearInterval(timer)
+  }, [isOtpStep])
 
   function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
 
     if (!isOtpStep) {
+      setResendDelay(60)
       setIsOtpStep(true)
       return
     }
@@ -104,8 +123,14 @@ function LoginForm({ className, ...props }: React.ComponentProps<"div">) {
               {isOtpStep ? "Verify code" : "Login"}
             </Button>
             {isOtpStep && (
-              <Button type="button" variant="outline">
-                Resend code in 30s
+              <Button
+                type="button"
+                variant="outline"
+                disabled={resendDelay > 0}
+              >
+                {resendDelay > 0
+                  ? `Resend code in ${resendDelay}s`
+                  : "Resend code"}
               </Button>
             )}
           </Field>
