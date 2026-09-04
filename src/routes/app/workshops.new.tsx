@@ -26,7 +26,9 @@ import {
 } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
 import { Switch } from "@/components/ui/switch"
+import { Popover } from "@base-ui/react/popover"
 import { createFileRoute } from "@tanstack/react-router"
+import { HexColorPicker } from "react-colorful"
 import {
   ArrowLeftIcon,
   ArrowRightIcon,
@@ -42,11 +44,12 @@ export const Route = createFileRoute("/app/workshops/new")({
 })
 
 type Upload = File | null
+type ColorValue = { hex: string; alpha: number }
 
 type Pillar = { title: string; context: string }
 type Team = {
   name: string
-  color: string
+  color: ColorValue
   thumbnail: Upload
   description: string
   passcode: string
@@ -60,8 +63,8 @@ type Workshop = {
   subtitle: string
   context: string
   guidelines: string
-  primaryColor: string
-  secondaryColor: string
+  primaryColor: ColorValue
+  secondaryColor: ColorValue
   logo: Upload
   portrait: Upload
   landscape: Upload
@@ -99,8 +102,8 @@ const initialWorkshop: Workshop = {
   subtitle: "",
   context: "",
   guidelines: "",
-  primaryColor: "#111111",
-  secondaryColor: "#d9ff00",
+  primaryColor: { hex: "#111111", alpha: 100 },
+  secondaryColor: { hex: "#d9ff00", alpha: 100 },
   logo: null,
   portrait: null,
   landscape: null,
@@ -108,7 +111,7 @@ const initialWorkshop: Workshop = {
   teams: [
     {
       name: "",
-      color: "#d9ff00",
+      color: { hex: "#d9ff00", alpha: 100 },
       thumbnail: null,
       description: "",
       passcode: "",
@@ -147,6 +150,10 @@ function RouteComponent() {
       }
     }
     if (step === 1) {
+      if (!isHexColor(workshop.primaryColor.hex))
+        nextErrors.primaryColor = "Enter a valid hex color."
+      if (!isHexColor(workshop.secondaryColor.hex))
+        nextErrors.secondaryColor = "Enter a valid hex color."
       for (const [field, label] of [
         ["logo", "Logo"],
         ["portrait", "Background portrait"],
@@ -174,6 +181,8 @@ function RouteComponent() {
           nextErrors[`team-${index}-description`] = "Description is required."
         if (!team.thumbnail)
           nextErrors[`team-${index}-thumbnail`] = "Thumbnail is required."
+        if (!isHexColor(team.color.hex))
+          nextErrors[`team-${index}-color`] = "Enter a valid hex color."
       })
       if (workshop.usePasscode)
         workshop.teams.forEach((team, index) => {
@@ -325,6 +334,10 @@ function Field({
   )
 }
 
+function isHexColor(value: string) {
+  return /^#[0-9a-f]{6}$/i.test(value)
+}
+
 function IdentityStep({
   workshop,
   update,
@@ -403,28 +416,18 @@ function ThemeStep({
 }) {
   return (
     <div className="grid gap-5 md:grid-cols-2">
-      <Field label="Primary color">
-        <div className="flex h-8 items-center gap-2 border border-input px-2">
-          <input
-            aria-label="Primary color"
-            type="color"
-            value={workshop.primaryColor}
-            onChange={(event) => update("primaryColor", event.target.value)}
-          />
-          <span className="text-xs uppercase">{workshop.primaryColor}</span>
-        </div>
-      </Field>
-      <Field label="Secondary color">
-        <div className="flex h-8 items-center gap-2 border border-input px-2">
-          <input
-            aria-label="Secondary color"
-            type="color"
-            value={workshop.secondaryColor}
-            onChange={(event) => update("secondaryColor", event.target.value)}
-          />
-          <span className="text-xs uppercase">{workshop.secondaryColor}</span>
-        </div>
-      </Field>
+      <ColorPickerField
+        label="Primary color"
+        value={workshop.primaryColor}
+        onChange={(value) => update("primaryColor", value)}
+        error={errors.primaryColor}
+      />
+      <ColorPickerField
+        label="Secondary color"
+        value={workshop.secondaryColor}
+        onChange={(value) => update("secondaryColor", value)}
+        error={errors.secondaryColor}
+      />
       <FileField
         label="Logo"
         value={workshop.logo}
@@ -444,6 +447,102 @@ function ThemeStep({
         error={errors.landscape}
       />
     </div>
+  )
+}
+
+function ColorPickerField({
+  label,
+  value,
+  onChange,
+  error,
+}: {
+  label: string
+  value: ColorValue
+  onChange: (value: ColorValue) => void
+  error?: string
+}) {
+  const [draftHex, setDraftHex] = useState(value.hex)
+  const [open, setOpen] = useState(false)
+
+  const updateHex = (hex: string) => {
+    onChange({ ...value, hex })
+    setDraftHex(hex)
+  }
+
+  const commitHex = (input: string) => {
+    const normalized = input.trim().startsWith("#")
+      ? input.trim()
+      : `#${input.trim()}`
+    if (isHexColor(normalized)) updateHex(normalized.toUpperCase())
+    else setDraftHex(input)
+  }
+
+  const updateAlpha = (input: string) => {
+    const alpha = Math.max(0, Math.min(100, Number(input) || 0))
+    onChange({ ...value, alpha })
+  }
+
+  return (
+    <Field label={label} error={error}>
+      <Popover.Root open={open} onOpenChange={setOpen}>
+        <div className="flex h-8 items-center gap-2 border border-input px-2">
+          <Popover.Trigger
+            aria-label={`Choose ${label.toLowerCase()}`}
+            className="size-5 shrink-0 border border-foreground/20"
+            style={{
+              backgroundColor: value.hex,
+              opacity: value.alpha / 100,
+            }}
+          />
+          <Input
+            aria-label={`${label} hex value`}
+            value={draftHex}
+            onChange={(event) => setDraftHex(event.target.value)}
+            onBlur={(event) => commitHex(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key === "Enter") commitHex(event.currentTarget.value)
+            }}
+            className="h-7 border-0 px-0 uppercase shadow-none focus-visible:ring-0"
+          />
+          <span className="text-xs text-muted-foreground">{value.alpha}%</span>
+        </div>
+        <Popover.Portal>
+          <Popover.Positioner sideOffset={8} className="z-50">
+            <Popover.Popup className="space-y-4 border border-border bg-popover p-3 text-popover-foreground shadow-md">
+              <HexColorPicker color={value.hex} onChange={updateHex} />
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <Label htmlFor={`${label}-alpha`}>Opacity</Label>
+                  <span className="text-xs text-muted-foreground">
+                    {value.alpha}%
+                  </span>
+                </div>
+                <div className="flex items-center gap-3">
+                  <input
+                    id={`${label}-alpha`}
+                    type="range"
+                    min="0"
+                    max="100"
+                    value={value.alpha}
+                    onChange={(event) => updateAlpha(event.target.value)}
+                    className="w-full accent-primary"
+                  />
+                  <Input
+                    aria-label={`${label} opacity percentage`}
+                    type="number"
+                    min="0"
+                    max="100"
+                    value={value.alpha}
+                    onChange={(event) => updateAlpha(event.target.value)}
+                    className="w-16"
+                  />
+                </div>
+              </div>
+            </Popover.Popup>
+          </Popover.Positioner>
+        </Popover.Portal>
+      </Popover.Root>
+    </Field>
   )
 }
 
@@ -583,7 +682,11 @@ function TeamsStep({
   setWorkshop: React.Dispatch<React.SetStateAction<Workshop>>
   errors: Record<string, string>
 }) {
-  const change = (index: number, field: keyof Team, value: string | Upload) =>
+  const change = (
+    index: number,
+    field: keyof Team,
+    value: string | Upload | ColorValue
+  ) =>
     setWorkshop((current) => ({
       ...current,
       teams: current.teams.map((team, itemIndex) =>
@@ -638,19 +741,12 @@ function TeamsStep({
                 onChange={(event) => change(index, "name", event.target.value)}
               />
             </Field>
-            <Field label="Color">
-              <div className="flex h-8 items-center gap-2 border border-input px-2">
-                <input
-                  aria-label={`Team ${index + 1} color`}
-                  type="color"
-                  value={team.color}
-                  onChange={(event) =>
-                    change(index, "color", event.target.value)
-                  }
-                />
-                <span className="text-xs uppercase">{team.color}</span>
-              </div>
-            </Field>
+            <ColorPickerField
+              label={`Team ${index + 1} color`}
+              value={team.color}
+              onChange={(value) => change(index, "color", value)}
+              error={errors[`team-${index}-color`]}
+            />
             <FileField
               label="Thumbnail"
               value={team.thumbnail}
@@ -703,7 +799,7 @@ function TeamsStep({
               ...current.teams,
               {
                 name: "",
-                color: "#d9ff00",
+                color: { hex: "#d9ff00", alpha: 100 },
                 thumbnail: null,
                 description: "",
                 passcode: "",
