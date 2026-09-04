@@ -12,7 +12,7 @@ import {
   InputOTPGroup,
   InputOTPSlot,
 } from "@/components/ui/input-otp"
-import { Label } from "@/components/ui/label"
+import { Field as UiField, FieldError, FieldLabel } from "@/components/ui/field"
 import {
   Select,
   SelectContent,
@@ -30,8 +30,14 @@ import {
 } from "@/components/ui/popover"
 import { createFileRoute } from "@tanstack/react-router"
 import { HexAlphaColorPicker } from "react-colorful"
-import { CheckIcon, PlusIcon, Trash2Icon, UploadIcon } from "lucide-react"
-import { useEffect, useState } from "react"
+import {
+  CheckIcon,
+  PlusIcon,
+  Trash2Icon,
+  UploadIcon,
+  XIcon,
+} from "lucide-react"
+import { useEffect, useRef, useState } from "react"
 
 export const Route = createFileRoute("/app/workshops/new")({
   component: RouteComponent,
@@ -204,7 +210,7 @@ function RouteComponent() {
   }
 
   return (
-    <div className="w-full max-w-5xl">
+    <div className="flex min-h-[calc(100svh-2rem)] w-full max-w-5xl flex-col">
       <header className="mb-8 shrink-0">
         <h1 className="text-2xl font-bold">New Workshop</h1>
         <p className="text-sm text-muted-foreground">
@@ -212,7 +218,7 @@ function RouteComponent() {
         </p>
       </header>
 
-      <div className="grid gap-8 md:grid-cols-[220px_auto_minmax(0,1fr)]">
+      <div className="grid min-h-0 flex-1 gap-8 md:grid-cols-[220px_auto_minmax(0,1fr)]">
         <nav aria-label="Workshop creation steps">
           <ol className="relative space-y-2 before:absolute before:top-6 before:bottom-6 before:left-5 before:w-px before:bg-border">
             {steps.map((step, index) => {
@@ -267,7 +273,7 @@ function RouteComponent() {
 
         <Separator orientation="vertical" className="hidden h-full md:block" />
 
-        <form onSubmit={submit} className="flex min-w-0 flex-col">
+        <form onSubmit={submit} className="flex min-h-full min-w-0 flex-col">
           <header className="shrink-0">
             <h2 className="font-semibold">
               Step {activeStep + 1}: {steps[activeStep].title}
@@ -282,7 +288,7 @@ function RouteComponent() {
             {renderStep(activeStep, workshop, update, setWorkshop, errors)}
           </div>
 
-          <div className="flex shrink-0 justify-between gap-2 border-t bg-background pt-4">
+          <div className="sticky bottom-0 z-10 mt-auto grid grid-cols-[1fr_auto] gap-2 border-t bg-background py-4">
             <Button
               type="button"
               variant="outline"
@@ -292,11 +298,11 @@ function RouteComponent() {
               Back
             </Button>
             {activeStep < steps.length - 1 ? (
-              <Button type="button" onClick={next}>
+              <Button type="button" className="min-w-40" onClick={next}>
                 Continue
               </Button>
             ) : (
-              <Button type="submit">
+              <Button type="submit" className="min-w-40">
                 <CheckIcon />
                 Create workshop
               </Button>
@@ -355,11 +361,11 @@ function Field({
   children: React.ReactNode
 }) {
   return (
-    <div className="space-y-2">
-      <Label>{label}</Label>
+    <UiField data-invalid={!!error}>
+      <FieldLabel>{label}</FieldLabel>
       {children}
-      {error && <p className="text-xs text-destructive">{error}</p>}
-    </div>
+      {error && <FieldError>{error}</FieldError>}
+    </UiField>
   )
 }
 
@@ -577,20 +583,60 @@ function FileField({
   onChange: (file: Upload) => void
   error?: string
 }) {
+  const inputRef = useRef<HTMLInputElement>(null)
+
+  const removeFile = () => {
+    if (inputRef.current) inputRef.current.value = ""
+    onChange(null)
+  }
+
+  const selectFile = () => {
+    if (!inputRef.current) return
+    inputRef.current.value = ""
+    inputRef.current.click()
+  }
+
   return (
     <Field label={label} error={error}>
-      <label className="flex min-h-24 cursor-pointer flex-col items-center justify-center gap-2 border border-dashed border-border p-3 text-center hover:bg-muted/50">
-        <UploadIcon className="size-4 text-muted-foreground" />
-        <span className="text-xs">{value?.name ?? "Choose a file"}</span>
-        <input
-          type="file"
-          className="sr-only"
-          accept="image/*"
-          onChange={(event) => onChange(event.target.files?.[0] ?? null)}
-        />
-      </label>
-      {value && (
-        <FilePreview key={`${value.name}-${value.lastModified}`} file={value} />
+      <input
+        ref={inputRef}
+        type="file"
+        className="sr-only"
+        accept="image/*"
+        aria-label={label}
+        onChange={(event) => onChange(event.target.files?.[0] ?? null)}
+      />
+      {value ? (
+        <div className="flex items-center gap-3 border border-input p-2">
+          <div className="flex size-14 shrink-0 items-center justify-center bg-muted">
+            <FilePreview
+              key={`${value.name}-${value.lastModified}-${value.size}`}
+              file={value}
+            />
+          </div>
+          <p className="min-w-0 flex-1 truncate text-xs" title={value.name}>
+            {value.name}
+          </p>
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon-xs"
+            aria-label={`Remove ${label.toLowerCase()}`}
+            onClick={removeFile}
+          >
+            <XIcon />
+          </Button>
+        </div>
+      ) : (
+        <Button
+          type="button"
+          variant="outline"
+          className="w-full justify-start"
+          onClick={selectFile}
+        >
+          <UploadIcon />
+          Choose {label.toLowerCase()}
+        </Button>
       )}
     </Field>
   )
@@ -613,19 +659,7 @@ function FilePreview({ file }: { file: File }) {
   }, [file])
 
   return (
-    <div className="flex h-20 w-full items-center justify-center overflow-hidden bg-muted">
-      {url ? (
-        <img
-          src={url}
-          alt="Selected preview"
-          className="h-full w-full object-cover"
-        />
-      ) : (
-        <span className="text-xs text-muted-foreground">
-          Loading preview...
-        </span>
-      )}
-    </div>
+    <img src={url ?? undefined} alt="" className="size-full object-contain" />
   )
 }
 
@@ -751,7 +785,7 @@ function TeamsStep({
       {errors.teams && (
         <p className="text-xs text-destructive">{errors.teams}</p>
       )}
-      <div className="grid grid-cols-1 gap-4">
+      <div className="grid grid-cols-2 gap-4">
         {workshop.teams.map((team, index) => (
           <Card key={index} size="sm">
             <CardHeader>
