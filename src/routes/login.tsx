@@ -2,6 +2,7 @@ import { Button } from "@/components/ui/button"
 import {
   Field,
   FieldDescription,
+  FieldError,
   FieldGroup,
   FieldLabel,
 } from "@/components/ui/field"
@@ -12,8 +13,26 @@ import {
   InputOTPSlot,
 } from "@/components/ui/input-otp"
 import { cn } from "@/lib/utils"
+import { useForm } from "@tanstack/react-form"
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router"
 import { useEffect, useState } from "react"
+import * as z from "zod"
+
+const emailStepSchema = z.object({
+  email: z.email({
+    error: "Enter a valid email address.",
+  }),
+  otp: z.string(),
+})
+
+const otpStepSchema = z.object({
+  email: z.email({
+    error: "Enter a valid email address.",
+  }),
+  otp: z.string().regex(/^\d{6}$/, {
+    error: "Enter a six-digit code.",
+  }),
+})
 
 export const Route = createFileRoute("/login")({
   component: RouteComponent,
@@ -31,10 +50,27 @@ function RouteComponent() {
 
 function LoginForm({ className, ...props }: React.ComponentProps<"div">) {
   const navigate = useNavigate()
-  const [email, setEmail] = useState("")
-  const [otp, setOtp] = useState("")
   const [isOtpStep, setIsOtpStep] = useState(false)
   const [resendDelay, setResendDelay] = useState(0)
+  const form = useForm({
+    defaultValues: {
+      email: "",
+      otp: "",
+    },
+    validators: {
+      onSubmit: isOtpStep ? otpStepSchema : emailStepSchema,
+    },
+    onSubmit: ({ value }) => {
+      if (!isOtpStep) {
+        setResendDelay(60)
+        setIsOtpStep(true)
+        return
+      }
+
+      console.log(value)
+      navigate({ to: "/app/workshops" })
+    },
+  })
 
   useEffect(() => {
     if (!isOtpStep) return
@@ -53,24 +89,15 @@ function LoginForm({ className, ...props }: React.ComponentProps<"div">) {
     return () => window.clearInterval(timer)
   }, [isOtpStep])
 
-  function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault()
-
-    if (!isOtpStep) {
-      setResendDelay(60)
-      setIsOtpStep(true)
-      return
-    }
-
-    if (otp.length !== 6) return
-
-    console.log({ email, otp })
-    navigate({ to: "/app/workshops" })
-  }
-
   return (
     <div className={cn("flex flex-col gap-6", className)} {...props}>
-      <form onSubmit={handleSubmit}>
+      <form
+        noValidate
+        onSubmit={(event) => {
+          event.preventDefault()
+          void form.handleSubmit()
+        }}
+      >
         <FieldGroup>
           <div className="flex flex-col items-center gap-2 text-center">
             <img className="h-12" src="/logo-ogilvy-b.svg" alt="ogilvy logo" />
@@ -79,54 +106,88 @@ function LoginForm({ className, ...props }: React.ComponentProps<"div">) {
             </FieldDescription>
           </div>
           {isOtpStep ? (
-            <>
-              <Field>
-                <FieldLabel htmlFor="otp">One-time passcode</FieldLabel>
-                <InputOTP
-                  id="otp"
-                  maxLength={6}
-                  inputMode="numeric"
-                  pattern="[0-9]*"
-                  value={otp}
-                  onChange={setOtp}
-                  aria-label="Six-digit one-time passcode"
-                >
-                  <InputOTPGroup>
-                    <InputOTPSlot index={0} />
-                    <InputOTPSlot index={1} />
-                    <InputOTPSlot index={2} />
-                    <InputOTPSlot index={3} />
-                    <InputOTPSlot index={4} />
-                    <InputOTPSlot index={5} />
-                  </InputOTPGroup>
-                </InputOTP>
-                <FieldDescription>
-                  Please enter the one-time passcode sent to {email}
-                </FieldDescription>
-              </Field>
-            </>
+            <form.Field
+              name="otp"
+              children={(field) => {
+                const isInvalid =
+                  field.state.meta.isTouched && !field.state.meta.isValid
+
+                return (
+                  <Field data-invalid={isInvalid}>
+                    <FieldLabel htmlFor="otp">One-time passcode</FieldLabel>
+                    <InputOTP
+                      id="otp"
+                      name={field.name}
+                      maxLength={6}
+                      inputMode="numeric"
+                      pattern="[0-9]*"
+                      value={field.state.value}
+                      onBlur={field.handleBlur}
+                      onChange={field.handleChange}
+                      aria-invalid={isInvalid}
+                      aria-label="Six-digit one-time passcode"
+                    >
+                      <InputOTPGroup>
+                        <InputOTPSlot index={0} />
+                        <InputOTPSlot index={1} />
+                        <InputOTPSlot index={2} />
+                        <InputOTPSlot index={3} />
+                        <InputOTPSlot index={4} />
+                        <InputOTPSlot index={5} />
+                      </InputOTPGroup>
+                    </InputOTP>
+                    <FieldDescription>
+                      Please enter the one-time passcode sent to{" "}
+                      {form.state.values.email}
+                    </FieldDescription>
+                    {isInvalid && (
+                      <FieldError errors={field.state.meta.errors} />
+                    )}
+                  </Field>
+                )
+              }}
+            />
           ) : (
-            <Field>
-              <FieldLabel htmlFor="email">Email</FieldLabel>
-              <Input
-                id="email"
-                type="email"
-                placeholder="m@example.com"
-                value={email}
-                onChange={(event) => setEmail(event.target.value)}
-                required
-              />
-            </Field>
+            <form.Field
+              name="email"
+              children={(field) => {
+                const isInvalid =
+                  field.state.meta.isTouched && !field.state.meta.isValid
+
+                return (
+                  <Field data-invalid={isInvalid}>
+                    <FieldLabel htmlFor="email">Email</FieldLabel>
+                    <Input
+                      id="email"
+                      name={field.name}
+                      type="email"
+                      placeholder="username@example.com"
+                      value={field.state.value}
+                      onBlur={field.handleBlur}
+                      onChange={(event) =>
+                        field.handleChange(event.target.value)
+                      }
+                      aria-invalid={isInvalid}
+                    />
+                    {isInvalid && (
+                      <FieldError errors={field.state.meta.errors} />
+                    )}
+                  </Field>
+                )
+              }}
+            />
           )}
           <Field>
-            <Button type="submit" disabled={isOtpStep && otp.length !== 6}>
-              {isOtpStep ? "Verify code" : "Login"}
-            </Button>
+            <Button type="submit">{isOtpStep ? "Verify code" : "Login"}</Button>
             {isOtpStep && (
               <Button
                 type="button"
                 variant="outline"
                 disabled={resendDelay > 0}
+                onClick={() => {
+                  // call resend OTP API here
+                  setResendDelay(60)
+                }}
               >
                 {resendDelay > 0
                   ? `Resend code in ${resendDelay}s`
