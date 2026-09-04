@@ -33,14 +33,7 @@ import {
 } from "@/components/ui/popover"
 import { createFileRoute } from "@tanstack/react-router"
 import { HexAlphaColorPicker } from "react-colorful"
-import {
-  ArrowLeftIcon,
-  ArrowRightIcon,
-  CheckIcon,
-  PlusIcon,
-  Trash2Icon,
-  UploadIcon,
-} from "lucide-react"
+import { CheckIcon, PlusIcon, Trash2Icon, UploadIcon } from "lucide-react"
 import { useEffect, useState } from "react"
 
 export const Route = createFileRoute("/app/workshops/new")({
@@ -214,7 +207,7 @@ function RouteComponent() {
   }
 
   return (
-    <div className="mx-auto w-full max-w-5xl">
+    <div className="max-w-5xl">
       <header className="mb-8">
         <h1 className="text-2xl font-bold">New Workshop</h1>
         <p className="text-sm text-muted-foreground">
@@ -222,63 +215,83 @@ function RouteComponent() {
         </p>
       </header>
 
-      <div className="mb-6 grid grid-cols-2 gap-2 md:grid-cols-5">
-        {steps.map((step, index) => (
-          <button
-            key={step.title}
-            type="button"
-            onClick={() => index <= activeStep && setActiveStep(index)}
-            className={`border p-3 text-left transition-colors ${index === activeStep ? "border-primary bg-primary text-primary-foreground" : index < activeStep ? "border-primary/40 bg-primary/5" : "border-border text-muted-foreground"}`}
-          >
-            <span className="mb-2 flex items-center gap-2 text-xs font-medium">
-              <span className="flex size-5 items-center justify-center rounded-full border text-[10px]">
-                {index < activeStep ? (
-                  <CheckIcon className="size-3" />
-                ) : (
-                  index + 1
-                )}
-              </span>
-              {step.title}
-            </span>
-            <span className="hidden text-[11px] opacity-75 md:block">
-              {step.description}
-            </span>
-          </button>
-        ))}
-      </div>
+      <div className="grid gap-8 md:grid-cols-[220px_minmax(0,1fr)] md:items-start">
+        <nav
+          aria-label="Workshop creation steps"
+          className="md:sticky md:top-4"
+        >
+          <ol className="relative space-y-2 before:absolute before:top-6 before:bottom-6 before:left-5 before:w-px before:bg-border">
+            {steps.map((step, index) => {
+              const isActive = index === activeStep
+              const isComplete = index < activeStep
+              const isAvailable = index <= activeStep
 
-      <form onSubmit={submit}>
-        <Card>
-          <CardHeader>
-            <CardTitle>
-              Step {activeStep + 1}: {steps[activeStep].title}
-            </CardTitle>
-            <CardDescription>{steps[activeStep].description}</CardDescription>
-          </CardHeader>
-          <CardContent>
-            {renderStep(activeStep, workshop, update, setWorkshop, errors)}
-          </CardContent>
-          <CardFooter className="justify-between gap-2">
-            <Button
-              type="button"
-              variant="outline"
-              disabled={activeStep === 0}
-              onClick={() => setActiveStep((step) => step - 1)}
-            >
-              <ArrowLeftIcon /> Back
-            </Button>
-            {activeStep < steps.length - 1 ? (
-              <Button type="button" onClick={next}>
-                Continue <ArrowRightIcon />
+              return (
+                <li key={step.title} className="relative">
+                  <button
+                    type="button"
+                    aria-current={isActive ? "step" : undefined}
+                    disabled={!isAvailable}
+                    onClick={() => setActiveStep(index)}
+                    className={`group _disabled:opacity-50 flex w-full items-start gap-3 p-2 text-left transition-colors disabled:cursor-not-allowed ${isActive ? "bg-primary text-primary-foreground" : isComplete ? "text-foreground hover:bg-primary/5" : "text-muted-foreground"}`}
+                  >
+                    <span
+                      className={`z-10 flex size-6 shrink-0 items-center justify-center rounded-full border bg-background text-[10px] font-medium ${isActive ? "border-primary-foreground text-foreground" : isComplete ? "border-primary bg-primary text-primary-foreground" : "border-border"}`}
+                    >
+                      {isComplete ? (
+                        <CheckIcon className="size-3" />
+                      ) : (
+                        index + 1
+                      )}
+                    </span>
+                    <span className="min-w-0 pt-0.5">
+                      <span className="block text-xs font-medium">
+                        {step.title}
+                      </span>
+                      <span className="mt-1 block text-[11px] opacity-75">
+                        {step.description}
+                      </span>
+                    </span>
+                  </button>
+                </li>
+              )
+            })}
+          </ol>
+        </nav>
+
+        <form onSubmit={submit} className="min-w-0">
+          <Card>
+            <CardHeader>
+              <CardTitle>
+                Step {activeStep + 1}: {steps[activeStep].title}
+              </CardTitle>
+              <CardDescription>{steps[activeStep].description}</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {renderStep(activeStep, workshop, update, setWorkshop, errors)}
+            </CardContent>
+            <CardFooter className="justify-between gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                disabled={activeStep === 0}
+                onClick={() => setActiveStep((step) => step - 1)}
+              >
+                Back
               </Button>
-            ) : (
-              <Button type="submit">
-                <CheckIcon /> Create workshop
-              </Button>
-            )}
-          </CardFooter>
-        </Card>
-      </form>
+              {activeStep < steps.length - 1 ? (
+                <Button type="button" onClick={next}>
+                  Continue
+                </Button>
+              ) : (
+                <Button type="submit">
+                  <CheckIcon /> Create workshop
+                </Button>
+              )}
+            </CardFooter>
+          </Card>
+        </form>
+      </div>
     </div>
   )
 }
