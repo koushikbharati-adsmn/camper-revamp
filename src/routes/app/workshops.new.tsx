@@ -229,16 +229,16 @@ function RouteComponent() {
                     aria-current={isActive ? "step" : undefined}
                     disabled={!isAvailable}
                     onClick={() => setActiveStep(index)}
-                    className={`group flex w-full items-start gap-3 p-2 text-left transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${
+                    className={`group flex w-full items-start gap-3 p-2 text-left transition-colors disabled:cursor-not-allowed ${
                       isActive
                         ? "bg-primary text-primary-foreground"
                         : isComplete
-                          ? "text-foreground hover:bg-primary/5"
+                          ? "text-foreground"
                           : "text-muted-foreground"
                     }`}
                   >
                     <span
-                      className={`z-10 flex size-6 shrink-0 items-center justify-center rounded-full border bg-background text-[10px] font-medium ${
+                      className={`z-10 flex size-6 drop-shadow-xs shrink-0 items-center justify-center rounded-full border bg-background text-[10px] font-medium ${
                         isActive
                           ? "border-primary-foreground text-foreground"
                           : isComplete
@@ -273,7 +273,7 @@ function RouteComponent() {
           onSubmit={submit}
           className="flex min-h-0 min-w-0 flex-col overflow-hidden"
         >
-          <header className="shrink-0 border-b pb-4">
+          <header className="shrink-0">
             <h2 className="font-semibold">
               Step {activeStep + 1}: {steps[activeStep].title}
             </h2>
@@ -283,7 +283,7 @@ function RouteComponent() {
             </p>
           </header>
 
-          <div className="min-h-0 flex-1 overflow-y-auto py-6 pr-2">
+          <div className="min-h-0 flex-1 overflow-y-auto py-6 pr-2 pl-0.5">
             {renderStep(activeStep, workshop, update, setWorkshop, errors)}
           </div>
 
@@ -756,7 +756,7 @@ function TeamsStep({
       {errors.teams && (
         <p className="text-xs text-destructive">{errors.teams}</p>
       )}
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 gap-4">
         {workshop.teams.map((team, index) => (
           <Card key={index} size="sm">
             <CardHeader>
