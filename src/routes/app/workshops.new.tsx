@@ -23,6 +23,7 @@ import {
 import { Textarea } from "@/components/ui/textarea"
 import { Switch } from "@/components/ui/switch"
 import { Separator } from "@/components/ui/separator"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import {
   Popover,
   PopoverContent,
@@ -32,6 +33,7 @@ import { createFileRoute } from "@tanstack/react-router"
 import { HexAlphaColorPicker } from "react-colorful"
 import {
   CheckIcon,
+  FileIcon,
   PlusIcon,
   Trash2Icon,
   UploadIcon,
@@ -45,6 +47,7 @@ export const Route = createFileRoute("/app/workshops/new")({
 
 type Upload = File | null
 type ColorValue = { hex: string; alpha: number }
+type ThemeTab = "colors" | "assets" | "fonts"
 
 type Pillar = { title: string; context: string }
 type Team = {
@@ -68,6 +71,8 @@ type Workshop = {
   logo: Upload
   portrait: Upload
   landscape: Upload
+  headingFont: Upload
+  bodyFont: Upload
   pillars: Pillar[]
   teams: Team[]
   usePasscode: boolean
@@ -107,6 +112,8 @@ const initialWorkshop: Workshop = {
   logo: null,
   portrait: null,
   landscape: null,
+  headingFont: null,
+  bodyFont: null,
   pillars: [{ title: "", context: "" }],
   teams: [
     {
@@ -128,6 +135,7 @@ const initialWorkshop: Workshop = {
 function RouteComponent() {
   const [workshop, setWorkshop] = useState(initialWorkshop)
   const [activeStep, setActiveStep] = useState(0)
+  const [activeThemeTab, setActiveThemeTab] = useState<ThemeTab>("colors")
   const [errors, setErrors] = useState<Record<string, string>>({})
 
   const update = <K extends keyof Workshop>(field: K, value: Workshop[K]) => {
@@ -158,9 +166,18 @@ function RouteComponent() {
         ["logo", "Logo"],
         ["portrait", "Background portrait"],
         ["landscape", "Background landscape"],
+        ["headingFont", "Heading font"],
+        ["bodyFont", "Body font"],
       ] as const) {
         if (!workshop[field]) nextErrors[field] = `${label} is required.`
       }
+
+      if (nextErrors.primaryColor || nextErrors.secondaryColor)
+        setActiveThemeTab("colors")
+      else if (nextErrors.logo || nextErrors.portrait || nextErrors.landscape)
+        setActiveThemeTab("assets")
+      else if (nextErrors.headingFont || nextErrors.bodyFont)
+        setActiveThemeTab("fonts")
     }
     if (step === 2) {
       if (!workshop.pillars.length)
@@ -281,7 +298,15 @@ function RouteComponent() {
           </header>
 
           <div className="py-6 pr-2 pl-0.5">
-            {renderStep(activeStep, workshop, update, setWorkshop, errors)}
+            {renderStep(
+              activeStep,
+              workshop,
+              update,
+              setWorkshop,
+              errors,
+              activeThemeTab,
+              setActiveThemeTab
+            )}
           </div>
 
           <div className="flex shrink-0 justify-between gap-2 bg-background">
@@ -315,12 +340,22 @@ function renderStep(
   workshop: Workshop,
   update: <K extends keyof Workshop>(field: K, value: Workshop[K]) => void,
   setWorkshop: React.Dispatch<React.SetStateAction<Workshop>>,
-  errors: Record<string, string>
+  errors: Record<string, string>,
+  activeThemeTab: ThemeTab,
+  setActiveThemeTab: React.Dispatch<React.SetStateAction<ThemeTab>>
 ) {
   if (step === 0)
     return <IdentityStep workshop={workshop} update={update} errors={errors} />
   if (step === 1)
-    return <ThemeStep workshop={workshop} update={update} errors={errors} />
+    return (
+      <ThemeStep
+        workshop={workshop}
+        update={update}
+        errors={errors}
+        activeTab={activeThemeTab}
+        onTabChange={setActiveThemeTab}
+      />
+    )
   if (step === 2)
     return (
       <PillarsStep
@@ -448,44 +483,87 @@ function ThemeStep({
   workshop,
   update,
   errors,
+  activeTab,
+  onTabChange,
 }: {
   workshop: Workshop
   update: <K extends keyof Workshop>(field: K, value: Workshop[K]) => void
   errors: Record<string, string>
+  activeTab: ThemeTab
+  onTabChange: React.Dispatch<React.SetStateAction<ThemeTab>>
 }) {
   return (
-    <div className="grid grid-cols-2 gap-5">
-      <ColorPickerField
-        label="Primary color"
-        value={workshop.primaryColor}
-        onChange={(value) => update("primaryColor", value)}
-        error={errors.primaryColor}
-      />
-      <ColorPickerField
-        label="Secondary color"
-        value={workshop.secondaryColor}
-        onChange={(value) => update("secondaryColor", value)}
-        error={errors.secondaryColor}
-      />
-      <FileField
-        label="Logo"
-        value={workshop.logo}
-        onChange={(file) => update("logo", file)}
-        error={errors.logo}
-      />
-      <FileField
-        label="Background portrait"
-        value={workshop.portrait}
-        onChange={(file) => update("portrait", file)}
-        error={errors.portrait}
-      />
-      <FileField
-        label="Background landscape"
-        value={workshop.landscape}
-        onChange={(file) => update("landscape", file)}
-        error={errors.landscape}
-      />
-    </div>
+    <Tabs
+      value={activeTab}
+      onValueChange={(value) => onTabChange(value as ThemeTab)}
+    >
+      <TabsList variant="line" className="mb-4">
+        <TabsTrigger value="colors">Colors</TabsTrigger>
+        <TabsTrigger value="assets">Assets</TabsTrigger>
+        <TabsTrigger value="fonts">Fonts</TabsTrigger>
+      </TabsList>
+
+      <TabsContent value="colors">
+        <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
+          <ColorPickerField
+            label="Primary color"
+            value={workshop.primaryColor}
+            onChange={(value) => update("primaryColor", value)}
+            error={errors.primaryColor}
+          />
+          <ColorPickerField
+            label="Secondary color"
+            value={workshop.secondaryColor}
+            onChange={(value) => update("secondaryColor", value)}
+            error={errors.secondaryColor}
+          />
+        </div>
+      </TabsContent>
+
+      <TabsContent value="assets">
+        <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
+          <FileField
+            label="Logo"
+            value={workshop.logo}
+            onChange={(file) => update("logo", file)}
+            error={errors.logo}
+          />
+          <FileField
+            label="Background portrait"
+            value={workshop.portrait}
+            onChange={(file) => update("portrait", file)}
+            error={errors.portrait}
+          />
+          <FileField
+            label="Background landscape"
+            value={workshop.landscape}
+            onChange={(file) => update("landscape", file)}
+            error={errors.landscape}
+          />
+        </div>
+      </TabsContent>
+
+      <TabsContent value="fonts">
+        <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
+          <FileField
+            label="Heading font"
+            value={workshop.headingFont}
+            onChange={(file) => update("headingFont", file)}
+            error={errors.headingFont}
+            accept=".woff,.woff2,.ttf,.otf"
+            preview="file"
+          />
+          <FileField
+            label="Body font"
+            value={workshop.bodyFont}
+            onChange={(file) => update("bodyFont", file)}
+            error={errors.bodyFont}
+            accept=".woff,.woff2,.ttf,.otf"
+            preview="file"
+          />
+        </div>
+      </TabsContent>
+    </Tabs>
   )
 }
 
@@ -569,11 +647,15 @@ function FileField({
   value,
   onChange,
   error,
+  accept = "image/*",
+  preview = "image",
 }: {
   label: string
   value: Upload
   onChange: (file: Upload) => void
   error?: string
+  accept?: string
+  preview?: "image" | "file"
 }) {
   const inputRef = useRef<HTMLInputElement>(null)
 
@@ -595,17 +677,21 @@ function FileField({
         ref={inputRef}
         type="file"
         className="sr-only"
-        accept="image/*"
+        accept={accept}
         aria-label={label}
         onChange={(event) => onChange(event.target.files?.[0] ?? null)}
       />
       {value ? (
         <div className="flex items-center gap-3 border border-input p-2">
           <div className="flex size-14 shrink-0 items-center justify-center bg-muted">
-            <FilePreview
-              key={`${value.name}-${value.lastModified}-${value.size}`}
-              file={value}
-            />
+            {preview === "image" ? (
+              <FilePreview
+                key={`${value.name}-${value.lastModified}-${value.size}`}
+                file={value}
+              />
+            ) : (
+              <FileIcon className="size-5 text-muted-foreground" />
+            )}
           </div>
           <p className="min-w-0 flex-1 truncate text-xs" title={value.name}>
             {value.name}
