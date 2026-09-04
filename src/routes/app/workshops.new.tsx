@@ -527,7 +527,7 @@ function ColorPickerField({
         </div>
         <PopoverContent
           sideOffset={8}
-          className="h-full w-fit border border-border bg-popover p-3 text-popover-foreground shadow-md"
+          className="w-fit border border-border bg-popover p-3 text-popover-foreground shadow-md"
         >
           <div className="color-picker-layout">
             <HexAlphaColorPicker
