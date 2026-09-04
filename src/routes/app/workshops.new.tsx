@@ -572,14 +572,35 @@ function FileField({
 }
 
 function FilePreview({ file }: { file: File }) {
-  const [url] = useState(() => URL.createObjectURL(file))
-  useEffect(() => () => URL.revokeObjectURL(url), [url])
+  const [url, setUrl] = useState<string | null>(null)
+
+  useEffect(() => {
+    const reader = new FileReader()
+    reader.onload = () => {
+      if (typeof reader.result === "string") setUrl(reader.result)
+    }
+    reader.readAsDataURL(file)
+
+    return () => {
+      reader.abort()
+      reader.onload = null
+    }
+  }, [file])
+
   return (
-    <img
-      src={url}
-      alt="Selected preview"
-      className="h-20 w-full object-cover"
-    />
+    <div className="flex h-20 w-full items-center justify-center overflow-hidden bg-muted">
+      {url ? (
+        <img
+          src={url}
+          alt="Selected preview"
+          className="h-full w-full object-cover"
+        />
+      ) : (
+        <span className="text-xs text-muted-foreground">
+          Loading preview...
+        </span>
+      )}
+    </div>
   )
 }
 
