@@ -5,8 +5,6 @@ import {
   Card,
   CardAction,
   CardContent,
-  CardDescription,
-  CardFooter,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
@@ -26,6 +24,7 @@ import {
 } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
 import { Switch } from "@/components/ui/switch"
+import { Separator } from "@/components/ui/separator"
 import {
   Popover,
   PopoverContent,
@@ -207,7 +206,7 @@ function RouteComponent() {
   }
 
   return (
-    <div className="max-w-5xl">
+    <div className="w-full max-w-5xl">
       <header className="mb-8">
         <h1 className="text-2xl font-bold">New Workshop</h1>
         <p className="text-sm text-muted-foreground">
@@ -215,7 +214,7 @@ function RouteComponent() {
         </p>
       </header>
 
-      <div className="grid gap-8 md:grid-cols-[220px_minmax(0,1fr)] md:items-start">
+      <div className="grid gap-8 md:grid-cols-[220px_auto_minmax(0,1fr)] md:items-start">
         <nav
           aria-label="Workshop creation steps"
           className="md:sticky md:top-4"
@@ -259,37 +258,38 @@ function RouteComponent() {
           </ol>
         </nav>
 
+        <Separator orientation="vertical" className="hidden md:block" />
+
         <form onSubmit={submit} className="min-w-0">
-          <Card>
-            <CardHeader>
-              <CardTitle>
-                Step {activeStep + 1}: {steps[activeStep].title}
-              </CardTitle>
-              <CardDescription>{steps[activeStep].description}</CardDescription>
-            </CardHeader>
-            <CardContent>
-              {renderStep(activeStep, workshop, update, setWorkshop, errors)}
-            </CardContent>
-            <CardFooter className="justify-between gap-2">
-              <Button
-                type="button"
-                variant="outline"
-                disabled={activeStep === 0}
-                onClick={() => setActiveStep((step) => step - 1)}
-              >
-                Back
+          <Separator className="mb-6 md:hidden" />
+          <header className="mb-6">
+            <h2 className="font-semibold">
+              Step {activeStep + 1}: {steps[activeStep].title}
+            </h2>
+            <p className="text-sm text-muted-foreground">
+              {steps[activeStep].description}
+            </p>
+          </header>
+          {renderStep(activeStep, workshop, update, setWorkshop, errors)}
+          <div className="mt-8 flex justify-between gap-2 border-t pt-4">
+            <Button
+              type="button"
+              variant="outline"
+              disabled={activeStep === 0}
+              onClick={() => setActiveStep((step) => step - 1)}
+            >
+              Back
+            </Button>
+            {activeStep < steps.length - 1 ? (
+              <Button type="button" onClick={next}>
+                Continue
               </Button>
-              {activeStep < steps.length - 1 ? (
-                <Button type="button" onClick={next}>
-                  Continue
-                </Button>
-              ) : (
-                <Button type="submit">
-                  <CheckIcon /> Create workshop
-                </Button>
-              )}
-            </CardFooter>
-          </Card>
+            ) : (
+              <Button type="submit">
+                <CheckIcon /> Create workshop
+              </Button>
+            )}
+          </div>
         </form>
       </div>
     </div>
@@ -379,7 +379,7 @@ function IdentityStep({
   errors: Record<string, string>
 }) {
   return (
-    <div className="grid gap-5 md:grid-cols-2">
+    <div className="grid grid-cols-2 gap-5">
       <Field label="Title" error={errors.title}>
         <Input
           value={workshop.title}
@@ -446,7 +446,7 @@ function ThemeStep({
   errors: Record<string, string>
 }) {
   return (
-    <div className="grid gap-5 md:grid-cols-2">
+    <div className="grid grid-cols-2 gap-5">
       <ColorPickerField
         label="Primary color"
         value={workshop.primaryColor}
@@ -638,7 +638,7 @@ function PillarsStep({
       {errors.pillars && (
         <p className="text-xs text-destructive">{errors.pillars}</p>
       )}
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 gap-4">
         {workshop.pillars.map((pillar, index) => (
           <Card key={index} size="sm">
             <CardHeader>
@@ -764,7 +764,7 @@ function TeamsStep({
                 </CardAction>
               )}
             </CardHeader>
-            <CardContent className="grid gap-4">
+            <CardContent className="grid grid-cols-1 gap-4">
               <Field label="Name" error={errors[`team-${index}-name`]}>
                 <Input
                   value={team.name}
