@@ -502,8 +502,8 @@ function ColorPickerField({
   }
 
   return (
-    <Field label={label} error={error}>
-      <Popover open={open} onOpenChange={setOpen}>
+    <Popover open={open} onOpenChange={setOpen}>
+      <Field label={label} error={error}>
         <div className="flex h-8 items-center gap-2 border border-input px-2">
           <PopoverTrigger
             aria-label={`Choose ${label.toLowerCase()}`}
@@ -525,19 +525,19 @@ function ColorPickerField({
           />
           <span className="text-xs text-muted-foreground">{value.alpha}%</span>
         </div>
-        <PopoverContent
-          sideOffset={8}
-          className="w-fit border border-border bg-popover p-3 text-popover-foreground shadow-md"
-        >
-          <div className="color-picker-layout">
-            <HexAlphaColorPicker
-              color={toPickerColor(value)}
-              onChange={handlePickerChange}
-            />
-          </div>
-        </PopoverContent>
-      </Popover>
-    </Field>
+      </Field>
+      <PopoverContent
+        sideOffset={8}
+        className="w-fit border border-border bg-popover p-3 text-popover-foreground shadow-md"
+      >
+        <div className="color-picker-layout">
+          <HexAlphaColorPicker
+            color={toPickerColor(value)}
+            onChange={handlePickerChange}
+          />
+        </div>
+      </PopoverContent>
+    </Popover>
   )
 }
 
