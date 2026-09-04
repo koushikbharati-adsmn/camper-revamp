@@ -705,85 +705,89 @@ function TeamsStep({
       {errors.teams && (
         <p className="text-xs text-destructive">{errors.teams}</p>
       )}
-      {workshop.teams.map((team, index) => (
-        <Card key={index} size="sm">
-          <CardHeader>
-            <CardTitle>Team {index + 1}</CardTitle>
-            {workshop.teams.length > 1 && (
-              <CardAction>
-                <Button
-                  type="button"
-                  variant="destructive"
-                  size="icon-xs"
-                  onClick={() =>
-                    setWorkshop((current) => ({
-                      ...current,
-                      teams: current.teams.filter(
-                        (_, itemIndex) => itemIndex !== index
-                      ),
-                    }))
+      <div className="grid grid-cols-2 gap-4">
+        {workshop.teams.map((team, index) => (
+          <Card key={index} size="sm">
+            <CardHeader>
+              <CardTitle>Team {index + 1}</CardTitle>
+              {workshop.teams.length > 1 && (
+                <CardAction>
+                  <Button
+                    type="button"
+                    variant="destructive"
+                    size="icon-xs"
+                    onClick={() =>
+                      setWorkshop((current) => ({
+                        ...current,
+                        teams: current.teams.filter(
+                          (_, itemIndex) => itemIndex !== index
+                        ),
+                      }))
+                    }
+                  >
+                    <Trash2Icon />
+                  </Button>
+                </CardAction>
+              )}
+            </CardHeader>
+            <CardContent className="grid gap-4">
+              <Field label="Name" error={errors[`team-${index}-name`]}>
+                <Input
+                  value={team.name}
+                  onChange={(event) =>
+                    change(index, "name", event.target.value)
                   }
-                >
-                  <Trash2Icon />
-                </Button>
-              </CardAction>
-            )}
-          </CardHeader>
-          <CardContent className="grid gap-4 md:grid-cols-2">
-            <Field label="Name" error={errors[`team-${index}-name`]}>
-              <Input
-                value={team.name}
-                onChange={(event) => change(index, "name", event.target.value)}
-              />
-            </Field>
-            <ColorPickerField
-              label={`Team ${index + 1} color`}
-              value={team.color}
-              onChange={(value) => change(index, "color", value)}
-              error={errors[`team-${index}-color`]}
-            />
-            <FileField
-              label="Thumbnail"
-              value={team.thumbnail}
-              onChange={(file) => change(index, "thumbnail", file)}
-              error={errors[`team-${index}-thumbnail`]}
-            />
-            <Field
-              label="Description"
-              error={errors[`team-${index}-description`]}
-            >
-              <Textarea
-                value={team.description}
-                onChange={(event) =>
-                  change(index, "description", event.target.value)
-                }
-              />
-            </Field>
-            {workshop.usePasscode && (
-              <Field
-                label="Four-digit passcode"
-                error={errors[`team-${index}-passcode`]}
-              >
-                <InputOTP
-                  maxLength={4}
-                  inputMode="numeric"
-                  pattern="[0-9]*"
-                  value={team.passcode}
-                  onChange={(value) => change(index, "passcode", value)}
-                  aria-label={`Passcode for team ${index + 1}`}
-                >
-                  <InputOTPGroup>
-                    <InputOTPSlot index={0} />
-                    <InputOTPSlot index={1} />
-                    <InputOTPSlot index={2} />
-                    <InputOTPSlot index={3} />
-                  </InputOTPGroup>
-                </InputOTP>
+                />
               </Field>
-            )}
-          </CardContent>
-        </Card>
-      ))}
+              <ColorPickerField
+                label={`Team ${index + 1} color`}
+                value={team.color}
+                onChange={(value) => change(index, "color", value)}
+                error={errors[`team-${index}-color`]}
+              />
+              <FileField
+                label="Thumbnail"
+                value={team.thumbnail}
+                onChange={(file) => change(index, "thumbnail", file)}
+                error={errors[`team-${index}-thumbnail`]}
+              />
+              <Field
+                label="Description"
+                error={errors[`team-${index}-description`]}
+              >
+                <Textarea
+                  value={team.description}
+                  onChange={(event) =>
+                    change(index, "description", event.target.value)
+                  }
+                />
+              </Field>
+              {workshop.usePasscode && (
+                <Field
+                  label="Four-digit passcode"
+                  error={errors[`team-${index}-passcode`]}
+                >
+                  <InputOTP
+                    maxLength={4}
+                    inputMode="numeric"
+                    pattern="[0-9]*"
+                    value={team.passcode}
+                    onChange={(value) => change(index, "passcode", value)}
+                    aria-label={`Passcode for team ${index + 1}`}
+                  >
+                    <InputOTPGroup>
+                      <InputOTPSlot index={0} />
+                      <InputOTPSlot index={1} />
+                      <InputOTPSlot index={2} />
+                      <InputOTPSlot index={3} />
+                    </InputOTPGroup>
+                  </InputOTP>
+                </Field>
+              )}
+            </CardContent>
+          </Card>
+        ))}
+      </div>
       <Button
         type="button"
         variant="outline"
