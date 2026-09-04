@@ -11,6 +11,11 @@ import {
   CardTitle,
 } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
+import {
+  InputOTP,
+  InputOTPGroup,
+  InputOTPSlot,
+} from "@/components/ui/input-otp"
 import { Label } from "@/components/ui/label"
 import {
   Select,
@@ -20,6 +25,7 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
+import { Switch } from "@/components/ui/switch"
 import { createFileRoute } from "@tanstack/react-router"
 import {
   ArrowLeftIcon,
@@ -43,6 +49,7 @@ type Team = {
   color: string
   thumbnail: Upload
   description: string
+  passcode: string
 }
 type Coach = { name: string; avatar: string; enabled: boolean }
 
@@ -61,7 +68,6 @@ type Workshop = {
   pillars: Pillar[]
   teams: Team[]
   usePasscode: boolean
-  passcode: string
   coaches: Coach[]
 }
 
@@ -99,9 +105,16 @@ const initialWorkshop: Workshop = {
   portrait: null,
   landscape: null,
   pillars: [{ title: "", context: "" }],
-  teams: [{ name: "", color: "#d9ff00", thumbnail: null, description: "" }],
+  teams: [
+    {
+      name: "",
+      color: "#d9ff00",
+      thumbnail: null,
+      description: "",
+      passcode: "",
+    },
+  ],
   usePasscode: false,
-  passcode: "",
   coaches: ["Maya", "Chris", "Robin", "Taylor"].map((name, index) => ({
     name,
     avatar: dummyAvatars[index],
@@ -162,8 +175,11 @@ function RouteComponent() {
         if (!team.thumbnail)
           nextErrors[`team-${index}-thumbnail`] = "Thumbnail is required."
       })
-      if (workshop.usePasscode && !/^\d{4}$/.test(workshop.passcode))
-        nextErrors.passcode = "Enter exactly four digits."
+      if (workshop.usePasscode)
+        workshop.teams.forEach((team, index) => {
+          if (!/^\d{4}$/.test(team.passcode))
+            nextErrors[`team-${index}-passcode`] = "Enter exactly four digits."
+        })
     }
     if (step === 4)
       workshop.coaches.forEach((coach, index) => {
@@ -585,23 +601,9 @@ function TeamsStep({
         </div>
         <Switch
           checked={workshop.usePasscode}
-          onChange={(checked) => update("usePasscode", checked)}
+          onCheckedChange={(checked) => update("usePasscode", checked)}
         />
       </div>
-      {workshop.usePasscode && (
-        <Field label="Four-digit passcode" error={errors.passcode}>
-          <Input
-            inputMode="numeric"
-            maxLength={4}
-            type="password"
-            value={workshop.passcode}
-            onChange={(event) =>
-              update("passcode", event.target.value.replace(/\D/g, ""))
-            }
-            placeholder="0000"
-          />
-        </Field>
-      )}
       {errors.teams && (
         <p className="text-xs text-destructive">{errors.teams}</p>
       )}
@@ -666,6 +668,28 @@ function TeamsStep({
                 }
               />
             </Field>
+            {workshop.usePasscode && (
+              <Field
+                label="Four-digit passcode"
+                error={errors[`team-${index}-passcode`]}
+              >
+                <InputOTP
+                  maxLength={4}
+                  inputMode="numeric"
+                  pattern="[0-9]*"
+                  value={team.passcode}
+                  onChange={(value) => change(index, "passcode", value)}
+                  aria-label={`Passcode for team ${index + 1}`}
+                >
+                  <InputOTPGroup>
+                    <InputOTPSlot index={0} />
+                    <InputOTPSlot index={1} />
+                    <InputOTPSlot index={2} />
+                    <InputOTPSlot index={3} />
+                  </InputOTPGroup>
+                </InputOTP>
+              </Field>
+            )}
           </CardContent>
         </Card>
       ))}
@@ -677,7 +701,13 @@ function TeamsStep({
             ...current,
             teams: [
               ...current.teams,
-              { name: "", color: "#d9ff00", thumbnail: null, description: "" },
+              {
+                name: "",
+                color: "#d9ff00",
+                thumbnail: null,
+                description: "",
+                passcode: "",
+              },
             ],
           }))
         }
@@ -752,7 +782,7 @@ function CoachesStep({
             </div>
             <Switch
               checked={coach.enabled}
-              onChange={(enabled) =>
+              onCheckedChange={(enabled) =>
                 setWorkshop((current) => ({
                   ...current,
                   coaches: current.coaches.map((item, itemIndex) =>
@@ -765,27 +795,5 @@ function CoachesStep({
         </Card>
       ))}
     </div>
-  )
-}
-
-function Switch({
-  checked,
-  onChange,
-}: {
-  checked: boolean
-  onChange: (checked: boolean) => void
-}) {
-  return (
-    <button
-      type="button"
-      role="switch"
-      aria-checked={checked}
-      onClick={() => onChange(!checked)}
-      className={`relative h-5 w-9 rounded-full transition-colors ${checked ? "bg-primary" : "bg-muted"}`}
-    >
-      <span
-        className={`absolute top-0.5 size-4 rounded-full bg-background transition-transform ${checked ? "translate-x-4" : "translate-x-0.5"}`}
-      />
-    </button>
   )
 }
