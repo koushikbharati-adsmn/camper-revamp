@@ -419,9 +419,6 @@ function RouteComponent() {
             <ArrowLeftIcon />
             Back to workshops
           </Link>
-          <p className="mb-1 text-xs font-medium tracking-[0.16em] text-primary uppercase">
-            Workshop builder
-          </p>
           <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">
             Create a new workshop
           </h1>
@@ -464,10 +461,6 @@ function RouteComponent() {
                   Step {String(activeStep + 1).padStart(2, "0")} /{" "}
                   {String(steps.length).padStart(2, "0")}
                 </span>
-                <span className="size-1 bg-primary" aria-hidden="true" />
-                <span className="text-xs text-muted-foreground">
-                  All fields in this step are required unless noted
-                </span>
               </div>
               <h2
                 key={activeStep}
@@ -481,7 +474,7 @@ function RouteComponent() {
               >
                 {steps[activeStep].title}
               </h2>
-              <p className="mt-1 text-sm text-muted-foreground">
+              <p className="text-sm text-muted-foreground">
                 {steps[activeStep].description}
               </p>
 
@@ -499,7 +492,7 @@ function RouteComponent() {
               )}
             </header>
 
-            <div className="min-h-[30rem] px-5 py-6 sm:px-7 sm:py-8">
+            <div className="min-h-120 px-5 py-6 sm:px-7 sm:py-8">
               {renderStep(
                 activeStep,
                 workshop,
@@ -512,7 +505,7 @@ function RouteComponent() {
               )}
             </div>
 
-            <div className="sticky bottom-0 z-20 flex gap-3 border-t border-border bg-background/95 px-5 py-4 backdrop-blur-sm supports-[padding:max(0px)]:pb-[max(1rem,env(safe-area-inset-bottom))] sm:justify-between sm:px-7">
+            <div className="sticky -bottom-4 z-20 flex gap-3 border-t border-border bg-background/80 px-5 py-4 backdrop-blur-sm supports-[padding:max(0px)]:pb-[max(1rem,env(safe-area-inset-bottom))] sm:justify-between sm:px-7">
               <Button
                 type="button"
                 variant="outline"
@@ -627,7 +620,7 @@ function StepNavigation({
         <p className="mb-4 text-xs font-medium tracking-[0.14em] text-muted-foreground uppercase">
           Setup progress
         </p>
-        <ol className="relative space-y-1 before:absolute before:top-5 before:bottom-5 before:left-[15px] before:w-px before:bg-border">
+        <ol className="relative space-y-1 before:absolute before:top-5 before:bottom-5 before:left-4.5 before:w-px before:bg-border">
           {steps.map((step, index) => {
             const isActive = index === activeStep
             const isComplete = completedSteps.includes(index)
@@ -992,212 +985,139 @@ function ThemeStep({
   const fontsComplete = !!(workshop.headingFont && workshop.bodyFont)
 
   return (
-    <div className="space-y-6">
-      <section
-        aria-label="Live workshop theme preview"
-        className="grid overflow-hidden border border-border sm:grid-cols-[minmax(0,1fr)_13rem]"
+    <Tabs
+      value={activeTab}
+      onValueChange={(value) => onTabChange(value as ThemeTab)}
+    >
+      <TabsList
+        variant="line"
+        aria-label="Theme sections"
+        className="mb-6 grid w-full grid-cols-3 border-b border-border p-0 group-data-horizontal/tabs:h-10!"
       >
-        <div
-          className="flex min-h-36 flex-col justify-between p-5 transition-colors"
-          style={{
-            backgroundColor: isHexColor(workshop.primaryColor.hex)
-              ? toPickerColor(workshop.primaryColor)
-              : "var(--muted)",
-            color: isHexColor(workshop.secondaryColor.hex)
-              ? toPickerColor(workshop.secondaryColor)
-              : "var(--foreground)",
-          }}
-        >
-          <div className="flex min-h-8 items-start justify-between gap-4">
-            <p className="text-xs font-semibold tracking-[0.14em] uppercase">
-              {workshop.brand || "Your brand"}
-            </p>
-            {workshop.logo && (
-              <div className="flex size-10 items-center justify-center border border-current/20 bg-white/90 p-1">
-                <FilePreview
-                  key={`${workshop.logo.name}-${workshop.logo.lastModified}-${workshop.logo.size}`}
-                  file={workshop.logo}
-                />
-              </div>
-            )}
+        <TabsTrigger value="colors" className="h-full!">
+          <ThemeTabLabel
+            label="Colors"
+            complete={colorsComplete}
+            errorCount={colorErrorCount}
+          />
+        </TabsTrigger>
+        <TabsTrigger value="assets" className="h-full!">
+          <ThemeTabLabel
+            label="Assets"
+            complete={assetsComplete}
+            errorCount={assetErrorCount}
+          />
+        </TabsTrigger>
+        <TabsTrigger value="fonts" className="h-full!">
+          <ThemeTabLabel
+            label="Fonts"
+            complete={fontsComplete}
+            errorCount={fontErrorCount}
+          />
+        </TabsTrigger>
+      </TabsList>
+
+      <TabsContent value="colors">
+        <section aria-labelledby="theme-colors-heading">
+          <FormSectionHeader
+            id="theme-colors-heading"
+            title="Brand colors"
+            description="Set the core palette and transparency used throughout the workshop."
+          />
+          <div className="grid gap-5 sm:grid-cols-2">
+            <ColorPickerField
+              id="workshop-primary-color"
+              errorKey="primaryColor"
+              label="Primary color"
+              value={workshop.primaryColor}
+              onChange={(value) => update("primaryColor", value)}
+              error={errors.primaryColor}
+            />
+            <ColorPickerField
+              id="workshop-secondary-color"
+              errorKey="secondaryColor"
+              label="Secondary color"
+              value={workshop.secondaryColor}
+              onChange={(value) => update("secondaryColor", value)}
+              error={errors.secondaryColor}
+            />
           </div>
-          <div>
-            <p className="text-lg font-semibold tracking-tight sm:text-xl">
-              {workshop.title || "Workshop title"}
-            </p>
-            <p className="mt-1 max-w-md text-xs opacity-80">
-              {workshop.subtitle ||
-                "Your supporting workshop line appears here."}
-            </p>
+        </section>
+      </TabsContent>
+
+      <TabsContent value="assets">
+        <section aria-labelledby="theme-assets-heading">
+          <FormSectionHeader
+            id="theme-assets-heading"
+            title="Workshop artwork"
+            description="Upload the logo and background treatments participants will see."
+          />
+          <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,18rem),1fr))] gap-5">
+            <FileField
+              id="workshop-logo"
+              errorKey="logo"
+              label="Logo"
+              description="Image file; transparent artwork works best."
+              value={workshop.logo}
+              onChange={(file) => update("logo", file)}
+              error={errors.logo}
+            />
+            <FileField
+              id="workshop-portrait"
+              errorKey="portrait"
+              label="Background portrait"
+              description="Image file for portrait-oriented screens."
+              value={workshop.portrait}
+              onChange={(file) => update("portrait", file)}
+              error={errors.portrait}
+            />
+            <FileField
+              id="workshop-landscape"
+              errorKey="landscape"
+              label="Background landscape"
+              description="Image file for landscape-oriented screens."
+              value={workshop.landscape}
+              onChange={(file) => update("landscape", file)}
+              error={errors.landscape}
+            />
           </div>
-        </div>
-        <div className="grid grid-cols-2 border-t border-border bg-background sm:grid-cols-1 sm:border-t-0 sm:border-l">
-          {[
-            ["Primary", workshop.primaryColor],
-            ["Secondary", workshop.secondaryColor],
-          ].map(([label, color]) => {
-            const value = color as ColorValue
-            return (
-              <div
-                key={label as string}
-                className="flex items-center gap-3 border-r border-border p-3 last:border-r-0 sm:border-r-0 sm:border-b sm:last:border-b-0"
-              >
-                <span
-                  className="size-7 shrink-0 border border-foreground/15"
-                  style={{
-                    backgroundColor: isHexColor(value.hex)
-                      ? toPickerColor(value)
-                      : "transparent",
-                  }}
-                />
-                <span className="min-w-0">
-                  <span className="block text-[10px] font-medium tracking-wide text-muted-foreground uppercase">
-                    {label as string}
-                  </span>
-                  <span className="block truncate text-xs font-medium uppercase">
-                    {value.hex}
-                  </span>
-                </span>
-              </div>
-            )
-          })}
-        </div>
-      </section>
+        </section>
+      </TabsContent>
 
-      <Tabs
-        value={activeTab}
-        onValueChange={(value) => onTabChange(value as ThemeTab)}
-      >
-        <TabsList
-          variant="line"
-          aria-label="Theme sections"
-          className="mb-6 grid w-full grid-cols-3 border-b border-border p-0 group-data-horizontal/tabs:h-10!"
-        >
-          <TabsTrigger value="colors" className="h-full!">
-            <ThemeTabLabel
-              label="Colors"
-              complete={colorsComplete}
-              errorCount={colorErrorCount}
+      <TabsContent value="fonts">
+        <section aria-labelledby="theme-fonts-heading">
+          <FormSectionHeader
+            id="theme-fonts-heading"
+            title="Workshop type"
+            description="Provide separate display and reading fonts for the workshop interface."
+          />
+          <div className="grid gap-5 sm:grid-cols-2">
+            <FileField
+              id="workshop-heading-font"
+              errorKey="headingFont"
+              label="Heading font"
+              description="WOFF, WOFF2, TTF, or OTF."
+              value={workshop.headingFont}
+              onChange={(file) => update("headingFont", file)}
+              error={errors.headingFont}
+              accept=".woff,.woff2,.ttf,.otf"
+              preview="file"
             />
-          </TabsTrigger>
-          <TabsTrigger value="assets" className="h-full!">
-            <ThemeTabLabel
-              label="Assets"
-              complete={assetsComplete}
-              errorCount={assetErrorCount}
+            <FileField
+              id="workshop-body-font"
+              errorKey="bodyFont"
+              label="Body font"
+              description="WOFF, WOFF2, TTF, or OTF."
+              value={workshop.bodyFont}
+              onChange={(file) => update("bodyFont", file)}
+              error={errors.bodyFont}
+              accept=".woff,.woff2,.ttf,.otf"
+              preview="file"
             />
-          </TabsTrigger>
-          <TabsTrigger value="fonts" className="h-full!">
-            <ThemeTabLabel
-              label="Fonts"
-              complete={fontsComplete}
-              errorCount={fontErrorCount}
-            />
-          </TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="colors">
-          <section aria-labelledby="theme-colors-heading">
-            <FormSectionHeader
-              id="theme-colors-heading"
-              title="Brand colors"
-              description="Set the core palette and transparency used throughout the workshop."
-            />
-            <div className="grid gap-5 sm:grid-cols-2">
-              <ColorPickerField
-                id="workshop-primary-color"
-                errorKey="primaryColor"
-                label="Primary color"
-                value={workshop.primaryColor}
-                onChange={(value) => update("primaryColor", value)}
-                error={errors.primaryColor}
-              />
-              <ColorPickerField
-                id="workshop-secondary-color"
-                errorKey="secondaryColor"
-                label="Secondary color"
-                value={workshop.secondaryColor}
-                onChange={(value) => update("secondaryColor", value)}
-                error={errors.secondaryColor}
-              />
-            </div>
-          </section>
-        </TabsContent>
-
-        <TabsContent value="assets">
-          <section aria-labelledby="theme-assets-heading">
-            <FormSectionHeader
-              id="theme-assets-heading"
-              title="Workshop artwork"
-              description="Upload the logo and background treatments participants will see."
-            />
-            <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,18rem),1fr))] gap-5">
-              <FileField
-                id="workshop-logo"
-                errorKey="logo"
-                label="Logo"
-                description="Image file; transparent artwork works best."
-                value={workshop.logo}
-                onChange={(file) => update("logo", file)}
-                error={errors.logo}
-              />
-              <FileField
-                id="workshop-portrait"
-                errorKey="portrait"
-                label="Background portrait"
-                description="Image file for portrait-oriented screens."
-                value={workshop.portrait}
-                onChange={(file) => update("portrait", file)}
-                error={errors.portrait}
-              />
-              <FileField
-                id="workshop-landscape"
-                errorKey="landscape"
-                label="Background landscape"
-                description="Image file for landscape-oriented screens."
-                value={workshop.landscape}
-                onChange={(file) => update("landscape", file)}
-                error={errors.landscape}
-              />
-            </div>
-          </section>
-        </TabsContent>
-
-        <TabsContent value="fonts">
-          <section aria-labelledby="theme-fonts-heading">
-            <FormSectionHeader
-              id="theme-fonts-heading"
-              title="Workshop type"
-              description="Provide separate display and reading fonts for the workshop interface."
-            />
-            <div className="grid gap-5 sm:grid-cols-2">
-              <FileField
-                id="workshop-heading-font"
-                errorKey="headingFont"
-                label="Heading font"
-                description="WOFF, WOFF2, TTF, or OTF."
-                value={workshop.headingFont}
-                onChange={(file) => update("headingFont", file)}
-                error={errors.headingFont}
-                accept=".woff,.woff2,.ttf,.otf"
-                preview="file"
-              />
-              <FileField
-                id="workshop-body-font"
-                errorKey="bodyFont"
-                label="Body font"
-                description="WOFF, WOFF2, TTF, or OTF."
-                value={workshop.bodyFont}
-                onChange={(file) => update("bodyFont", file)}
-                error={errors.bodyFont}
-                accept=".woff,.woff2,.ttf,.otf"
-                preview="file"
-              />
-            </div>
-          </section>
-        </TabsContent>
-      </Tabs>
-    </div>
+          </div>
+        </section>
+      </TabsContent>
+    </Tabs>
   )
 }
 
