@@ -1,5 +1,5 @@
 import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
+import { Button, buttonVariants } from "@/components/ui/button"
 import {
   Card,
   CardAction,
@@ -37,6 +37,7 @@ import {
 } from "@/components/ui/popover"
 import { cn } from "@/lib/utils"
 import { createFileRoute, Link } from "@tanstack/react-router"
+import { REGEXP_ONLY_DIGITS } from "input-otp"
 import { HexAlphaColorPicker } from "react-colorful"
 import {
   AlertCircleIcon,
@@ -190,10 +191,18 @@ function getStepErrors(step: number, workshop: Workshop) {
       ["logo", "Logo"],
       ["portrait", "Background portrait"],
       ["landscape", "Background landscape"],
+    ] as const) {
+      if (!workshop[field]) nextErrors[field] = `${label} is required.`
+      else if (!isImageUpload(workshop[field]))
+        nextErrors[field] = `${label} must be an image file.`
+    }
+    for (const [field, label] of [
       ["headingFont", "Heading font"],
       ["bodyFont", "Body font"],
     ] as const) {
       if (!workshop[field]) nextErrors[field] = `${label} is required.`
+      else if (!isFontUpload(workshop[field]))
+        nextErrors[field] = `${label} must be a WOFF, WOFF2, TTF, or OTF file.`
     }
   }
 
@@ -217,11 +226,31 @@ function getStepErrors(step: number, workshop: Workshop) {
         nextErrors[`team-${team.id}-description`] = "Description is required."
       if (!team.thumbnail)
         nextErrors[`team-${team.id}-thumbnail`] = "Thumbnail is required."
+      else if (!isImageUpload(team.thumbnail))
+        nextErrors[`team-${team.id}-thumbnail`] =
+          "Thumbnail must be an image file."
       if (!isHexColor(team.color.hex))
         nextErrors[`team-${team.id}-color`] = "Enter a valid hex color."
       if (workshop.usePasscode && !/^\d{4}$/.test(team.passcode))
         nextErrors[`team-${team.id}-passcode`] = "Enter exactly four digits."
     })
+
+    if (workshop.usePasscode) {
+      const pinCounts = workshop.teams.reduce<Record<string, number>>(
+        (counts, team) => {
+          if (/^\d{4}$/.test(team.passcode))
+            counts[team.passcode] = (counts[team.passcode] ?? 0) + 1
+          return counts
+        },
+        {}
+      )
+
+      workshop.teams.forEach((team) => {
+        if ((pinCounts[team.passcode] ?? 0) > 1)
+          nextErrors[`team-${team.id}-passcode`] =
+            "Choose a PIN that is not assigned to another team."
+      })
+    }
   }
 
   if (step === 4)
@@ -247,16 +276,7 @@ function RouteComponent() {
   const [activeThemeTab, setActiveThemeTab] = useState<ThemeTab>("colors")
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [errorFocusKey, setErrorFocusKey] = useState<string | null>(null)
-  const stepHeadingRef = useRef<HTMLHeadingElement>(null)
-  const hasNavigated = useRef(false)
-
-  useEffect(() => {
-    if (!hasNavigated.current) {
-      hasNavigated.current = true
-      return
-    }
-    stepHeadingRef.current?.focus({ preventScroll: true })
-  }, [activeStep])
+  const shouldFocusStepHeading = useRef(false)
 
   useEffect(() => {
     if (!errorFocusKey) return
@@ -280,13 +300,22 @@ function RouteComponent() {
     return () => window.cancelAnimationFrame(frame)
   }, [activeStep, activeThemeTab, errorFocusKey, errors])
 
-  const markFieldChanged = (step: number, errorKey?: string) => {
+  const markFieldChanged = (step: number, errorKey?: string | string[]) => {
+    const errorKeys = errorKey
+      ? Array.isArray(errorKey)
+        ? errorKey
+        : [errorKey]
+      : []
+
     setCompletedSteps((current) => current.filter((item) => item !== step))
+    if (errorKeys.length)
+      setErrorFocusKey((current) =>
+        current && errorKeys.includes(current) ? null : current
+      )
     setErrors((current) => {
-      if (!errorKey) return {}
-      if (!(errorKey in current)) return current
+      if (!errorKeys.some((key) => key in current)) return current
       const nextErrors = { ...current }
-      delete nextErrors[errorKey]
+      errorKeys.forEach((key) => delete nextErrors[key])
       return nextErrors
     })
   }
@@ -331,6 +360,7 @@ function RouteComponent() {
     if (step > highestReached) return
     setErrors({})
     setErrorFocusKey(null)
+    shouldFocusStepHeading.current = step !== activeStep
     setActiveStep(step)
   }
 
@@ -338,6 +368,7 @@ function RouteComponent() {
     if (!validateStep(activeStep)) return
     const nextStep = Math.min(activeStep + 1, steps.length - 1)
     setHighestReached((current) => Math.max(current, nextStep))
+    shouldFocusStepHeading.current = nextStep !== activeStep
     setActiveStep(nextStep)
   }
 
@@ -378,14 +409,16 @@ function RouteComponent() {
     <div className="@container/wizard mx-auto w-full max-w-6xl pb-4">
       <header className="mb-5 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <Button
-            variant="ghost"
-            className="mb-3 -ml-2 text-muted-foreground"
-            render={<Link to="/app/workshops" />}
+          <Link
+            to="/app/workshops"
+            className={cn(
+              buttonVariants({ variant: "ghost" }),
+              "mb-3 -ml-2 text-muted-foreground"
+            )}
           >
             <ArrowLeftIcon />
             Back to workshops
-          </Button>
+          </Link>
           <p className="mb-1 text-xs font-medium tracking-[0.16em] text-primary uppercase">
             Workshop builder
           </p>
@@ -437,7 +470,12 @@ function RouteComponent() {
                 </span>
               </div>
               <h2
-                ref={stepHeadingRef}
+                key={activeStep}
+                ref={(node) => {
+                  if (!node || !shouldFocusStepHeading.current) return
+                  shouldFocusStepHeading.current = false
+                  node.focus({ preventScroll: true })
+                }}
                 tabIndex={-1}
                 className="text-xl font-semibold tracking-tight outline-none"
               >
@@ -652,7 +690,7 @@ function renderStep(
   errors: Record<string, string>,
   activeThemeTab: ThemeTab,
   setActiveThemeTab: React.Dispatch<React.SetStateAction<ThemeTab>>,
-  markFieldChanged: (step: number, errorKey?: string) => void
+  markFieldChanged: (step: number, errorKey?: string | string[]) => void
 ) {
   if (step === 0)
     return <IdentityStep workshop={workshop} update={update} errors={errors} />
@@ -697,6 +735,17 @@ function renderStep(
 
 function isHexColor(value: string) {
   return /^#[0-9a-f]{6}$/i.test(value)
+}
+
+function isImageUpload(file: File) {
+  return (
+    file.type.startsWith("image/") ||
+    /\.(avif|bmp|gif|heic|jpe?g|png|svg|webp)$/i.test(file.name)
+  )
+}
+
+function isFontUpload(file: File) {
+  return /\.(otf|ttf|woff2?)$/i.test(file.name)
 }
 
 function createItemId(prefix: string) {
@@ -1022,23 +1071,23 @@ function ThemeStep({
         <TabsList
           variant="line"
           aria-label="Theme sections"
-          className="mb-6 grid h-auto w-full grid-cols-3 border-b border-border p-0"
+          className="mb-6 grid w-full grid-cols-3 border-b border-border p-0 group-data-horizontal/tabs:h-10!"
         >
-          <TabsTrigger value="colors" className="h-10">
+          <TabsTrigger value="colors" className="h-full!">
             <ThemeTabLabel
               label="Colors"
               complete={colorsComplete}
               errorCount={colorErrorCount}
             />
           </TabsTrigger>
-          <TabsTrigger value="assets" className="h-10">
+          <TabsTrigger value="assets" className="h-full!">
             <ThemeTabLabel
               label="Assets"
               complete={assetsComplete}
               errorCount={assetErrorCount}
             />
           </TabsTrigger>
-          <TabsTrigger value="fonts" className="h-10">
+          <TabsTrigger value="fonts" className="h-full!">
             <ThemeTabLabel
               label="Fonts"
               complete={fontsComplete}
@@ -1361,6 +1410,7 @@ function FileField({
         ref={inputRef}
         type="file"
         className="sr-only"
+        tabIndex={-1}
         accept={accept}
         aria-invalid={!!error}
         aria-required="true"
@@ -1392,6 +1442,9 @@ function FileField({
                 variant="outline"
                 size="sm"
                 data-error-control
+                aria-label={`Replace ${label.toLowerCase()}`}
+                aria-invalid={!!error}
+                aria-describedby={describedBy}
                 onClick={selectFile}
               >
                 Replace
@@ -1413,6 +1466,8 @@ function FileField({
           type="button"
           variant="outline"
           data-error-control
+          aria-invalid={!!error}
+          aria-describedby={describedBy}
           className="h-24 w-full flex-col gap-2 border-dashed text-muted-foreground hover:text-foreground"
           onClick={selectFile}
         >
@@ -1455,16 +1510,10 @@ function PillarsStep({
   workshop: Workshop
   setWorkshop: React.Dispatch<React.SetStateAction<Workshop>>
   errors: Record<string, string>
-  onFieldChange: (errorKey?: string) => void
+  onFieldChange: (errorKey?: string | string[]) => void
 }) {
-  const [pendingFocusId, setPendingFocusId] = useState<string | null>(null)
+  const pendingFocusId = useRef<string | null>(null)
   const addButtonRef = useRef<HTMLButtonElement>(null)
-
-  useEffect(() => {
-    if (!pendingFocusId) return
-    document.getElementById(`${pendingFocusId}-title`)?.focus()
-    setPendingFocusId(null)
-  }, [pendingFocusId, workshop.pillars])
 
   const change = (id: string, field: "title" | "context", value: string) => {
     setWorkshop((current) => ({
@@ -1478,12 +1527,12 @@ function PillarsStep({
 
   const addPillar = () => {
     const id = createItemId("pillar")
+    pendingFocusId.current = id
     setWorkshop((current) => ({
       ...current,
       pillars: [...current.pillars, { id, title: "", context: "" }],
     }))
     onFieldChange()
-    setPendingFocusId(id)
   }
 
   const removePillar = (id: string) => {
@@ -1491,7 +1540,7 @@ function PillarsStep({
       ...current,
       pillars: current.pillars.filter((pillar) => pillar.id !== id),
     }))
-    onFieldChange()
+    onFieldChange([`pillar-${id}-title`, `pillar-${id}-context`])
     window.requestAnimationFrame(() => addButtonRef.current?.focus())
   }
 
@@ -1558,6 +1607,12 @@ function PillarsStep({
                     </FieldLabel>
                     <Input
                       id={`${pillar.id}-title`}
+                      ref={(node) => {
+                        if (!node || pendingFocusId.current !== pillar.id)
+                          return
+                        pendingFocusId.current = null
+                        node.focus()
+                      }}
                       value={pillar.title}
                       onChange={(event) =>
                         change(pillar.id, "title", event.target.value)
@@ -1639,16 +1694,10 @@ function TeamsStep({
   update: <K extends keyof Workshop>(field: K, value: Workshop[K]) => void
   setWorkshop: React.Dispatch<React.SetStateAction<Workshop>>
   errors: Record<string, string>
-  onFieldChange: (errorKey?: string) => void
+  onFieldChange: (errorKey?: string | string[]) => void
 }) {
-  const [pendingFocusId, setPendingFocusId] = useState<string | null>(null)
+  const pendingFocusId = useRef<string | null>(null)
   const addButtonRef = useRef<HTMLButtonElement>(null)
-
-  useEffect(() => {
-    if (!pendingFocusId) return
-    document.getElementById(`${pendingFocusId}-name`)?.focus()
-    setPendingFocusId(null)
-  }, [pendingFocusId, workshop.teams])
 
   const change = (
     id: string,
@@ -1666,6 +1715,7 @@ function TeamsStep({
 
   const addTeam = () => {
     const id = createItemId("team")
+    pendingFocusId.current = id
     setWorkshop((current) => ({
       ...current,
       teams: [
@@ -1681,7 +1731,6 @@ function TeamsStep({
       ],
     }))
     onFieldChange()
-    setPendingFocusId(id)
   }
 
   const removeTeam = (id: string) => {
@@ -1689,7 +1738,13 @@ function TeamsStep({
       ...current,
       teams: current.teams.filter((team) => team.id !== id),
     }))
-    onFieldChange()
+    onFieldChange([
+      `team-${id}-name`,
+      `team-${id}-color`,
+      `team-${id}-thumbnail`,
+      `team-${id}-description`,
+      `team-${id}-passcode`,
+    ])
     window.requestAnimationFrame(() => addButtonRef.current?.focus())
   }
 
@@ -1728,6 +1783,7 @@ function TeamsStep({
             id="team-passcode-protection"
             checked={workshop.usePasscode}
             onCheckedChange={(checked) => update("usePasscode", checked)}
+            aria-label="Require unique team PINs"
             aria-describedby="team-passcode-description"
           />
         </label>
@@ -1788,6 +1844,11 @@ function TeamsStep({
                     <FieldLabel htmlFor={`${team.id}-name`}>Name</FieldLabel>
                     <Input
                       id={`${team.id}-name`}
+                      ref={(node) => {
+                        if (!node || pendingFocusId.current !== team.id) return
+                        pendingFocusId.current = null
+                        node.focus()
+                      }}
                       value={team.name}
                       onChange={(event) =>
                         change(team.id, "name", event.target.value)
@@ -1870,7 +1931,7 @@ function TeamsStep({
                         id={`${team.id}-passcode`}
                         maxLength={4}
                         inputMode="numeric"
-                        pattern="[0-9]*"
+                        pattern={REGEXP_ONLY_DIGITS}
                         value={team.passcode}
                         onChange={(value) => change(team.id, "passcode", value)}
                         aria-label={`PIN for ${team.name || `team ${index + 1}`}`}
@@ -1928,7 +1989,7 @@ function CoachesStep({
   workshop: Workshop
   setWorkshop: React.Dispatch<React.SetStateAction<Workshop>>
   errors: Record<string, string>
-  onFieldChange: (errorKey?: string) => void
+  onFieldChange: (errorKey?: string | string[]) => void
 }) {
   const changeCoach = (
     id: string,
@@ -1999,6 +2060,7 @@ function CoachesStep({
                   <Switch
                     id={`${coach.id}-enabled`}
                     checked={coach.enabled}
+                    aria-label={`Include ${coach.name || `coach ${index + 1}`}`}
                     onCheckedChange={(enabled) =>
                       changeCoach(coach.id, { enabled }, nameKey)
                     }
@@ -2092,11 +2154,11 @@ function CoachesStep({
             ["Teams", workshop.teams.length],
             ["Coaches", enabledCoaches],
           ].map(([label, count]) => (
-            <div key={label} className="px-3 py-4 text-center">
-              <dd className="text-lg font-semibold">{count}</dd>
-              <dt className="text-[10px] font-medium tracking-wide text-muted-foreground uppercase">
+            <div key={label} className="flex flex-col px-3 py-4 text-center">
+              <dt className="order-2 text-[10px] font-medium tracking-wide text-muted-foreground uppercase">
                 {label}
               </dt>
+              <dd className="order-1 text-lg font-semibold">{count}</dd>
             </div>
           ))}
         </dl>

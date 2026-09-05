@@ -119,7 +119,7 @@
 
 @layer base {
   ::-webkit-scrollbar {
-    width: var();
+    width: 8px;
   }
 
   ::-webkit-scrollbar-track {
