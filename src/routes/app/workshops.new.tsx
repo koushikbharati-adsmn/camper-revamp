@@ -38,7 +38,7 @@ import {
 import { cn } from "@/lib/utils"
 import { createFileRoute, Link } from "@tanstack/react-router"
 import { REGEXP_ONLY_DIGITS } from "input-otp"
-import { HexAlphaColorPicker } from "react-colorful"
+import { HexColorPicker } from "react-colorful"
 import {
   AlertCircleIcon,
   ArrowLeftIcon,
@@ -57,14 +57,13 @@ export const Route = createFileRoute("/app/workshops/new")({
 })
 
 type Upload = File | null
-type ColorValue = { hex: string; alpha: number }
 type ThemeTab = "colors" | "assets" | "fonts"
 
 type Pillar = { id: string; title: string; context: string }
 type Team = {
   id: string
   name: string
-  color: ColorValue
+  color: string
   thumbnail: Upload
   description: string
   passcode: string
@@ -78,8 +77,8 @@ type Workshop = {
   subtitle: string
   context: string
   guidelines: string
-  primaryColor: ColorValue
-  secondaryColor: ColorValue
+  primaryColor: string
+  secondaryColor: string
   logo: Upload
   portrait: Upload
   landscape: Upload
@@ -139,8 +138,8 @@ const initialWorkshop: Workshop = {
   subtitle: "",
   context: "",
   guidelines: "",
-  primaryColor: { hex: "#111111", alpha: 100 },
-  secondaryColor: { hex: "#d9ff00", alpha: 100 },
+  primaryColor: "#111111",
+  secondaryColor: "#D9FF00",
   logo: null,
   portrait: null,
   landscape: null,
@@ -151,7 +150,7 @@ const initialWorkshop: Workshop = {
     {
       id: "team-initial",
       name: "",
-      color: { hex: "#d9ff00", alpha: 100 },
+      color: "#D9FF00",
       thumbnail: null,
       description: "",
       passcode: "",
@@ -183,9 +182,9 @@ function getStepErrors(step: number, workshop: Workshop) {
   }
 
   if (step === 1) {
-    if (!isHexColor(workshop.primaryColor.hex))
+    if (!isHexColor(workshop.primaryColor))
       nextErrors.primaryColor = "Enter a valid hex color."
-    if (!isHexColor(workshop.secondaryColor.hex))
+    if (!isHexColor(workshop.secondaryColor))
       nextErrors.secondaryColor = "Enter a valid hex color."
     for (const [field, label] of [
       ["logo", "Logo"],
@@ -229,7 +228,7 @@ function getStepErrors(step: number, workshop: Workshop) {
       else if (!isImageUpload(team.thumbnail))
         nextErrors[`team-${team.id}-thumbnail`] =
           "Thumbnail must be an image file."
-      if (!isHexColor(team.color.hex))
+      if (!isHexColor(team.color))
         nextErrors[`team-${team.id}-color`] = "Enter a valid hex color."
       if (workshop.usePasscode && !/^\d{4}$/.test(team.passcode))
         nextErrors[`team-${team.id}-passcode`] = "Enter exactly four digits."
@@ -745,20 +744,6 @@ function createItemId(prefix: string) {
   return `${prefix}-${globalThis.crypto.randomUUID()}`
 }
 
-function toPickerColor(value: ColorValue) {
-  const alpha = Math.round((value.alpha / 100) * 255)
-    .toString(16)
-    .padStart(2, "0")
-  return `${value.hex}${alpha}`
-}
-
-function fromPickerColor(value: string): ColorValue {
-  return {
-    hex: value.slice(0, 7).toUpperCase(),
-    alpha: Math.round((parseInt(value.slice(7, 9), 16) / 255) * 100),
-  }
-}
-
 function FormSectionHeader({
   id,
   title,
@@ -975,8 +960,7 @@ function ThemeStep({
   const fontErrorCount =
     Number(!!errors.headingFont) + Number(!!errors.bodyFont)
   const colorsComplete =
-    isHexColor(workshop.primaryColor.hex) &&
-    isHexColor(workshop.secondaryColor.hex)
+    isHexColor(workshop.primaryColor) && isHexColor(workshop.secondaryColor)
   const assetsComplete = !!(
     workshop.logo &&
     workshop.portrait &&
@@ -1022,7 +1006,7 @@ function ThemeStep({
           <FormSectionHeader
             id="theme-colors-heading"
             title="Brand colors"
-            description="Set the core palette and transparency used throughout the workshop."
+            description="Set the core palette used throughout the workshop."
           />
           <div className="grid gap-5 sm:grid-cols-2">
             <ColorPickerField
@@ -1156,77 +1140,48 @@ function ColorPickerField({
   id: string
   errorKey: string
   label: string
-  value: ColorValue
-  onChange: (value: ColorValue) => void
+  value: string
+  onChange: (value: string) => void
   error?: string
 }) {
-  const [draftHex, setDraftHex] = useState(value.hex)
   const [open, setOpen] = useState(false)
   const [touched, setTouched] = useState(false)
-
-  const updateHex = (hex: string) => {
-    onChange({ ...value, hex })
-    setDraftHex(hex)
-  }
 
   const commitHex = (input: string) => {
     const normalized = input.trim().startsWith("#")
       ? input.trim()
       : `#${input.trim()}`
-    updateHex(isHexColor(normalized) ? normalized.toUpperCase() : input)
+    onChange(isHexColor(normalized) ? normalized.toUpperCase() : input)
   }
 
   const handlePickerChange = (nextValue: string) => {
-    const nextColor = fromPickerColor(nextValue)
-    onChange(nextColor)
-    setDraftHex(nextColor.hex)
+    onChange(nextValue.toUpperCase())
   }
 
-  const normalizedDraft = draftHex.trim().startsWith("#")
-    ? draftHex.trim()
-    : `#${draftHex.trim()}`
+  const normalizedValue = value.trim().startsWith("#")
+    ? value.trim()
+    : `#${value.trim()}`
   const displayedError =
     error ??
-    (touched && !isHexColor(normalizedDraft)
+    (touched && !isHexColor(normalizedValue)
       ? "Use a six-digit hex value."
       : undefined)
-  const pickerColor = isHexColor(value.hex)
-    ? value
-    : { hex: "#000000", alpha: value.alpha }
+  const pickerColor = isHexColor(value) ? value : "#000000"
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <Field data-invalid={!!displayedError} data-error-key={errorKey}>
         <FieldLabel htmlFor={`${id}-hex`}>{label}</FieldLabel>
-        <div className="grid h-11 grid-cols-[2.75rem_minmax(0,1fr)_4.75rem] border border-input focus-within:border-ring focus-within:ring-1 focus-within:ring-ring/50 sm:h-10">
+        <div className="grid h-11 grid-cols-[2.75rem_minmax(0,1fr)] border border-input focus-within:border-ring focus-within:ring-1 focus-within:ring-ring/50 sm:h-10">
           <PopoverTrigger
             aria-label={`Choose ${label.toLowerCase()}`}
-            className="relative overflow-hidden border-r border-input outline-none focus-visible:z-10 focus-visible:ring-1 focus-visible:ring-ring"
-            style={{
-              backgroundColor: "var(--muted)",
-              backgroundImage:
-                "linear-gradient(45deg, color-mix(in oklch, var(--foreground) 10%, transparent) 25%, transparent 25%), linear-gradient(-45deg, color-mix(in oklch, var(--foreground) 10%, transparent) 25%, transparent 25%), linear-gradient(45deg, transparent 75%, color-mix(in oklch, var(--foreground) 10%, transparent) 75%), linear-gradient(-45deg, transparent 75%, color-mix(in oklch, var(--foreground) 10%, transparent) 75%)",
-              backgroundPosition: "0 0, 0 4px, 4px -4px, -4px 0px",
-              backgroundSize: "8px 8px",
-            }}
-          >
-            <span
-              className="absolute inset-0"
-              style={{
-                backgroundColor: isHexColor(value.hex)
-                  ? value.hex
-                  : "transparent",
-                opacity: value.alpha / 100,
-              }}
-            />
-          </PopoverTrigger>
+            className="border-r border-input outline-none focus-visible:z-10 focus-visible:ring-1 focus-visible:ring-ring"
+            style={{ backgroundColor: pickerColor }}
+          />
           <Input
             id={`${id}-hex`}
-            value={draftHex}
-            onChange={(event) => {
-              setDraftHex(event.target.value)
-              onChange({ ...value, hex: event.target.value })
-            }}
+            value={value}
+            onChange={(event) => onChange(event.target.value)}
             onBlur={(event) => {
               setTouched(true)
               commitHex(event.target.value)
@@ -1244,22 +1199,6 @@ function ColorPickerField({
             data-error-control
             className="h-full border-0 px-3 text-base uppercase shadow-none focus-visible:ring-0 sm:text-sm md:text-sm"
           />
-          <div className="flex min-w-0 items-center border-l border-input">
-            <Input
-              type="number"
-              min={0}
-              max={100}
-              value={value.alpha}
-              onChange={(event) => {
-                const alpha = Number(event.target.value)
-                if (Number.isNaN(alpha)) return
-                onChange({ ...value, alpha: Math.min(100, Math.max(0, alpha)) })
-              }}
-              aria-label={`${label} opacity percentage`}
-              className="h-full min-w-0 border-0 px-2 text-right text-base shadow-none focus-visible:ring-0 sm:text-sm md:text-sm"
-            />
-            <span className="pr-2 text-xs text-muted-foreground">%</span>
-          </div>
         </div>
         {displayedError && (
           <FieldError id={`${id}-error`}>{displayedError}</FieldError>
@@ -1271,10 +1210,7 @@ function ColorPickerField({
         className="w-fit border border-border bg-popover p-3 text-popover-foreground shadow-md"
       >
         <div className="color-picker-layout">
-          <HexAlphaColorPicker
-            color={toPickerColor(pickerColor)}
-            onChange={handlePickerChange}
-          />
+          <HexColorPicker color={pickerColor} onChange={handlePickerChange} />
         </div>
       </PopoverContent>
     </Popover>
@@ -1622,7 +1558,7 @@ function TeamsStep({
   const change = (
     id: string,
     field: keyof Omit<Team, "id">,
-    value: string | Upload | ColorValue
+    value: string | Upload
   ) => {
     setWorkshop((current) => ({
       ...current,
@@ -1643,7 +1579,7 @@ function TeamsStep({
         {
           id,
           name: "",
-          color: { hex: "#d9ff00", alpha: 100 },
+          color: "#D9FF00",
           thumbnail: null,
           description: "",
           passcode: "",
@@ -1727,8 +1663,8 @@ function TeamsStep({
                     <span
                       className="size-7 shrink-0 border border-foreground/15"
                       style={{
-                        backgroundColor: isHexColor(team.color.hex)
-                          ? toPickerColor(team.color)
+                        backgroundColor: isHexColor(team.color)
+                          ? team.color
                           : "var(--muted)",
                       }}
                     />

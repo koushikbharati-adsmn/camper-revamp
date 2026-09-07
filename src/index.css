@@ -146,21 +146,15 @@
 
 .color-picker-layout .react-colorful__saturation {
   border-radius: 0px;
-  margin: 14px 0;
 }
 
 .color-picker-layout .react-colorful__hue {
-  order: -1;
-}
-
-.color-picker-layout .react-colorful__hue,
-.color-picker-layout .react-colorful__alpha {
+  margin: 14px 0 0 0;
   border-radius: 0px;
   height: 14px;
 }
 
-.color-picker-layout .react-colorful__hue-pointer,
-.color-picker-layout .react-colorful__alpha-pointer {
+.color-picker-layout .react-colorful__hue-pointer {
   width: 20px;
   height: 20px;
 }
