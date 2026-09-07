@@ -1,5 +1,6 @@
 import { toast } from "@/components/ui/toast"
 import apiClient from "@/lib/api-client"
+import { setAuthToken } from "@/lib/auth-session"
 import { queryOptions, useMutation } from "@tanstack/react-query"
 import type { User } from "./users"
 
@@ -58,7 +59,7 @@ export const useLogin = () => {
     mutationFn: (payload: LoginPayload) => login(payload),
     onSuccess: (data) => {
       if (!data.success) throw new Error(data.message)
-      localStorage.setItem("token", data.token)
+      setAuthToken(data.token)
     },
     onError: (error) => {
       toast.add({

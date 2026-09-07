@@ -1,3 +1,8 @@
+import {
+  clearAuthToken,
+  getAuthToken,
+  notifyUnauthorized,
+} from "@/lib/auth-session"
 import axios, {
   type AxiosInstance,
   type AxiosResponse,
@@ -10,7 +15,7 @@ const apiClient: AxiosInstance = axios.create({
 
 apiClient.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
-    const token = localStorage.getItem("token")
+    const token = getAuthToken()
     const apiKey = import.meta.env.VITE_API_KEY
     config.headers["x-api-key"] = apiKey
     if (token) {
@@ -33,8 +38,14 @@ apiClient.interceptors.response.use(
     if (error.response) {
       const message = error.response.data?.message || "Something went wrong"
 
-      // e.g. handle 401
-      if (error.response.status === 401) {
+      if (error.response.status === 401 && getAuthToken()) {
+        clearAuthToken()
+
+        const isSessionCheck =
+          error.config?.method === "get" && error.config?.url === "/admin"
+
+        if (!isSessionCheck && window.location.pathname.startsWith("/app"))
+          notifyUnauthorized()
       }
 
       return Promise.reject(new Error(message))

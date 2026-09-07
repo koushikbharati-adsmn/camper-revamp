@@ -12,9 +12,11 @@ import {
   InputOTPGroup,
   InputOTPSlot,
 } from "@/components/ui/input-otp"
+import { DEFAULT_AUTH_REDIRECT } from "@/lib/auth-session"
 import { cn } from "@/lib/utils"
 import { useGetOtp, useLogin } from "@/services/auth"
 import { useForm } from "@tanstack/react-form"
+import { useQueryClient } from "@tanstack/react-query"
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router"
 import { useEffect, useState } from "react"
 import * as z from "zod"
@@ -36,6 +38,25 @@ const otpStepSchema = z.object({
 })
 
 export const Route = createFileRoute("/login")({
+  validateSearch: z.object({
+    redirect: z
+      .string()
+      .refine((value) => {
+        try {
+          const url = new URL(value, window.location.origin)
+          return (
+            value.startsWith("/") &&
+            !value.startsWith("//") &&
+            url.origin === window.location.origin &&
+            (url.pathname === "/app" || url.pathname.startsWith("/app/"))
+          )
+        } catch {
+          return false
+        }
+      })
+      .optional()
+      .catch(undefined),
+  }),
   component: RouteComponent,
 })
 
@@ -51,6 +72,8 @@ function RouteComponent() {
 
 function LoginForm({ className, ...props }: React.ComponentProps<"div">) {
   const navigate = useNavigate()
+  const queryClient = useQueryClient()
+  const { redirect } = Route.useSearch()
   const getOtpMutation = useGetOtp()
   const loginMutation = useLogin()
   const [isOtpStep, setIsOtpStep] = useState(false)
@@ -98,7 +121,8 @@ function LoginForm({ className, ...props }: React.ComponentProps<"div">) {
         return
       }
 
-      await navigate({ to: "/app/workshops" })
+      queryClient.removeQueries({ queryKey: ["ME"] })
+      await navigate({ to: redirect ?? DEFAULT_AUTH_REDIRECT, replace: true })
     },
   })
 

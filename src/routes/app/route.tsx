@@ -4,9 +4,32 @@ import {
   SidebarProvider,
   SidebarTrigger,
 } from "@/components/ui/sidebar"
-import { createFileRoute, Outlet } from "@tanstack/react-router"
+import { getAuthToken } from "@/lib/auth-session"
+import { loggedInUserQueryOptions } from "@/services/auth"
+import { createFileRoute, Outlet, redirect } from "@tanstack/react-router"
 
 export const Route = createFileRoute("/app")({
+  beforeLoad: async ({ context, location }) => {
+    const loginRedirect = {
+      to: "/login" as const,
+      search: { redirect: location.href },
+      replace: true,
+    }
+
+    if (!getAuthToken()) {
+      context.queryClient.removeQueries({ queryKey: ["ME"] })
+      throw redirect(loginRedirect)
+    }
+
+    try {
+      const user = await context.queryClient.query(loggedInUserQueryOptions())
+      return { user }
+    } catch (error) {
+      if (getAuthToken()) throw error
+      context.queryClient.removeQueries({ queryKey: ["ME"] })
+      throw redirect(loginRedirect)
+    }
+  },
   component: RouteComponent,
 })
 

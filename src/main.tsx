@@ -7,6 +7,7 @@ import "./index.css"
 
 import { ThemeProvider } from "@/components/theme-provider.tsx"
 import { TooltipProvider } from "@/components/ui/tooltip"
+import { AUTH_UNAUTHORIZED_EVENT } from "@/lib/auth-session"
 
 // Import the generated route tree
 import { routeTree } from "./routeTree.gen"
@@ -30,6 +31,15 @@ declare module "@tanstack/react-router" {
     router: typeof router
   }
 }
+
+window.addEventListener(AUTH_UNAUTHORIZED_EVENT, () => {
+  queryClient.removeQueries({ queryKey: ["ME"] })
+  void router.navigate({
+    to: "/login",
+    search: { redirect: router.state.location.href },
+    replace: true,
+  })
+})
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
