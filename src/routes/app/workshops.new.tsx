@@ -35,7 +35,8 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover"
-import { cn } from "@/lib/utils"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { cn, getInitials } from "@/lib/utils"
 import { createFileRoute, Link } from "@tanstack/react-router"
 import { REGEXP_ONLY_DIGITS } from "input-otp"
 import { HexColorPicker } from "react-colorful"
@@ -2045,11 +2046,15 @@ function CoachesStep({
             >
               <CardHeader className="border-b border-border py-3">
                 <div className="flex min-w-0 items-center gap-3">
-                  <img
-                    src={coach.avatar}
-                    alt=""
-                    className="size-10 shrink-0 rounded-full object-cover"
-                  />
+                  <Avatar className="size-10 shrink-0">
+                    <AvatarImage
+                      src={coach.avatar}
+                      alt={coach.name || `Coach ${index + 1}`}
+                    />
+                    <AvatarFallback>
+                      {getInitials(coach.name || `Coach ${index + 1}`)}
+                    </AvatarFallback>
+                  </Avatar>
                   <div className="min-w-0">
                     <CardTitle>
                       <h3 className="truncate">
@@ -2196,18 +2201,22 @@ function CoachesStep({
                         type="button"
                         key={avatar}
                         aria-pressed={coach.avatar === avatar}
-                        aria-label={`Use avatar ${avatarIndex + 1} for ${coach.name || `coach ${index + 1}`}`}
+                        aria-label={`Use avatar ${avatarIndex + 1} for ${
+                          coach.name || `coach ${index + 1}`
+                        }`}
                         onClick={() => changeCoach(coach.id, { avatar })}
                         className={cn(
-                          "size-10 rounded-full border-2 border-transparent p-0.5 transition-all outline-none hover:opacity-80 focus-visible:border-ring focus-visible:ring-1 focus-visible:ring-ring/50 disabled:cursor-not-allowed",
+                          "rounded-full border-2 border-transparent p-0.5 transition-all outline-none hover:opacity-80 focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/50 disabled:cursor-not-allowed",
                           coach.avatar === avatar && "border-primary"
                         )}
                       >
-                        <img
-                          src={avatar}
-                          alt=""
-                          className="size-full rounded-full object-cover"
-                        />
+                        <Avatar className="size-9">
+                          <AvatarImage
+                            src={avatar}
+                            alt={`Avatar ${avatarIndex + 1}`}
+                          />
+                          <AvatarFallback>{avatarIndex + 1}</AvatarFallback>
+                        </Avatar>
                       </button>
                     ))}
                   </div>
