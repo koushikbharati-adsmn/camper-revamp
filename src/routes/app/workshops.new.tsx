@@ -206,8 +206,6 @@ function getStepErrors(step: number, workshop: Workshop) {
   }
 
   if (step === 2) {
-    if (!workshop.pillars.length)
-      nextErrors.pillars = "Add at least one pillar."
     workshop.pillars.forEach((pillar) => {
       if (!pillar.title.trim())
         nextErrors[`pillar-${pillar.id}-title`] = "Title is required."
@@ -217,7 +215,6 @@ function getStepErrors(step: number, workshop: Workshop) {
   }
 
   if (step === 3) {
-    if (!workshop.teams.length) nextErrors.teams = "Add at least one team."
     workshop.teams.forEach((team) => {
       if (!team.name.trim())
         nextErrors[`team-${team.id}-name`] = "Name is required."
@@ -1145,7 +1142,6 @@ function ColorPickerField({
   error?: string
 }) {
   const [open, setOpen] = useState(false)
-  const [touched, setTouched] = useState(false)
 
   const commitHex = (input: string) => {
     const normalized = input.trim().startsWith("#")
@@ -1158,19 +1154,11 @@ function ColorPickerField({
     onChange(nextValue.toUpperCase())
   }
 
-  const normalizedValue = value.trim().startsWith("#")
-    ? value.trim()
-    : `#${value.trim()}`
-  const displayedError =
-    error ??
-    (touched && !isHexColor(normalizedValue)
-      ? "Use a six-digit hex value."
-      : undefined)
   const pickerColor = isHexColor(value) ? value : "#000000"
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
-      <Field data-invalid={!!displayedError} data-error-key={errorKey}>
+      <Field data-invalid={!!error} data-error-key={errorKey}>
         <FieldLabel htmlFor={`${id}-hex`}>{label}</FieldLabel>
         <div className="grid h-11 grid-cols-[2.75rem_minmax(0,1fr)] border border-input focus-within:border-ring focus-within:ring-1 focus-within:ring-ring/50 sm:h-10">
           <PopoverTrigger
@@ -1182,27 +1170,21 @@ function ColorPickerField({
             id={`${id}-hex`}
             value={value}
             onChange={(event) => onChange(event.target.value)}
-            onBlur={(event) => {
-              setTouched(true)
-              commitHex(event.target.value)
-            }}
+            onBlur={(event) => commitHex(event.target.value)}
             onKeyDown={(event) => {
               if (event.key === "Enter") {
                 event.preventDefault()
-                setTouched(true)
                 commitHex(event.currentTarget.value)
               }
             }}
-            aria-invalid={!!displayedError}
+            aria-invalid={!!error}
             aria-required="true"
-            aria-describedby={displayedError ? `${id}-error` : undefined}
+            aria-describedby={error ? `${id}-error` : undefined}
             data-error-control
             className="h-full border-0 px-3 text-base uppercase shadow-none focus-visible:ring-0 sm:text-sm md:text-sm"
           />
         </div>
-        {displayedError && (
-          <FieldError id={`${id}-error`}>{displayedError}</FieldError>
-        )}
+        {error && <FieldError id={`${id}-error`}>{error}</FieldError>}
       </Field>
       <PopoverContent
         sideOffset={8}
@@ -1414,7 +1396,6 @@ function PillarsStep({
           {workshop.pillars.length === 1 ? "pillar" : "pillars"}
         </Badge>
       </div>
-      {errors.pillars && <FieldError>{errors.pillars}</FieldError>}
       <div className="grid gap-4">
         {workshop.pillars.map((pillar, index) => {
           const titleKey = `pillar-${pillar.id}-title`
@@ -1645,7 +1626,6 @@ function TeamsStep({
         </label>
       </div>
 
-      {errors.teams && <FieldError>{errors.teams}</FieldError>}
       <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,20rem),1fr))] gap-4">
         {workshop.teams.map((team, index) => {
           const nameKey = `team-${team.id}-name`
