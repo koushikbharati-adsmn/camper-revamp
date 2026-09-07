@@ -59,6 +59,7 @@ type Upload = File | null
 type ThemeTab = "colors" | "assets" | "fonts"
 
 type Pillar = { id: string; title: string; context: string }
+type WalkthroughMessage = { id: string; title: string; description: string }
 type Team = {
   id: string
   name: string
@@ -85,6 +86,7 @@ type Workshop = {
   bodyFont: Upload
   pillars: Pillar[]
   teams: Team[]
+  walkthroughMessages: WalkthroughMessage[]
   usePasscode: boolean
   coaches: Coach[]
 }
@@ -94,6 +96,7 @@ const steps = [
   { title: "Theme", description: "Shape the visual direction" },
   { title: "Pillars", description: "Define the areas of focus" },
   { title: "Teams", description: "Set up participant groups" },
+  { title: "Walkthrough", description: "Guide participants through the flow" },
   { title: "Coaches", description: "Configure workshop coaches" },
 ]
 
@@ -154,6 +157,9 @@ const initialWorkshop: Workshop = {
       description: "",
       passcode: "",
     },
+  ],
+  walkthroughMessages: [
+    { id: "walkthrough-initial", title: "", description: "" },
   ],
   usePasscode: false,
   coaches: ["Maya", "Chris", "Robin", "Taylor"].map((name, index) => ({
@@ -248,7 +254,17 @@ function getStepErrors(step: number, workshop: Workshop) {
     }
   }
 
-  if (step === 4)
+  if (step === 4) {
+    workshop.walkthroughMessages.forEach((message) => {
+      if (!message.title.trim())
+        nextErrors[`walkthrough-${message.id}-title`] = "Title is required."
+      if (!message.description.trim())
+        nextErrors[`walkthrough-${message.id}-description`] =
+          "Description is required."
+    })
+  }
+
+  if (step === 5)
     workshop.coaches.forEach((coach) => {
       if (coach.enabled && !coach.name.trim())
         nextErrors[`coach-${coach.id}-name`] = "Name is required."
@@ -418,12 +434,12 @@ function RouteComponent() {
             Create a new workshop
           </h1>
           <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
-            Set the workshop foundation, visual system, participant groups, and
-            coaching team.
+            Set the workshop foundation, visual system, participant groups,
+            walkthrough, and coaching team.
           </p>
         </div>
         <Badge variant="outline" className="h-6 self-start sm:self-auto">
-          5-step setup
+          {steps.length}-step setup
         </Badge>
       </header>
 
@@ -545,7 +561,7 @@ function StepNavigation({
         aria-label="Workshop creation steps"
         className="border-b border-border bg-muted/25 @min-[56rem]/wizard:hidden"
       >
-        <ol className="grid grid-cols-5">
+        <ol className="grid grid-cols-6">
           {steps.map((step, index) => {
             const isActive = index === activeStep
             const isComplete = completedSteps.includes(index)
@@ -643,7 +659,7 @@ function StepNavigation({
                     <span className="block text-xs font-semibold">
                       {step.title}
                     </span>
-                    <span className="mt-0.5 block text-xs/relaxed font-normal opacity-75">
+                    <span className="mt-0.5 block text-xs font-normal opacity-75">
                       {step.description}
                     </span>
                   </span>
@@ -698,12 +714,21 @@ function renderStep(
         onFieldChange={(errorKey) => markFieldChanged(3, errorKey)}
       />
     )
+  if (step === 4)
+    return (
+      <WalkthroughStep
+        workshop={workshop}
+        setWorkshop={setWorkshop}
+        errors={errors}
+        onFieldChange={(errorKey) => markFieldChanged(4, errorKey)}
+      />
+    )
   return (
     <CoachesStep
       workshop={workshop}
       setWorkshop={setWorkshop}
       errors={errors}
-      onFieldChange={(errorKey) => markFieldChanged(4, errorKey)}
+      onFieldChange={(errorKey) => markFieldChanged(5, errorKey)}
     />
   )
 }
@@ -1725,6 +1750,202 @@ function TeamsStep({
         onClick={addTeam}
       >
         <PlusIcon /> Add team
+      </Button>
+    </div>
+  )
+}
+
+function WalkthroughStep({
+  workshop,
+  setWorkshop,
+  errors,
+  onFieldChange,
+}: {
+  workshop: Workshop
+  setWorkshop: React.Dispatch<React.SetStateAction<Workshop>>
+  errors: Record<string, string>
+  onFieldChange: (errorKey?: string | string[]) => void
+}) {
+  const pendingFocusId = useRef<string | null>(null)
+  const addButtonRef = useRef<HTMLButtonElement>(null)
+
+  const change = (
+    id: string,
+    field: keyof Omit<WalkthroughMessage, "id">,
+    value: string
+  ) => {
+    setWorkshop((current) => ({
+      ...current,
+      walkthroughMessages: current.walkthroughMessages.map((message) =>
+        message.id === id ? { ...message, [field]: value } : message
+      ),
+    }))
+    onFieldChange(`walkthrough-${id}-${field}`)
+  }
+
+  const addMessage = () => {
+    const id = createItemId("walkthrough")
+    pendingFocusId.current = id
+    setWorkshop((current) => ({
+      ...current,
+      walkthroughMessages: [
+        ...current.walkthroughMessages,
+        { id, title: "", description: "" },
+      ],
+    }))
+    onFieldChange()
+  }
+
+  const removeMessage = (id: string) => {
+    setWorkshop((current) => ({
+      ...current,
+      walkthroughMessages: current.walkthroughMessages.filter(
+        (message) => message.id !== id
+      ),
+    }))
+    onFieldChange([`walkthrough-${id}-title`, `walkthrough-${id}-description`])
+    window.requestAnimationFrame(() => addButtonRef.current?.focus())
+  }
+
+  return (
+    <div className="space-y-5">
+      <div className="flex items-end justify-between gap-4 border-b border-border pb-3">
+        <div>
+          <h3 className="text-sm font-semibold">Participant walkthrough</h3>
+          <p className="mt-0.5 text-xs/relaxed text-muted-foreground">
+            Create the messages participants will see as they move through the
+            workshop.
+          </p>
+        </div>
+        <Badge variant="secondary">
+          {workshop.walkthroughMessages.length}{" "}
+          {workshop.walkthroughMessages.length === 1 ? "message" : "messages"}
+        </Badge>
+      </div>
+
+      <div className="grid gap-4">
+        {workshop.walkthroughMessages.map((message, index) => {
+          const titleKey = `walkthrough-${message.id}-title`
+          const descriptionKey = `walkthrough-${message.id}-description`
+
+          return (
+            <fieldset key={message.id}>
+              <legend className="sr-only">
+                Walkthrough message {index + 1}
+              </legend>
+              <Card size="sm" className="gap-0 py-0">
+                <CardHeader className="border-b border-border py-3">
+                  <div className="flex min-w-0 items-center gap-3">
+                    <span className="flex size-7 shrink-0 items-center justify-center bg-primary text-[11px] font-semibold text-primary-foreground">
+                      {String(index + 1).padStart(2, "0")}
+                    </span>
+                    <div className="min-w-0">
+                      <CardTitle>
+                        <h3 className="truncate">
+                          {message.title || `Message ${index + 1}`}
+                        </h3>
+                      </CardTitle>
+                      <CardDescription>Walkthrough message</CardDescription>
+                    </div>
+                  </div>
+                  {workshop.walkthroughMessages.length > 1 && (
+                    <CardAction>
+                      <Button
+                        type="button"
+                        variant="destructive"
+                        size="icon-sm"
+                        className="size-10 sm:size-8"
+                        aria-label={`Remove ${message.title || `message ${index + 1}`}`}
+                        onClick={() => removeMessage(message.id)}
+                      >
+                        <Trash2Icon />
+                      </Button>
+                    </CardAction>
+                  )}
+                </CardHeader>
+                <CardContent className="grid gap-5 py-4">
+                  <Field
+                    data-invalid={!!errors[titleKey]}
+                    data-error-key={titleKey}
+                  >
+                    <FieldLabel htmlFor={`${message.id}-title`}>
+                      Title
+                    </FieldLabel>
+                    <Input
+                      id={`${message.id}-title`}
+                      ref={(node) => {
+                        if (!node || pendingFocusId.current !== message.id)
+                          return
+                        pendingFocusId.current = null
+                        node.focus()
+                      }}
+                      value={message.title}
+                      onChange={(event) =>
+                        change(message.id, "title", event.target.value)
+                      }
+                      placeholder="e.g. Choose your team"
+                      aria-invalid={!!errors[titleKey]}
+                      aria-required="true"
+                      aria-describedby={
+                        errors[titleKey]
+                          ? `${message.id}-title-error`
+                          : undefined
+                      }
+                      data-error-control
+                      className={inputClassName}
+                    />
+                    {errors[titleKey] && (
+                      <FieldError id={`${message.id}-title-error`}>
+                        {errors[titleKey]}
+                      </FieldError>
+                    )}
+                  </Field>
+
+                  <Field
+                    data-invalid={!!errors[descriptionKey]}
+                    data-error-key={descriptionKey}
+                  >
+                    <FieldLabel htmlFor={`${message.id}-description`}>
+                      Description
+                    </FieldLabel>
+                    <Textarea
+                      id={`${message.id}-description`}
+                      value={message.description}
+                      onChange={(event) =>
+                        change(message.id, "description", event.target.value)
+                      }
+                      placeholder="Explain what participants should do at this point."
+                      aria-invalid={!!errors[descriptionKey]}
+                      aria-required="true"
+                      aria-describedby={
+                        errors[descriptionKey]
+                          ? `${message.id}-description-error`
+                          : undefined
+                      }
+                      data-error-control
+                      className={textareaClassName}
+                    />
+                    {errors[descriptionKey] && (
+                      <FieldError id={`${message.id}-description-error`}>
+                        {errors[descriptionKey]}
+                      </FieldError>
+                    )}
+                  </Field>
+                </CardContent>
+              </Card>
+            </fieldset>
+          )
+        })}
+      </div>
+
+      <Button
+        ref={addButtonRef}
+        type="button"
+        variant="outline"
+        className="h-11 w-full border-dashed sm:h-10"
+        onClick={addMessage}
+      >
+        <PlusIcon /> Add message
       </Button>
     </div>
   )
