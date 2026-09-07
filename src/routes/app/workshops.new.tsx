@@ -68,7 +68,14 @@ type Team = {
   description: string
   passcode: string
 }
-type Coach = { id: string; name: string; avatar: string; enabled: boolean }
+type Coach = {
+  id: string
+  name: string
+  title: string
+  description: string
+  avatar: string
+  enabled: boolean
+}
 
 type Workshop = {
   title: string
@@ -162,9 +169,30 @@ const initialWorkshop: Workshop = {
     { id: "walkthrough-initial", title: "", description: "" },
   ],
   usePasscode: false,
-  coaches: ["Maya", "Chris", "Robin", "Taylor"].map((name, index) => ({
+  coaches: [
+    {
+      name: "Maya",
+      title: "Lead facilitator",
+      description: "Guides the group and keeps the workshop moving forward.",
+    },
+    {
+      name: "Chris",
+      title: "Creative strategist",
+      description: "Helps teams turn insights into focused creative ideas.",
+    },
+    {
+      name: "Robin",
+      title: "Workshop producer",
+      description: "Supports the session flow and coordinates team activities.",
+    },
+    {
+      name: "Taylor",
+      title: "Team coach",
+      description: "Challenges assumptions and helps teams refine their work.",
+    },
+  ].map((coach, index) => ({
+    ...coach,
     id: `coach-${index + 1}`,
-    name,
     avatar: dummyAvatars[index],
     enabled: true,
   })),
@@ -266,8 +294,16 @@ function getStepErrors(step: number, workshop: Workshop) {
 
   if (step === 5)
     workshop.coaches.forEach((coach) => {
-      if (coach.enabled && !coach.name.trim())
-        nextErrors[`coach-${coach.id}-name`] = "Name is required."
+      if (!coach.enabled) return
+
+      for (const [field, label] of [
+        ["name", "Name"],
+        ["title", "Title"],
+        ["description", "Description"],
+      ] as const) {
+        if (!coach[field].trim())
+          nextErrors[`coach-${coach.id}-${field}`] = `${label} is required.`
+      }
     })
 
   return nextErrors
@@ -1965,7 +2001,7 @@ function CoachesStep({
   const changeCoach = (
     id: string,
     changes: Partial<Coach>,
-    errorKey?: string
+    errorKey?: string | string[]
   ) => {
     setWorkshop((current) => ({
       ...current,
@@ -1995,6 +2031,8 @@ function CoachesStep({
       <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,20rem),1fr))] gap-4">
         {workshop.coaches.map((coach, index) => {
           const nameKey = `coach-${coach.id}-name`
+          const titleKey = `coach-${coach.id}-title`
+          const descriptionKey = `coach-${coach.id}-description`
 
           return (
             <Card
@@ -2014,7 +2052,9 @@ function CoachesStep({
                   />
                   <div className="min-w-0">
                     <CardTitle>
-                      <h3 className="truncate">Coach {index + 1}</h3>
+                      <h3 className="truncate">
+                        {coach.name || `Coach ${index + 1}`}
+                      </h3>
                     </CardTitle>
                     <CardDescription>
                       {coach.enabled ? "Included" : "Excluded"}
@@ -2033,7 +2073,11 @@ function CoachesStep({
                     checked={coach.enabled}
                     aria-label={`Include ${coach.name || `coach ${index + 1}`}`}
                     onCheckedChange={(enabled) =>
-                      changeCoach(coach.id, { enabled }, nameKey)
+                      changeCoach(coach.id, { enabled }, [
+                        nameKey,
+                        titleKey,
+                        descriptionKey,
+                      ])
                     }
                   />
                 </CardAction>
@@ -2045,9 +2089,7 @@ function CoachesStep({
                   data-disabled={!coach.enabled}
                   data-error-key={nameKey}
                 >
-                  <FieldLabel htmlFor={`${coach.id}-name`}>
-                    Coach name
-                  </FieldLabel>
+                  <FieldLabel htmlFor={`${coach.id}-name`}>Name</FieldLabel>
                   <Input
                     id={`${coach.id}-name`}
                     value={coach.name}
@@ -2070,6 +2112,76 @@ function CoachesStep({
                   {errors[nameKey] && (
                     <FieldError id={`${coach.id}-name-error`}>
                       {errors[nameKey]}
+                    </FieldError>
+                  )}
+                </Field>
+
+                <Field
+                  data-invalid={!!errors[titleKey]}
+                  data-disabled={!coach.enabled}
+                  data-error-key={titleKey}
+                >
+                  <FieldLabel htmlFor={`${coach.id}-title`}>Title</FieldLabel>
+                  <Input
+                    id={`${coach.id}-title`}
+                    value={coach.title}
+                    disabled={!coach.enabled}
+                    onChange={(event) =>
+                      changeCoach(
+                        coach.id,
+                        { title: event.target.value },
+                        titleKey
+                      )
+                    }
+                    placeholder="e.g. Creative director"
+                    aria-invalid={!!errors[titleKey]}
+                    aria-required={coach.enabled}
+                    aria-describedby={
+                      errors[titleKey] ? `${coach.id}-title-error` : undefined
+                    }
+                    data-error-control
+                    className={inputClassName}
+                  />
+                  {errors[titleKey] && (
+                    <FieldError id={`${coach.id}-title-error`}>
+                      {errors[titleKey]}
+                    </FieldError>
+                  )}
+                </Field>
+
+                <Field
+                  data-invalid={!!errors[descriptionKey]}
+                  data-disabled={!coach.enabled}
+                  data-error-key={descriptionKey}
+                >
+                  <FieldLabel htmlFor={`${coach.id}-description`}>
+                    Description
+                  </FieldLabel>
+                  <Textarea
+                    id={`${coach.id}-description`}
+                    value={coach.description}
+                    disabled={!coach.enabled}
+                    onChange={(event) =>
+                      changeCoach(
+                        coach.id,
+                        { description: event.target.value },
+                        descriptionKey
+                      )
+                    }
+                    placeholder="Describe how this coach supports participants."
+                    aria-invalid={!!errors[descriptionKey]}
+                    aria-required={coach.enabled}
+                    aria-describedby={
+                      errors[descriptionKey]
+                        ? `${coach.id}-description-error`
+                        : undefined
+                    }
+                    data-error-control
+                    className={textareaClassName}
+                  />
+                  {errors[descriptionKey] && (
+                    <FieldError id={`${coach.id}-description-error`}>
+                      {errors[descriptionKey]}
                     </FieldError>
                   )}
                 </Field>
