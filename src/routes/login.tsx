@@ -13,11 +13,11 @@ import {
   InputOTPSlot,
 } from "@/components/ui/input-otp"
 import { Spinner } from "@/components/ui/spinner"
-import { DEFAULT_AUTH_REDIRECT } from "@/lib/auth-session"
+import { DEFAULT_AUTH_REDIRECT, getAuthToken } from "@/lib/auth-session"
 import { cn } from "@/lib/utils"
 import { useGetOtp, useLogin } from "@/services/auth"
 import { useForm } from "@tanstack/react-form"
-import { createFileRoute, Link, useRouter } from "@tanstack/react-router"
+import { createFileRoute, Link, redirect } from "@tanstack/react-router"
 import { useEffect, useState } from "react"
 import * as z from "zod"
 
@@ -44,10 +44,19 @@ export const Route = createFileRoute("/login")({
       .optional()
       .catch(undefined),
 
-    otpId: z.string().optional().catch(undefined),
+    otpId: z.string().min(1).optional().catch(undefined),
 
     email: emailSchema.optional().catch(undefined),
   }),
+
+  beforeLoad: ({ search }) => {
+    if (!getAuthToken()) return
+
+    throw redirect({
+      to: search.redirect ?? DEFAULT_AUTH_REDIRECT,
+      replace: true,
+    })
+  },
 
   component: RouteComponent,
 })
@@ -64,9 +73,7 @@ function RouteComponent() {
 
 function LoginForm({ className, ...props }: React.ComponentProps<"div">) {
   const navigate = Route.useNavigate()
-  const router = useRouter()
-
-  const { redirect, otpId, email: searchEmail } = Route.useSearch()
+  const { otpId, email: searchEmail } = Route.useSearch()
 
   const getOtpMutation = useGetOtp()
   const loginMutation = useLogin()
@@ -106,15 +113,16 @@ function LoginForm({ className, ...props }: React.ComponentProps<"div">) {
         return
       }
 
-      if (redirect) {
-        router.history.replace(redirect)
-        return
-      }
-
-      await navigate({
-        to: DEFAULT_AUTH_REDIRECT,
-        replace: true,
-      })
+      /*
+       * No navigation is needed here.
+       *
+       * Successful login calls setAuthToken().
+       * setAuthToken() notifies subscribeAuthSession().
+       * main.tsx calls router.invalidate().
+       * /login beforeLoad runs again.
+       * Since a token now exists, the user is redirected
+       * to `redirect` or DEFAULT_AUTH_REDIRECT.
+       */
     },
   })
 
@@ -137,7 +145,9 @@ function LoginForm({ className, ...props }: React.ComponentProps<"div">) {
   }
 
   useEffect(() => {
-    if (!isOtpStep || resendDelay <= 0) return
+    if (!isOtpStep || resendDelay <= 0) {
+      return
+    }
 
     const timer = window.setTimeout(() => {
       setResendDelay((seconds) => Math.max(0, seconds - 1))
