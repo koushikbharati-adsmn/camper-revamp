@@ -40,7 +40,6 @@ import { createFileRoute, Link } from "@tanstack/react-router"
 import { REGEXP_ONLY_DIGITS } from "input-otp"
 import { HexColorPicker } from "react-colorful"
 import {
-  AlertCircleIcon,
   ArrowLeftIcon,
   ArrowRightIcon,
   CheckIcon,
@@ -473,19 +472,6 @@ function RouteComponent() {
               <p className="text-sm text-muted-foreground">
                 {steps[activeStep].description}
               </p>
-
-              {errorCount > 0 && (
-                <div
-                  role="alert"
-                  className="mt-4 flex items-start gap-2 border border-destructive/30 bg-destructive/5 px-3 py-2.5 text-sm text-destructive"
-                >
-                  <AlertCircleIcon className="mt-0.5 size-4 shrink-0" />
-                  <p>
-                    Fix {errorCount} {errorCount === 1 ? "field" : "fields"} to
-                    continue. The first issue has been focused.
-                  </p>
-                </div>
-              )}
             </header>
 
             <div className="min-h-120 px-5 py-6 sm:px-7 sm:py-8">
@@ -948,23 +934,6 @@ function ThemeStep({
   activeTab: ThemeTab
   onTabChange: React.Dispatch<React.SetStateAction<ThemeTab>>
 }) {
-  const colorErrorCount =
-    Number(!!errors.primaryColor) + Number(!!errors.secondaryColor)
-  const assetErrorCount =
-    Number(!!errors.logo) +
-    Number(!!errors.portrait) +
-    Number(!!errors.landscape)
-  const fontErrorCount =
-    Number(!!errors.headingFont) + Number(!!errors.bodyFont)
-  const colorsComplete =
-    isHexColor(workshop.primaryColor) && isHexColor(workshop.secondaryColor)
-  const assetsComplete = !!(
-    workshop.logo &&
-    workshop.portrait &&
-    workshop.landscape
-  )
-  const fontsComplete = !!(workshop.headingFont && workshop.bodyFont)
-
   return (
     <Tabs
       value={activeTab}
@@ -973,29 +942,11 @@ function ThemeStep({
       <TabsList
         variant="line"
         aria-label="Theme sections"
-        className="mb-6 grid w-full grid-cols-3 border-b border-border p-0 group-data-horizontal/tabs:h-10!"
+        className="mb-6 grid w-full grid-cols-3 border-b border-border group-data-horizontal/tabs:h-10!"
       >
-        <TabsTrigger value="colors" className="h-full!">
-          <ThemeTabLabel
-            label="Colors"
-            complete={colorsComplete}
-            errorCount={colorErrorCount}
-          />
-        </TabsTrigger>
-        <TabsTrigger value="assets" className="h-full!">
-          <ThemeTabLabel
-            label="Assets"
-            complete={assetsComplete}
-            errorCount={assetErrorCount}
-          />
-        </TabsTrigger>
-        <TabsTrigger value="fonts" className="h-full!">
-          <ThemeTabLabel
-            label="Fonts"
-            complete={fontsComplete}
-            errorCount={fontErrorCount}
-          />
-        </TabsTrigger>
+        <TabsTrigger value="colors">Colors</TabsTrigger>
+        <TabsTrigger value="assets">Assets</TabsTrigger>
+        <TabsTrigger value="fonts">fonts</TabsTrigger>
       </TabsList>
 
       <TabsContent value="colors">
@@ -1099,30 +1050,6 @@ function ThemeStep({
         </section>
       </TabsContent>
     </Tabs>
-  )
-}
-
-function ThemeTabLabel({
-  label,
-  complete,
-  errorCount,
-}: {
-  label: string
-  complete: boolean
-  errorCount: number
-}) {
-  return (
-    <span className="flex items-center gap-1.5">
-      {label}
-      {errorCount > 0 ? (
-        <span className="flex size-4 items-center justify-center bg-destructive text-[10px] font-semibold text-white">
-          {errorCount}
-          <span className="sr-only"> errors</span>
-        </span>
-      ) : complete ? (
-        <CheckIcon className="size-3.5 text-primary" aria-label="Complete" />
-      ) : null}
-    </span>
   )
 }
 
@@ -1256,7 +1183,7 @@ function FileField({
         onChange={(event) => onChange(event.target.files?.[0] ?? null)}
       />
       {value ? (
-        <div className="flex min-h-24 items-center gap-3 border border-input p-3">
+        <div className="relative flex min-h-24 items-center gap-3 border border-input p-3 pr-12">
           <div className="flex size-16 shrink-0 items-center justify-center bg-muted p-1">
             {preview === "image" ? (
               <FilePreview
@@ -1274,30 +1201,17 @@ function FileField({
             <p className="mt-1 text-[11px] text-muted-foreground">
               {(value.size / 1024).toFixed(0)} KB
             </p>
-            <div className="mt-2 flex items-center gap-1">
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                data-error-control
-                aria-label={`Replace ${label.toLowerCase()}`}
-                aria-invalid={!!error}
-                aria-describedby={describedBy}
-                onClick={selectFile}
-              >
-                Replace
-              </Button>
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon-sm"
-                aria-label={`Remove ${label.toLowerCase()}`}
-                onClick={removeFile}
-              >
-                <XIcon />
-              </Button>
-            </div>
           </div>
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon-sm"
+            className="absolute top-2 right-2"
+            aria-label={`Remove ${label.toLowerCase()}`}
+            onClick={removeFile}
+          >
+            <XIcon />
+          </Button>
         </div>
       ) : (
         <Button
@@ -1970,35 +1884,6 @@ function CoachesStep({
           )
         })}
       </div>
-
-      <section
-        aria-labelledby="workshop-summary-heading"
-        className="border border-border bg-muted/25"
-      >
-        <div className="border-b border-border px-4 py-3">
-          <h3 id="workshop-summary-heading" className="text-sm font-semibold">
-            Ready to review
-          </h3>
-          <p className="mt-0.5 text-xs text-muted-foreground">
-            Creating the workshop will use the configuration from all five
-            steps.
-          </p>
-        </div>
-        <dl className="grid grid-cols-3 divide-x divide-border">
-          {[
-            ["Pillars", workshop.pillars.length],
-            ["Teams", workshop.teams.length],
-            ["Coaches", enabledCoaches],
-          ].map(([label, count]) => (
-            <div key={label} className="flex flex-col px-3 py-4 text-center">
-              <dt className="order-2 text-[10px] font-medium tracking-wide text-muted-foreground uppercase">
-                {label}
-              </dt>
-              <dd className="order-1 text-lg font-semibold">{count}</dd>
-            </div>
-          ))}
-        </dl>
-      </section>
     </div>
   )
 }
