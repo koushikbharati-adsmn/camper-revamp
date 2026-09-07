@@ -53,7 +53,7 @@ import {
 } from "lucide-react"
 import { useEffect, useRef, useState } from "react"
 
-export const Route = createFileRoute("/app/workshops/new")({
+export const Route = createFileRoute("/_authenticated/workshops/new")({
   component: RouteComponent,
 })
 
@@ -459,7 +459,7 @@ function RouteComponent() {
       <header className="mb-5 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <Link
-            to="/app/workshops"
+            to="/workshops"
             className={cn(
               buttonVariants({ variant: "ghost" }),
               "mb-3 -ml-2 text-muted-foreground"

@@ -1,5 +1,5 @@
 export const AUTH_TOKEN_STORAGE_KEY = "token"
-export const DEFAULT_AUTH_REDIRECT = "/app/workshops"
+export const DEFAULT_AUTH_REDIRECT = "/workshops"
 
 const listeners = new Set<() => void>()
 

@@ -67,7 +67,7 @@ const workshopFilterStatusSchema = z.enum([
   "in-progress",
 ])
 
-export const Route = createFileRoute("/app/workshops/")({
+export const Route = createFileRoute("/_authenticated/workshops/")({
   validateSearch: z.object({
     status: workshopFilterStatusSchema.optional().default("all"),
   }),
@@ -137,7 +137,7 @@ function RouteComponent() {
             </SelectGroup>
           </SelectContent>
         </Select>
-        <Button render={<Link to="/app/workshops/new" />}>
+        <Button render={<Link to="/workshops/new" />}>
           <PlusIcon />
           New Workshop
         </Button>

@@ -10,25 +10,24 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as AppRouteRouteImport } from './routes/app/route'
+import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as PrivacyPolicyRouteImport } from './routes/privacy-policy'
 import { Route as TermsAndConditionsRouteImport } from './routes/terms-and-conditions'
-import { Route as AppCoachesRouteImport } from './routes/app/coaches'
-import { Route as AppUsersRouteImport } from './routes/app/users'
-import { Route as AppWorkshopsIndexRouteImport } from './routes/app/workshops.index'
-import { Route as AppWorkshopsNewRouteImport } from './routes/app/workshops.new'
-import { Route as AppWorkshopsIdEditRouteImport } from './routes/app/workshops.$id.edit'
-import { Route as AppWorkshopsIdManageRouteImport } from './routes/app/workshops.$id.manage'
+import { Route as AuthenticatedCoachesRouteImport } from './routes/_authenticated/coaches'
+import { Route as AuthenticatedUsersRouteImport } from './routes/_authenticated/users'
+import { Route as AuthenticatedWorkshopsIndexRouteImport } from './routes/_authenticated/workshops.index'
+import { Route as AuthenticatedWorkshopsNewRouteImport } from './routes/_authenticated/workshops.new'
+import { Route as AuthenticatedWorkshopsIdEditRouteImport } from './routes/_authenticated/workshops.$id.edit'
+import { Route as AuthenticatedWorkshopsIdManageRouteImport } from './routes/_authenticated/workshops.$id.manage'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
-const AppRouteRoute = AppRouteRouteImport.update({
-  id: '/app',
-  path: '/app',
+const AuthenticatedRouteRoute = AuthenticatedRouteRouteImport.update({
+  id: '/_authenticated',
   getParentRoute: () => rootRouteImport,
 } as any)
 const LoginRoute = LoginRouteImport.update({
@@ -46,122 +45,122 @@ const TermsAndConditionsRoute = TermsAndConditionsRouteImport.update({
   path: '/terms-and-conditions',
   getParentRoute: () => rootRouteImport,
 } as any)
-const AppCoachesRoute = AppCoachesRouteImport.update({
+const AuthenticatedCoachesRoute = AuthenticatedCoachesRouteImport.update({
   id: '/coaches',
   path: '/coaches',
-  getParentRoute: () => AppRouteRoute,
+  getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
-const AppUsersRoute = AppUsersRouteImport.update({
+const AuthenticatedUsersRoute = AuthenticatedUsersRouteImport.update({
   id: '/users',
   path: '/users',
-  getParentRoute: () => AppRouteRoute,
+  getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
-const AppWorkshopsIndexRoute = AppWorkshopsIndexRouteImport.update({
-  id: '/workshops/',
-  path: '/workshops/',
-  getParentRoute: () => AppRouteRoute,
-} as any)
-const AppWorkshopsNewRoute = AppWorkshopsNewRouteImport.update({
-  id: '/workshops/new',
-  path: '/workshops/new',
-  getParentRoute: () => AppRouteRoute,
-} as any)
-const AppWorkshopsIdEditRoute = AppWorkshopsIdEditRouteImport.update({
-  id: '/workshops/$id/edit',
-  path: '/workshops/$id/edit',
-  getParentRoute: () => AppRouteRoute,
-} as any)
-const AppWorkshopsIdManageRoute = AppWorkshopsIdManageRouteImport.update({
-  id: '/workshops/$id/manage',
-  path: '/workshops/$id/manage',
-  getParentRoute: () => AppRouteRoute,
-} as any)
+const AuthenticatedWorkshopsIndexRoute =
+  AuthenticatedWorkshopsIndexRouteImport.update({
+    id: '/workshops/',
+    path: '/workshops/',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedWorkshopsNewRoute =
+  AuthenticatedWorkshopsNewRouteImport.update({
+    id: '/workshops/new',
+    path: '/workshops/new',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedWorkshopsIdEditRoute =
+  AuthenticatedWorkshopsIdEditRouteImport.update({
+    id: '/workshops/$id/edit',
+    path: '/workshops/$id/edit',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedWorkshopsIdManageRoute =
+  AuthenticatedWorkshopsIdManageRouteImport.update({
+    id: '/workshops/$id/manage',
+    path: '/workshops/$id/manage',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
-  '/app': typeof AppRouteRouteWithChildren
   '/login': typeof LoginRoute
   '/privacy-policy': typeof PrivacyPolicyRoute
   '/terms-and-conditions': typeof TermsAndConditionsRoute
-  '/app/coaches': typeof AppCoachesRoute
-  '/app/users': typeof AppUsersRoute
-  '/app/workshops/new': typeof AppWorkshopsNewRoute
-  '/app/workshops/': typeof AppWorkshopsIndexRoute
-  '/app/workshops/$id/edit': typeof AppWorkshopsIdEditRoute
-  '/app/workshops/$id/manage': typeof AppWorkshopsIdManageRoute
+  '/coaches': typeof AuthenticatedCoachesRoute
+  '/users': typeof AuthenticatedUsersRoute
+  '/workshops/new': typeof AuthenticatedWorkshopsNewRoute
+  '/workshops/': typeof AuthenticatedWorkshopsIndexRoute
+  '/workshops/$id/edit': typeof AuthenticatedWorkshopsIdEditRoute
+  '/workshops/$id/manage': typeof AuthenticatedWorkshopsIdManageRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/app': typeof AppRouteRouteWithChildren
   '/login': typeof LoginRoute
   '/privacy-policy': typeof PrivacyPolicyRoute
   '/terms-and-conditions': typeof TermsAndConditionsRoute
-  '/app/coaches': typeof AppCoachesRoute
-  '/app/users': typeof AppUsersRoute
-  '/app/workshops/new': typeof AppWorkshopsNewRoute
-  '/app/workshops': typeof AppWorkshopsIndexRoute
-  '/app/workshops/$id/edit': typeof AppWorkshopsIdEditRoute
-  '/app/workshops/$id/manage': typeof AppWorkshopsIdManageRoute
+  '/coaches': typeof AuthenticatedCoachesRoute
+  '/users': typeof AuthenticatedUsersRoute
+  '/workshops/new': typeof AuthenticatedWorkshopsNewRoute
+  '/workshops': typeof AuthenticatedWorkshopsIndexRoute
+  '/workshops/$id/edit': typeof AuthenticatedWorkshopsIdEditRoute
+  '/workshops/$id/manage': typeof AuthenticatedWorkshopsIdManageRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
-  '/app': typeof AppRouteRouteWithChildren
+  '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/login': typeof LoginRoute
   '/privacy-policy': typeof PrivacyPolicyRoute
   '/terms-and-conditions': typeof TermsAndConditionsRoute
-  '/app/coaches': typeof AppCoachesRoute
-  '/app/users': typeof AppUsersRoute
-  '/app/workshops/new': typeof AppWorkshopsNewRoute
-  '/app/workshops/': typeof AppWorkshopsIndexRoute
-  '/app/workshops/$id/edit': typeof AppWorkshopsIdEditRoute
-  '/app/workshops/$id/manage': typeof AppWorkshopsIdManageRoute
+  '/_authenticated/coaches': typeof AuthenticatedCoachesRoute
+  '/_authenticated/users': typeof AuthenticatedUsersRoute
+  '/_authenticated/workshops/new': typeof AuthenticatedWorkshopsNewRoute
+  '/_authenticated/workshops/': typeof AuthenticatedWorkshopsIndexRoute
+  '/_authenticated/workshops/$id/edit': typeof AuthenticatedWorkshopsIdEditRoute
+  '/_authenticated/workshops/$id/manage': typeof AuthenticatedWorkshopsIdManageRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
-    | '/app'
     | '/login'
     | '/privacy-policy'
     | '/terms-and-conditions'
-    | '/app/coaches'
-    | '/app/users'
-    | '/app/workshops/new'
-    | '/app/workshops/'
-    | '/app/workshops/$id/edit'
-    | '/app/workshops/$id/manage'
+    | '/coaches'
+    | '/users'
+    | '/workshops/new'
+    | '/workshops/'
+    | '/workshops/$id/edit'
+    | '/workshops/$id/manage'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
-    | '/app'
     | '/login'
     | '/privacy-policy'
     | '/terms-and-conditions'
-    | '/app/coaches'
-    | '/app/users'
-    | '/app/workshops/new'
-    | '/app/workshops'
-    | '/app/workshops/$id/edit'
-    | '/app/workshops/$id/manage'
+    | '/coaches'
+    | '/users'
+    | '/workshops/new'
+    | '/workshops'
+    | '/workshops/$id/edit'
+    | '/workshops/$id/manage'
   id:
     | '__root__'
     | '/'
-    | '/app'
+    | '/_authenticated'
     | '/login'
     | '/privacy-policy'
     | '/terms-and-conditions'
-    | '/app/coaches'
-    | '/app/users'
-    | '/app/workshops/new'
-    | '/app/workshops/'
-    | '/app/workshops/$id/edit'
-    | '/app/workshops/$id/manage'
+    | '/_authenticated/coaches'
+    | '/_authenticated/users'
+    | '/_authenticated/workshops/new'
+    | '/_authenticated/workshops/'
+    | '/_authenticated/workshops/$id/edit'
+    | '/_authenticated/workshops/$id/manage'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
-  AppRouteRoute: typeof AppRouteRouteWithChildren
+  AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
   LoginRoute: typeof LoginRoute
   PrivacyPolicyRoute: typeof PrivacyPolicyRoute
   TermsAndConditionsRoute: typeof TermsAndConditionsRoute
@@ -176,11 +175,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/app': {
-      id: '/app'
-      path: '/app'
-      fullPath: '/app'
-      preLoaderRoute: typeof AppRouteRouteImport
+    '/_authenticated': {
+      id: '/_authenticated'
+      path: ''
+      fullPath: '/'
+      preLoaderRoute: typeof AuthenticatedRouteRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/login': {
@@ -204,76 +203,75 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof TermsAndConditionsRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/app/coaches': {
-      id: '/app/coaches'
+    '/_authenticated/coaches': {
+      id: '/_authenticated/coaches'
       path: '/coaches'
-      fullPath: '/app/coaches'
-      preLoaderRoute: typeof AppCoachesRouteImport
-      parentRoute: typeof AppRouteRoute
+      fullPath: '/coaches'
+      preLoaderRoute: typeof AuthenticatedCoachesRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
     }
-    '/app/users': {
-      id: '/app/users'
+    '/_authenticated/users': {
+      id: '/_authenticated/users'
       path: '/users'
-      fullPath: '/app/users'
-      preLoaderRoute: typeof AppUsersRouteImport
-      parentRoute: typeof AppRouteRoute
+      fullPath: '/users'
+      preLoaderRoute: typeof AuthenticatedUsersRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
     }
-    '/app/workshops/': {
-      id: '/app/workshops/'
+    '/_authenticated/workshops/': {
+      id: '/_authenticated/workshops/'
       path: '/workshops'
-      fullPath: '/app/workshops/'
-      preLoaderRoute: typeof AppWorkshopsIndexRouteImport
-      parentRoute: typeof AppRouteRoute
+      fullPath: '/workshops/'
+      preLoaderRoute: typeof AuthenticatedWorkshopsIndexRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
     }
-    '/app/workshops/new': {
-      id: '/app/workshops/new'
+    '/_authenticated/workshops/new': {
+      id: '/_authenticated/workshops/new'
       path: '/workshops/new'
-      fullPath: '/app/workshops/new'
-      preLoaderRoute: typeof AppWorkshopsNewRouteImport
-      parentRoute: typeof AppRouteRoute
+      fullPath: '/workshops/new'
+      preLoaderRoute: typeof AuthenticatedWorkshopsNewRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
     }
-    '/app/workshops/$id/edit': {
-      id: '/app/workshops/$id/edit'
+    '/_authenticated/workshops/$id/edit': {
+      id: '/_authenticated/workshops/$id/edit'
       path: '/workshops/$id/edit'
-      fullPath: '/app/workshops/$id/edit'
-      preLoaderRoute: typeof AppWorkshopsIdEditRouteImport
-      parentRoute: typeof AppRouteRoute
+      fullPath: '/workshops/$id/edit'
+      preLoaderRoute: typeof AuthenticatedWorkshopsIdEditRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
     }
-    '/app/workshops/$id/manage': {
-      id: '/app/workshops/$id/manage'
+    '/_authenticated/workshops/$id/manage': {
+      id: '/_authenticated/workshops/$id/manage'
       path: '/workshops/$id/manage'
-      fullPath: '/app/workshops/$id/manage'
-      preLoaderRoute: typeof AppWorkshopsIdManageRouteImport
-      parentRoute: typeof AppRouteRoute
+      fullPath: '/workshops/$id/manage'
+      preLoaderRoute: typeof AuthenticatedWorkshopsIdManageRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
     }
   }
 }
 
-interface AppRouteRouteChildren {
-  AppCoachesRoute: typeof AppCoachesRoute
-  AppUsersRoute: typeof AppUsersRoute
-  AppWorkshopsNewRoute: typeof AppWorkshopsNewRoute
-  AppWorkshopsIndexRoute: typeof AppWorkshopsIndexRoute
-  AppWorkshopsIdEditRoute: typeof AppWorkshopsIdEditRoute
-  AppWorkshopsIdManageRoute: typeof AppWorkshopsIdManageRoute
+interface AuthenticatedRouteRouteChildren {
+  AuthenticatedCoachesRoute: typeof AuthenticatedCoachesRoute
+  AuthenticatedUsersRoute: typeof AuthenticatedUsersRoute
+  AuthenticatedWorkshopsNewRoute: typeof AuthenticatedWorkshopsNewRoute
+  AuthenticatedWorkshopsIndexRoute: typeof AuthenticatedWorkshopsIndexRoute
+  AuthenticatedWorkshopsIdEditRoute: typeof AuthenticatedWorkshopsIdEditRoute
+  AuthenticatedWorkshopsIdManageRoute: typeof AuthenticatedWorkshopsIdManageRoute
 }
 
-const AppRouteRouteChildren: AppRouteRouteChildren = {
-  AppCoachesRoute: AppCoachesRoute,
-  AppUsersRoute: AppUsersRoute,
-  AppWorkshopsNewRoute: AppWorkshopsNewRoute,
-  AppWorkshopsIndexRoute: AppWorkshopsIndexRoute,
-  AppWorkshopsIdEditRoute: AppWorkshopsIdEditRoute,
-  AppWorkshopsIdManageRoute: AppWorkshopsIdManageRoute,
+const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
+  AuthenticatedCoachesRoute: AuthenticatedCoachesRoute,
+  AuthenticatedUsersRoute: AuthenticatedUsersRoute,
+  AuthenticatedWorkshopsNewRoute: AuthenticatedWorkshopsNewRoute,
+  AuthenticatedWorkshopsIndexRoute: AuthenticatedWorkshopsIndexRoute,
+  AuthenticatedWorkshopsIdEditRoute: AuthenticatedWorkshopsIdEditRoute,
+  AuthenticatedWorkshopsIdManageRoute: AuthenticatedWorkshopsIdManageRoute,
 }
 
-const AppRouteRouteWithChildren = AppRouteRoute._addFileChildren(
-  AppRouteRouteChildren,
-)
+const AuthenticatedRouteRouteWithChildren =
+  AuthenticatedRouteRoute._addFileChildren(AuthenticatedRouteRouteChildren)
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
-  AppRouteRoute: AppRouteRouteWithChildren,
+  AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
   LoginRoute: LoginRoute,
   PrivacyPolicyRoute: PrivacyPolicyRoute,
   TermsAndConditionsRoute: TermsAndConditionsRoute,

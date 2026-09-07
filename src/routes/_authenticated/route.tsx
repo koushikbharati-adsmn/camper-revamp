@@ -8,7 +8,7 @@ import { getAuthToken } from "@/lib/auth-session"
 import { loggedInUserQueryOptions } from "@/services/auth"
 import { createFileRoute, Outlet, redirect } from "@tanstack/react-router"
 
-export const Route = createFileRoute("/app")({
+export const Route = createFileRoute("/_authenticated")({
   beforeLoad: async ({ context, location }) => {
     const loginRedirect = {
       to: "/login" as const,

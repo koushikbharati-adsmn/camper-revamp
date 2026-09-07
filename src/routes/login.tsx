@@ -40,7 +40,7 @@ export const Route = createFileRoute("/login")({
   validateSearch: z.object({
     redirect: z
       .string()
-      .regex(/^\/app(?:\/|[?#]|$)/)
+      .regex(/^\/(?:workshops|coaches|users)(?:\/|[?#]|$)/)
       .optional()
       .catch(undefined),
 
