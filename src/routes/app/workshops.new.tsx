@@ -455,7 +455,7 @@ function RouteComponent() {
   const errorCount = Object.keys(errors).length
 
   return (
-    <div className="@container/wizard mx-auto w-full max-w-6xl pb-4">
+    <div className="@container/wizard w-full pb-4">
       <header className="mb-5 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <Link

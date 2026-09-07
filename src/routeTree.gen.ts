@@ -14,8 +14,12 @@ import { Route as AppRouteRouteImport } from './routes/app/route'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as PrivacyPolicyRouteImport } from './routes/privacy-policy'
 import { Route as TermsAndConditionsRouteImport } from './routes/terms-and-conditions'
+import { Route as AppCoachesRouteImport } from './routes/app/coaches'
+import { Route as AppUsersRouteImport } from './routes/app/users'
 import { Route as AppWorkshopsIndexRouteImport } from './routes/app/workshops.index'
 import { Route as AppWorkshopsNewRouteImport } from './routes/app/workshops.new'
+import { Route as AppWorkshopsIdEditRouteImport } from './routes/app/workshops.$id.edit'
+import { Route as AppWorkshopsIdManageRouteImport } from './routes/app/workshops.$id.manage'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -42,6 +46,16 @@ const TermsAndConditionsRoute = TermsAndConditionsRouteImport.update({
   path: '/terms-and-conditions',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AppCoachesRoute = AppCoachesRouteImport.update({
+  id: '/coaches',
+  path: '/coaches',
+  getParentRoute: () => AppRouteRoute,
+} as any)
+const AppUsersRoute = AppUsersRouteImport.update({
+  id: '/users',
+  path: '/users',
+  getParentRoute: () => AppRouteRoute,
+} as any)
 const AppWorkshopsIndexRoute = AppWorkshopsIndexRouteImport.update({
   id: '/workshops/',
   path: '/workshops/',
@@ -52,6 +66,16 @@ const AppWorkshopsNewRoute = AppWorkshopsNewRouteImport.update({
   path: '/workshops/new',
   getParentRoute: () => AppRouteRoute,
 } as any)
+const AppWorkshopsIdEditRoute = AppWorkshopsIdEditRouteImport.update({
+  id: '/workshops/$id/edit',
+  path: '/workshops/$id/edit',
+  getParentRoute: () => AppRouteRoute,
+} as any)
+const AppWorkshopsIdManageRoute = AppWorkshopsIdManageRouteImport.update({
+  id: '/workshops/$id/manage',
+  path: '/workshops/$id/manage',
+  getParentRoute: () => AppRouteRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -59,8 +83,12 @@ export interface FileRoutesByFullPath {
   '/login': typeof LoginRoute
   '/privacy-policy': typeof PrivacyPolicyRoute
   '/terms-and-conditions': typeof TermsAndConditionsRoute
+  '/app/coaches': typeof AppCoachesRoute
+  '/app/users': typeof AppUsersRoute
   '/app/workshops/new': typeof AppWorkshopsNewRoute
   '/app/workshops/': typeof AppWorkshopsIndexRoute
+  '/app/workshops/$id/edit': typeof AppWorkshopsIdEditRoute
+  '/app/workshops/$id/manage': typeof AppWorkshopsIdManageRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -68,8 +96,12 @@ export interface FileRoutesByTo {
   '/login': typeof LoginRoute
   '/privacy-policy': typeof PrivacyPolicyRoute
   '/terms-and-conditions': typeof TermsAndConditionsRoute
+  '/app/coaches': typeof AppCoachesRoute
+  '/app/users': typeof AppUsersRoute
   '/app/workshops/new': typeof AppWorkshopsNewRoute
   '/app/workshops': typeof AppWorkshopsIndexRoute
+  '/app/workshops/$id/edit': typeof AppWorkshopsIdEditRoute
+  '/app/workshops/$id/manage': typeof AppWorkshopsIdManageRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -78,8 +110,12 @@ export interface FileRoutesById {
   '/login': typeof LoginRoute
   '/privacy-policy': typeof PrivacyPolicyRoute
   '/terms-and-conditions': typeof TermsAndConditionsRoute
+  '/app/coaches': typeof AppCoachesRoute
+  '/app/users': typeof AppUsersRoute
   '/app/workshops/new': typeof AppWorkshopsNewRoute
   '/app/workshops/': typeof AppWorkshopsIndexRoute
+  '/app/workshops/$id/edit': typeof AppWorkshopsIdEditRoute
+  '/app/workshops/$id/manage': typeof AppWorkshopsIdManageRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -89,8 +125,12 @@ export interface FileRouteTypes {
     | '/login'
     | '/privacy-policy'
     | '/terms-and-conditions'
+    | '/app/coaches'
+    | '/app/users'
     | '/app/workshops/new'
     | '/app/workshops/'
+    | '/app/workshops/$id/edit'
+    | '/app/workshops/$id/manage'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -98,8 +138,12 @@ export interface FileRouteTypes {
     | '/login'
     | '/privacy-policy'
     | '/terms-and-conditions'
+    | '/app/coaches'
+    | '/app/users'
     | '/app/workshops/new'
     | '/app/workshops'
+    | '/app/workshops/$id/edit'
+    | '/app/workshops/$id/manage'
   id:
     | '__root__'
     | '/'
@@ -107,8 +151,12 @@ export interface FileRouteTypes {
     | '/login'
     | '/privacy-policy'
     | '/terms-and-conditions'
+    | '/app/coaches'
+    | '/app/users'
     | '/app/workshops/new'
     | '/app/workshops/'
+    | '/app/workshops/$id/edit'
+    | '/app/workshops/$id/manage'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -156,6 +204,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof TermsAndConditionsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/app/coaches': {
+      id: '/app/coaches'
+      path: '/coaches'
+      fullPath: '/app/coaches'
+      preLoaderRoute: typeof AppCoachesRouteImport
+      parentRoute: typeof AppRouteRoute
+    }
+    '/app/users': {
+      id: '/app/users'
+      path: '/users'
+      fullPath: '/app/users'
+      preLoaderRoute: typeof AppUsersRouteImport
+      parentRoute: typeof AppRouteRoute
+    }
     '/app/workshops/': {
       id: '/app/workshops/'
       path: '/workshops'
@@ -170,17 +232,39 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppWorkshopsNewRouteImport
       parentRoute: typeof AppRouteRoute
     }
+    '/app/workshops/$id/edit': {
+      id: '/app/workshops/$id/edit'
+      path: '/workshops/$id/edit'
+      fullPath: '/app/workshops/$id/edit'
+      preLoaderRoute: typeof AppWorkshopsIdEditRouteImport
+      parentRoute: typeof AppRouteRoute
+    }
+    '/app/workshops/$id/manage': {
+      id: '/app/workshops/$id/manage'
+      path: '/workshops/$id/manage'
+      fullPath: '/app/workshops/$id/manage'
+      preLoaderRoute: typeof AppWorkshopsIdManageRouteImport
+      parentRoute: typeof AppRouteRoute
+    }
   }
 }
 
 interface AppRouteRouteChildren {
+  AppCoachesRoute: typeof AppCoachesRoute
+  AppUsersRoute: typeof AppUsersRoute
   AppWorkshopsNewRoute: typeof AppWorkshopsNewRoute
   AppWorkshopsIndexRoute: typeof AppWorkshopsIndexRoute
+  AppWorkshopsIdEditRoute: typeof AppWorkshopsIdEditRoute
+  AppWorkshopsIdManageRoute: typeof AppWorkshopsIdManageRoute
 }
 
 const AppRouteRouteChildren: AppRouteRouteChildren = {
+  AppCoachesRoute: AppCoachesRoute,
+  AppUsersRoute: AppUsersRoute,
   AppWorkshopsNewRoute: AppWorkshopsNewRoute,
   AppWorkshopsIndexRoute: AppWorkshopsIndexRoute,
+  AppWorkshopsIdEditRoute: AppWorkshopsIdEditRoute,
+  AppWorkshopsIdManageRoute: AppWorkshopsIdManageRoute,
 }
 
 const AppRouteRouteWithChildren = AppRouteRoute._addFileChildren(
