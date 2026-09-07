@@ -43,6 +43,7 @@ import { HexColorPicker } from "react-colorful"
 import {
   ArrowLeftIcon,
   ArrowRightIcon,
+  ArrowUpRightIcon,
   CheckIcon,
   FileIcon,
   PlusIcon,
@@ -475,9 +476,10 @@ function RouteComponent() {
             walkthrough, and coaching team.
           </p>
         </div>
-        <Badge variant="outline" className="h-6 self-start sm:self-auto">
-          {steps.length}-step setup
-        </Badge>
+        <Button>
+          Preview Workshop
+          <ArrowUpRightIcon />
+        </Button>
       </header>
 
       <section
@@ -673,7 +675,7 @@ function StepNavigation({
                   disabled={!isAvailable}
                   onClick={() => onStepChange(index)}
                   className={cn(
-                    "group flex w-full items-start gap-3 px-1 py-2 text-left text-muted-foreground transition-colors disabled:cursor-not-allowed disabled:opacity-45",
+                    "group flex w-full items-start gap-3 px-1 py-2 text-left text-muted-foreground transition-colors disabled:cursor-not-allowed",
                     isAvailable && "hover:text-foreground",
                     isActive && "text-foreground",
                     hasError && "text-destructive"
