@@ -13,6 +13,7 @@ import {
   InputOTPSlot,
 } from "@/components/ui/input-otp"
 import { cn } from "@/lib/utils"
+import { useGetOtp, useLogin } from "@/services/auth"
 import { useForm } from "@tanstack/react-form"
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router"
 import { useEffect, useState } from "react"
@@ -50,7 +51,10 @@ function RouteComponent() {
 
 function LoginForm({ className, ...props }: React.ComponentProps<"div">) {
   const navigate = useNavigate()
+  const getOtpMutation = useGetOtp()
+  const loginMutation = useLogin()
   const [isOtpStep, setIsOtpStep] = useState(false)
+  const [otpId, setOtpId] = useState<string | null>(null)
   const [resendDelay, setResendDelay] = useState(0)
   const form = useForm({
     defaultValues: {
@@ -60,39 +64,87 @@ function LoginForm({ className, ...props }: React.ComponentProps<"div">) {
     validators: {
       onSubmit: isOtpStep ? otpStepSchema : emailStepSchema,
     },
-    onSubmit: ({ value }) => {
+    onSubmit: async ({ value }) => {
       if (!isOtpStep) {
+        let response
+
+        try {
+          response = await getOtpMutation.mutateAsync({ email: value.email })
+        } catch {
+          return
+        }
+
+        setOtpId(response.data.id)
+        form.setFieldValue("otp", "")
         setResendDelay(60)
         setIsOtpStep(true)
         return
       }
 
-      console.log(value)
-      navigate({ to: "/app/workshops" })
+      if (!otpId) {
+        form.setFieldValue("otp", "")
+        setIsOtpStep(false)
+        setResendDelay(0)
+        return
+      }
+
+      try {
+        await loginMutation.mutateAsync({
+          email: value.email,
+          otp: value.otp,
+          otp_id: otpId,
+        })
+      } catch {
+        return
+      }
+
+      await navigate({ to: "/app/workshops" })
     },
   })
 
   useEffect(() => {
-    if (!isOtpStep) return
+    if (!isOtpStep || resendDelay <= 0) return
 
-    const timer = window.setInterval(() => {
-      setResendDelay((seconds) => {
-        if (seconds <= 1) {
-          window.clearInterval(timer)
-          return 0
-        }
+    const timer = window.setTimeout(
+      () => setResendDelay((seconds) => Math.max(0, seconds - 1)),
+      1000
+    )
 
-        return seconds - 1
+    return () => window.clearTimeout(timer)
+  }, [isOtpStep, resendDelay])
+
+  const resendOtp = async () => {
+    let response
+
+    try {
+      response = await getOtpMutation.mutateAsync({
+        email: form.state.values.email,
       })
-    }, 1000)
+    } catch {
+      return
+    }
 
-    return () => window.clearInterval(timer)
-  }, [isOtpStep])
+    setOtpId(response.data.id)
+    form.setFieldValue("otp", "")
+    setResendDelay(60)
+  }
+
+  const returnToEmail = () => {
+    setOtpId(null)
+    setResendDelay(0)
+    form.setFieldValue("otp", "")
+    getOtpMutation.reset()
+    loginMutation.reset()
+    setIsOtpStep(false)
+  }
+
+  const isPending = getOtpMutation.isPending || loginMutation.isPending
 
   return (
     <div className={cn("flex flex-col gap-6", className)} {...props}>
       <form
         noValidate
+        aria-busy={isPending}
         onSubmit={(event) => {
           event.preventDefault()
           void form.handleSubmit()
@@ -122,6 +174,7 @@ function LoginForm({ className, ...props }: React.ComponentProps<"div">) {
                       inputMode="numeric"
                       pattern="[0-9]*"
                       value={field.state.value}
+                      disabled={isPending}
                       onBlur={field.handleBlur}
                       onChange={field.handleChange}
                       aria-invalid={isInvalid}
@@ -163,6 +216,7 @@ function LoginForm({ className, ...props }: React.ComponentProps<"div">) {
                       type="email"
                       placeholder="username@example.com"
                       value={field.state.value}
+                      disabled={isPending}
                       onBlur={field.handleBlur}
                       onChange={(event) =>
                         field.handleChange(event.target.value)
@@ -178,20 +232,27 @@ function LoginForm({ className, ...props }: React.ComponentProps<"div">) {
             />
           )}
           <Field>
-            <Button type="submit">{isOtpStep ? "Verify code" : "Login"}</Button>
+            <Button type="submit" disabled={isPending}>
+              {loginMutation.isPending
+                ? "Verifying..."
+                : getOtpMutation.isPending && !isOtpStep
+                  ? "Sending code..."
+                  : isOtpStep
+                    ? "Verify code"
+                    : "Login"}
+            </Button>
             {isOtpStep && (
               <Button
                 type="button"
                 variant="outline"
-                disabled={resendDelay > 0}
-                onClick={() => {
-                  // call resend OTP API here
-                  setResendDelay(60)
-                }}
+                disabled={resendDelay > 0 || isPending}
+                onClick={() => void resendOtp()}
               >
-                {resendDelay > 0
-                  ? `Resend code in ${resendDelay}s`
-                  : "Resend code"}
+                {getOtpMutation.isPending
+                  ? "Resending..."
+                  : resendDelay > 0
+                    ? `Resend code in ${resendDelay}s`
+                    : "Resend code"}
               </Button>
             )}
           </Field>
@@ -203,7 +264,8 @@ function LoginForm({ className, ...props }: React.ComponentProps<"div">) {
                 <button
                   className="underline underline-offset-4"
                   type="button"
-                  onClick={() => setIsOtpStep(false)}
+                  disabled={isPending}
+                  onClick={returnToEmail}
                 >
                   Go back
                 </button>
