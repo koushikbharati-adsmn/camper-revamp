@@ -455,7 +455,7 @@ function RouteComponent() {
   const errorCount = Object.keys(errors).length
 
   return (
-    <div className="@container/wizard w-full pb-4">
+    <div className="@container/wizard w-full">
       <header className="mb-5 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <Link
@@ -548,7 +548,7 @@ function RouteComponent() {
                 variant="outline"
                 disabled={activeStep === 0}
                 onClick={() => goToStep(activeStep - 1)}
-                className="h-11 flex-1 sm:h-10 sm:min-w-28 sm:flex-none"
+                className="flex-1 sm:flex-none"
               >
                 <ArrowLeftIcon />
                 Back
@@ -556,17 +556,14 @@ function RouteComponent() {
               {activeStep < steps.length - 1 ? (
                 <Button
                   type="button"
-                  className="h-11 flex-1 sm:h-10 sm:min-w-40 sm:flex-none"
+                  className="flex-1 sm:flex-none"
                   onClick={next}
                 >
                   Continue
                   <ArrowRightIcon />
                 </Button>
               ) : (
-                <Button
-                  type="submit"
-                  className="h-11 flex-1 sm:h-10 sm:min-w-40 sm:flex-none"
-                >
+                <Button type="submit" className="flex-1 sm:flex-none">
                   <CheckIcon />
                   Create workshop
                 </Button>

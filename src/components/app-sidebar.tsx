@@ -13,48 +13,45 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from "@/components/ui/sidebar"
+import type { User } from "@/services/users"
+import { Link } from "@tanstack/react-router"
 import {
   BotIcon,
   CommandIcon,
   FolderKanbanIcon,
-  Settings2Icon,
+  LightbulbIcon,
   UsersIcon,
 } from "lucide-react"
-import { Link } from "@tanstack/react-router"
 
-const data = {
-  user: {
-    name: "Koushik bharati",
-    email: "koushik.b@adsmn.in",
-    avatar: "https://github.com/shadcn.png",
+const navItems = [
+  {
+    title: "Workshops",
+    to: "/workshops" as const,
+    icon: <FolderKanbanIcon />,
   },
-  navMain: [
-    {
-      title: "Workshops",
-      url: "#",
-      icon: <FolderKanbanIcon />,
-    },
-    {
-      title: "Coaches",
-      url: "#",
-      icon: <BotIcon />,
-    },
-    {
-      title: "Users",
-      url: "#",
-      icon: <UsersIcon />,
-    },
-    {
-      title: "Settings",
-      url: "#",
-      icon: <Settings2Icon />,
-    },
-  ],
-}
+  {
+    title: "Coaches",
+    to: "/coaches" as const,
+    icon: <BotIcon />,
+  },
+  {
+    title: "Users",
+    to: "/users" as const,
+    icon: <UsersIcon />,
+  },
+  {
+    title: "Walkthroughs",
+    to: "/walkthroughs" as const,
+    icon: <LightbulbIcon />,
+  },
+]
 
-export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
+export function AppSidebar({
+  user,
+  ...props
+}: React.ComponentProps<typeof Sidebar> & { user: User }) {
   return (
-    <Sidebar variant="inset" {...props}>
+    <Sidebar variant="sidebar" {...props}>
       <SidebarHeader>
         <SidebarMenu>
           <SidebarMenuItem>
@@ -71,10 +68,10 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         </SidebarMenu>
       </SidebarHeader>
       <SidebarContent>
-        <NavMain items={data.navMain} />
+        <NavMain items={navItems} />
       </SidebarContent>
       <SidebarFooter>
-        <NavUser user={data.user} />
+        <NavUser user={user} />
       </SidebarFooter>
     </Sidebar>
   )

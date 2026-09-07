@@ -16,6 +16,7 @@ import { Route as PrivacyPolicyRouteImport } from './routes/privacy-policy'
 import { Route as TermsAndConditionsRouteImport } from './routes/terms-and-conditions'
 import { Route as AuthenticatedCoachesRouteImport } from './routes/_authenticated/coaches'
 import { Route as AuthenticatedUsersRouteImport } from './routes/_authenticated/users'
+import { Route as AuthenticatedWalkthroughsRouteImport } from './routes/_authenticated/walkthroughs'
 import { Route as AuthenticatedWorkshopsIndexRouteImport } from './routes/_authenticated/workshops.index'
 import { Route as AuthenticatedWorkshopsNewRouteImport } from './routes/_authenticated/workshops.new'
 import { Route as AuthenticatedWorkshopsIdEditRouteImport } from './routes/_authenticated/workshops.$id.edit'
@@ -55,6 +56,12 @@ const AuthenticatedUsersRoute = AuthenticatedUsersRouteImport.update({
   path: '/users',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedWalkthroughsRoute =
+  AuthenticatedWalkthroughsRouteImport.update({
+    id: '/walkthroughs',
+    path: '/walkthroughs',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedWorkshopsIndexRoute =
   AuthenticatedWorkshopsIndexRouteImport.update({
     id: '/workshops/',
@@ -87,6 +94,7 @@ export interface FileRoutesByFullPath {
   '/terms-and-conditions': typeof TermsAndConditionsRoute
   '/coaches': typeof AuthenticatedCoachesRoute
   '/users': typeof AuthenticatedUsersRoute
+  '/walkthroughs': typeof AuthenticatedWalkthroughsRoute
   '/workshops/new': typeof AuthenticatedWorkshopsNewRoute
   '/workshops/': typeof AuthenticatedWorkshopsIndexRoute
   '/workshops/$id/edit': typeof AuthenticatedWorkshopsIdEditRoute
@@ -99,6 +107,7 @@ export interface FileRoutesByTo {
   '/terms-and-conditions': typeof TermsAndConditionsRoute
   '/coaches': typeof AuthenticatedCoachesRoute
   '/users': typeof AuthenticatedUsersRoute
+  '/walkthroughs': typeof AuthenticatedWalkthroughsRoute
   '/workshops/new': typeof AuthenticatedWorkshopsNewRoute
   '/workshops': typeof AuthenticatedWorkshopsIndexRoute
   '/workshops/$id/edit': typeof AuthenticatedWorkshopsIdEditRoute
@@ -113,6 +122,7 @@ export interface FileRoutesById {
   '/terms-and-conditions': typeof TermsAndConditionsRoute
   '/_authenticated/coaches': typeof AuthenticatedCoachesRoute
   '/_authenticated/users': typeof AuthenticatedUsersRoute
+  '/_authenticated/walkthroughs': typeof AuthenticatedWalkthroughsRoute
   '/_authenticated/workshops/new': typeof AuthenticatedWorkshopsNewRoute
   '/_authenticated/workshops/': typeof AuthenticatedWorkshopsIndexRoute
   '/_authenticated/workshops/$id/edit': typeof AuthenticatedWorkshopsIdEditRoute
@@ -127,6 +137,7 @@ export interface FileRouteTypes {
     | '/terms-and-conditions'
     | '/coaches'
     | '/users'
+    | '/walkthroughs'
     | '/workshops/new'
     | '/workshops/'
     | '/workshops/$id/edit'
@@ -139,6 +150,7 @@ export interface FileRouteTypes {
     | '/terms-and-conditions'
     | '/coaches'
     | '/users'
+    | '/walkthroughs'
     | '/workshops/new'
     | '/workshops'
     | '/workshops/$id/edit'
@@ -152,6 +164,7 @@ export interface FileRouteTypes {
     | '/terms-and-conditions'
     | '/_authenticated/coaches'
     | '/_authenticated/users'
+    | '/_authenticated/walkthroughs'
     | '/_authenticated/workshops/new'
     | '/_authenticated/workshops/'
     | '/_authenticated/workshops/$id/edit'
@@ -217,6 +230,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedUsersRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/walkthroughs': {
+      id: '/_authenticated/walkthroughs'
+      path: '/walkthroughs'
+      fullPath: '/walkthroughs'
+      preLoaderRoute: typeof AuthenticatedWalkthroughsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/workshops/': {
       id: '/_authenticated/workshops/'
       path: '/workshops'
@@ -251,6 +271,7 @@ declare module '@tanstack/react-router' {
 interface AuthenticatedRouteRouteChildren {
   AuthenticatedCoachesRoute: typeof AuthenticatedCoachesRoute
   AuthenticatedUsersRoute: typeof AuthenticatedUsersRoute
+  AuthenticatedWalkthroughsRoute: typeof AuthenticatedWalkthroughsRoute
   AuthenticatedWorkshopsNewRoute: typeof AuthenticatedWorkshopsNewRoute
   AuthenticatedWorkshopsIndexRoute: typeof AuthenticatedWorkshopsIndexRoute
   AuthenticatedWorkshopsIdEditRoute: typeof AuthenticatedWorkshopsIdEditRoute
@@ -260,6 +281,7 @@ interface AuthenticatedRouteRouteChildren {
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedCoachesRoute: AuthenticatedCoachesRoute,
   AuthenticatedUsersRoute: AuthenticatedUsersRoute,
+  AuthenticatedWalkthroughsRoute: AuthenticatedWalkthroughsRoute,
   AuthenticatedWorkshopsNewRoute: AuthenticatedWorkshopsNewRoute,
   AuthenticatedWorkshopsIndexRoute: AuthenticatedWorkshopsIndexRoute,
   AuthenticatedWorkshopsIdEditRoute: AuthenticatedWorkshopsIdEditRoute,

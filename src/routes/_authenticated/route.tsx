@@ -36,9 +36,11 @@ export const Route = createFileRoute("/_authenticated")({
 })
 
 function RouteComponent() {
+  const { user } = Route.useRouteContext()
+
   return (
     <SidebarProvider className="h-svh overflow-hidden">
-      <AppSidebar />
+      <AppSidebar user={user} />
       <SidebarInset className="min-h-0 overflow-hidden">
         <header className="flex h-12 shrink-0 items-center gap-2 border-b border-border px-4 md:hidden">
           <SidebarTrigger className="-ml-1" />
