@@ -12,12 +12,13 @@ export const Route = createFileRoute("/app")({
   beforeLoad: async ({ context, location }) => {
     const loginRedirect = {
       to: "/login" as const,
-      search: { redirect: location.href },
+      search: {
+        redirect: location.href,
+      },
       replace: true,
     }
 
     if (!getAuthToken()) {
-      context.queryClient.removeQueries({ queryKey: ["ME"] })
       throw redirect(loginRedirect)
     }
 
@@ -25,9 +26,10 @@ export const Route = createFileRoute("/app")({
       const user = await context.queryClient.query(loggedInUserQueryOptions())
       return { user }
     } catch (error) {
-      if (getAuthToken()) throw error
-      context.queryClient.removeQueries({ queryKey: ["ME"] })
-      throw redirect(loginRedirect)
+      if (!getAuthToken()) {
+        throw redirect(loginRedirect)
+      }
+      throw error
     }
   },
   component: RouteComponent,

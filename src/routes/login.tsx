@@ -12,26 +12,25 @@ import {
   InputOTPGroup,
   InputOTPSlot,
 } from "@/components/ui/input-otp"
+import { Spinner } from "@/components/ui/spinner"
 import { DEFAULT_AUTH_REDIRECT } from "@/lib/auth-session"
 import { cn } from "@/lib/utils"
 import { useGetOtp, useLogin } from "@/services/auth"
 import { useForm } from "@tanstack/react-form"
-import { useQueryClient } from "@tanstack/react-query"
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router"
+import { createFileRoute, Link, useRouter } from "@tanstack/react-router"
 import { useEffect, useState } from "react"
 import * as z from "zod"
 
+const emailSchema = z.email({
+  error: "Enter a valid email address.",
+})
+
 const emailStepSchema = z.object({
-  email: z.email({
-    error: "Enter a valid email address.",
-  }),
+  email: emailSchema,
   otp: z.string(),
 })
 
-const otpStepSchema = z.object({
-  email: z.email({
-    error: "Enter a valid email address.",
-  }),
+const otpStepSchema = emailStepSchema.extend({
   otp: z.string().regex(/^\d{6}$/, {
     error: "Enter a six-digit code.",
   }),
@@ -41,22 +40,15 @@ export const Route = createFileRoute("/login")({
   validateSearch: z.object({
     redirect: z
       .string()
-      .refine((value) => {
-        try {
-          const url = new URL(value, window.location.origin)
-          return (
-            value.startsWith("/") &&
-            !value.startsWith("//") &&
-            url.origin === window.location.origin &&
-            (url.pathname === "/app" || url.pathname.startsWith("/app/"))
-          )
-        } catch {
-          return false
-        }
-      })
+      .regex(/^\/app(?:\/|[?#]|$)/)
       .optional()
       .catch(undefined),
+
+    otpId: z.string().optional().catch(undefined),
+
+    email: emailSchema.optional().catch(undefined),
   }),
+
   component: RouteComponent,
 })
 
@@ -71,43 +63,36 @@ function RouteComponent() {
 }
 
 function LoginForm({ className, ...props }: React.ComponentProps<"div">) {
-  const navigate = useNavigate()
-  const queryClient = useQueryClient()
-  const { redirect } = Route.useSearch()
+  const navigate = Route.useNavigate()
+  const router = useRouter()
+
+  const { redirect, otpId, email: searchEmail } = Route.useSearch()
+
   const getOtpMutation = useGetOtp()
   const loginMutation = useLogin()
-  const [isOtpStep, setIsOtpStep] = useState(false)
-  const [otpId, setOtpId] = useState<string | null>(null)
+
   const [resendDelay, setResendDelay] = useState(0)
+
+  const isOtpStep = Boolean(otpId)
+
   const form = useForm({
     defaultValues: {
-      email: "",
+      email: searchEmail ?? "",
       otp: "",
     },
+
     validators: {
       onSubmit: isOtpStep ? otpStepSchema : emailStepSchema,
     },
-    onSubmit: async ({ value }) => {
-      if (!isOtpStep) {
-        let response
 
+    onSubmit: async ({ value }) => {
+      if (!otpId) {
         try {
-          response = await getOtpMutation.mutateAsync({ email: value.email })
+          await sendOtp(value.email)
         } catch {
           return
         }
 
-        setOtpId(response.data.id)
-        form.setFieldValue("otp", "")
-        setResendDelay(60)
-        setIsOtpStep(true)
-        return
-      }
-
-      if (!otpId) {
-        form.setFieldValue("otp", "")
-        setIsOtpStep(false)
-        setResendDelay(0)
         return
       }
 
@@ -121,45 +106,69 @@ function LoginForm({ className, ...props }: React.ComponentProps<"div">) {
         return
       }
 
-      queryClient.removeQueries({ queryKey: ["ME"] })
-      await navigate({ to: redirect ?? DEFAULT_AUTH_REDIRECT, replace: true })
+      if (redirect) {
+        router.history.replace(redirect)
+        return
+      }
+
+      await navigate({
+        to: DEFAULT_AUTH_REDIRECT,
+        replace: true,
+      })
     },
   })
+
+  async function sendOtp(email: string) {
+    const response = await getOtpMutation.mutateAsync({
+      email,
+    })
+
+    form.setFieldValue("otp", "")
+    setResendDelay(60)
+
+    await navigate({
+      search: (prev) => ({
+        ...prev,
+        email,
+        otpId: response.data.id,
+      }),
+      replace: true,
+    })
+  }
 
   useEffect(() => {
     if (!isOtpStep || resendDelay <= 0) return
 
-    const timer = window.setTimeout(
-      () => setResendDelay((seconds) => Math.max(0, seconds - 1)),
-      1000
-    )
+    const timer = window.setTimeout(() => {
+      setResendDelay((seconds) => Math.max(0, seconds - 1))
+    }, 1000)
 
     return () => window.clearTimeout(timer)
   }, [isOtpStep, resendDelay])
 
   const resendOtp = async () => {
-    let response
-
     try {
-      response = await getOtpMutation.mutateAsync({
-        email: form.state.values.email,
-      })
+      await sendOtp(form.state.values.email)
     } catch {
       return
     }
-
-    setOtpId(response.data.id)
-    form.setFieldValue("otp", "")
-    setResendDelay(60)
   }
 
   const returnToEmail = () => {
-    setOtpId(null)
     setResendDelay(0)
+
     form.setFieldValue("otp", "")
+
     getOtpMutation.reset()
     loginMutation.reset()
-    setIsOtpStep(false)
+
+    void navigate({
+      search: (prev) => ({
+        ...prev,
+        otpId: undefined,
+      }),
+      replace: true,
+    })
   }
 
   const isPending = getOtpMutation.isPending || loginMutation.isPending
@@ -177,10 +186,12 @@ function LoginForm({ className, ...props }: React.ComponentProps<"div">) {
         <FieldGroup>
           <div className="flex flex-col items-center gap-2 text-center">
             <img className="h-12" src="/logo-ogilvy-b.svg" alt="ogilvy logo" />
+
             <FieldDescription>
               Please sign in to your account to continue
             </FieldDescription>
           </div>
+
           {isOtpStep ? (
             <form.Field
               name="otp"
@@ -191,6 +202,7 @@ function LoginForm({ className, ...props }: React.ComponentProps<"div">) {
                 return (
                   <Field data-invalid={isInvalid}>
                     <FieldLabel htmlFor="otp">One-time passcode</FieldLabel>
+
                     <InputOTP
                       id="otp"
                       name={field.name}
@@ -213,10 +225,12 @@ function LoginForm({ className, ...props }: React.ComponentProps<"div">) {
                         <InputOTPSlot index={5} />
                       </InputOTPGroup>
                     </InputOTP>
+
                     <FieldDescription>
                       Please enter the one-time passcode sent to{" "}
                       {form.state.values.email}
                     </FieldDescription>
+
                     {isInvalid && (
                       <FieldError errors={field.state.meta.errors} />
                     )}
@@ -234,6 +248,7 @@ function LoginForm({ className, ...props }: React.ComponentProps<"div">) {
                 return (
                   <Field data-invalid={isInvalid}>
                     <FieldLabel htmlFor="email">Email</FieldLabel>
+
                     <Input
                       id="email"
                       name={field.name}
@@ -247,6 +262,7 @@ function LoginForm({ className, ...props }: React.ComponentProps<"div">) {
                       }
                       aria-invalid={isInvalid}
                     />
+
                     {isInvalid && (
                       <FieldError errors={field.state.meta.errors} />
                     )}
@@ -255,16 +271,26 @@ function LoginForm({ className, ...props }: React.ComponentProps<"div">) {
               }}
             />
           )}
+
           <Field>
             <Button type="submit" disabled={isPending}>
-              {loginMutation.isPending
-                ? "Verifying..."
-                : getOtpMutation.isPending && !isOtpStep
-                  ? "Sending code..."
-                  : isOtpStep
-                    ? "Verify code"
-                    : "Login"}
+              {loginMutation.isPending ? (
+                <>
+                  <Spinner />
+                  Verifying...
+                </>
+              ) : getOtpMutation.isPending && !isOtpStep ? (
+                <>
+                  <Spinner />
+                  Sending code...
+                </>
+              ) : isOtpStep ? (
+                "Verify code"
+              ) : (
+                "Login"
+              )}
             </Button>
+
             {isOtpStep && (
               <Button
                 type="button"
@@ -272,11 +298,16 @@ function LoginForm({ className, ...props }: React.ComponentProps<"div">) {
                 disabled={resendDelay > 0 || isPending}
                 onClick={() => void resendOtp()}
               >
-                {getOtpMutation.isPending
-                  ? "Resending..."
-                  : resendDelay > 0
-                    ? `Resend code in ${resendDelay}s`
-                    : "Resend code"}
+                {getOtpMutation.isPending ? (
+                  <>
+                    <Spinner />
+                    Resending...
+                  </>
+                ) : resendDelay > 0 ? (
+                  `Resend code in ${resendDelay}s`
+                ) : (
+                  "Resend code"
+                )}
               </Button>
             )}
           </Field>
@@ -298,6 +329,7 @@ function LoginForm({ className, ...props }: React.ComponentProps<"div">) {
           )}
         </FieldGroup>
       </form>
+
       <FieldDescription className="px-6 text-center">
         By clicking continue, you agree to our&nbsp;
         <Link to="/terms-and-conditions" target="_blank">
