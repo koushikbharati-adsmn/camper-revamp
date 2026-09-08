@@ -55,6 +55,7 @@ import {
   XIcon,
 } from "lucide-react"
 import { useEffect, useRef, useState } from "react"
+import { COACH_PRESET_AVATARS } from "@/lib/constants"
 
 export const Route = createFileRoute("/_authenticated/workshops/new")({
   loader: ({ context }) =>
@@ -118,16 +119,6 @@ const steps = [
   { title: "Walkthrough", description: "Guide participants through the flow" },
   { title: "Coaches", description: "Configure workshop coaches" },
 ]
-
-const presetAvatars = [
-  "https://storage.googleapis.com/dev-ogilvy-base-camp-storage/global-coach/listener.png",
-  "https://storage.googleapis.com/dev-ogilvy-base-camp-storage/global-coach/provocateur.png",
-  "https://storage.googleapis.com/dev-ogilvy-base-camp-storage/global-coach/sharpener.png",
-  "https://storage.googleapis.com/dev-ogilvy-base-camp-storage/global-coach/tastemaker.png",
-]
-
-const inputClassName = "h-11 text-base sm:h-10 sm:text-sm md:text-sm"
-const textareaClassName = "min-h-28 resize-y text-base sm:text-sm md:text-sm"
 
 const workshopFieldSteps: Partial<Record<keyof Workshop, number>> = {
   title: 0,
@@ -849,7 +840,6 @@ function IdentityStep({
                 errors.title ? "workshop-title-error" : undefined
               }
               data-error-control
-              className={inputClassName}
             />
             {errors.title && (
               <FieldError id="workshop-title-error">{errors.title}</FieldError>
@@ -868,7 +858,6 @@ function IdentityStep({
             >
               <SelectTrigger
                 id="workshop-assignee"
-                className={cn("w-full", inputClassName)}
                 aria-invalid={!!errors.assignee}
                 aria-required="true"
                 aria-describedby={
@@ -906,7 +895,6 @@ function IdentityStep({
                 errors.brand ? "workshop-brand-error" : undefined
               }
               data-error-control
-              className={inputClassName}
             />
             {errors.brand && (
               <FieldError id="workshop-brand-error">{errors.brand}</FieldError>
@@ -926,7 +914,6 @@ function IdentityStep({
                 errors.subtitle ? "workshop-subtitle-error" : undefined
               }
               data-error-control
-              className={inputClassName}
             />
             {errors.subtitle && (
               <FieldError id="workshop-subtitle-error">
@@ -957,7 +944,7 @@ function IdentityStep({
                 errors.context ? "workshop-context-error" : undefined
               }
               data-error-control
-              className={textareaClassName}
+              className="min-h-28 resize-none text-base sm:text-sm md:text-sm"
             />
             {errors.context && (
               <FieldError id="workshop-context-error">
@@ -981,7 +968,7 @@ function IdentityStep({
                 errors.guidelines ? "workshop-guidelines-error" : undefined
               }
               data-error-control
-              className={textareaClassName}
+              className="min-h-28 resize-none text-base sm:text-sm md:text-sm"
             />
             {errors.guidelines && (
               <FieldError id="workshop-guidelines-error">
@@ -1451,7 +1438,6 @@ function PillarsStep({
                           : undefined
                       }
                       data-error-control
-                      className={inputClassName}
                     />
                     {errors[titleKey] && (
                       <FieldError id={`${pillar.id}-title-error`}>
@@ -1481,7 +1467,7 @@ function PillarsStep({
                           : undefined
                       }
                       data-error-control
-                      className={textareaClassName}
+                      className="min-h-28 resize-none text-base sm:text-sm md:text-sm"
                     />
                     {errors[contextKey] && (
                       <FieldError id={`${pillar.id}-context-error`}>
@@ -1684,7 +1670,6 @@ function TeamsStep({
                         errors[nameKey] ? `${team.id}-name-error` : undefined
                       }
                       data-error-control
-                      className={inputClassName}
                     />
                     {errors[nameKey] && (
                       <FieldError id={`${team.id}-name-error`}>
@@ -1734,7 +1719,7 @@ function TeamsStep({
                           : undefined
                       }
                       data-error-control
-                      className={textareaClassName}
+                      className="min-h-28 resize-none text-base sm:text-sm md:text-sm"
                     />
                     {errors[descriptionKey] && (
                       <FieldError id={`${team.id}-description-error`}>
@@ -1941,7 +1926,6 @@ function WalkthroughStep({
                           : undefined
                       }
                       data-error-control
-                      className={inputClassName}
                     />
                     {errors[titleKey] && (
                       <FieldError id={`${message.id}-title-error`}>
@@ -1972,7 +1956,7 @@ function WalkthroughStep({
                           : undefined
                       }
                       data-error-control
-                      className={textareaClassName}
+                      className="min-h-28 resize-none text-base sm:text-sm md:text-sm"
                     />
                     {errors[descriptionKey] && (
                       <FieldError id={`${message.id}-description-error`}>
@@ -2124,7 +2108,6 @@ function CoachesStep({
                       errors[nameKey] ? `${coach.id}-name-error` : undefined
                     }
                     data-error-control
-                    className={inputClassName}
                   />
                   {errors[nameKey] && (
                     <FieldError id={`${coach.id}-name-error`}>
@@ -2157,7 +2140,6 @@ function CoachesStep({
                       errors[titleKey] ? `${coach.id}-title-error` : undefined
                     }
                     data-error-control
-                    className={inputClassName}
                   />
                   {errors[titleKey] && (
                     <FieldError id={`${coach.id}-title-error`}>
@@ -2194,7 +2176,7 @@ function CoachesStep({
                         : undefined
                     }
                     data-error-control
-                    className={textareaClassName}
+                    className="min-h-28 resize-none text-base sm:text-sm md:text-sm"
                   />
                   {errors[descriptionKey] && (
                     <FieldError id={`${coach.id}-description-error`}>
@@ -2208,7 +2190,7 @@ function CoachesStep({
                     Choose avatar
                   </legend>
                   <div className="flex flex-wrap gap-2">
-                    {presetAvatars.map((avatar, avatarIndex) => (
+                    {COACH_PRESET_AVATARS.map((avatar, avatarIndex) => (
                       <button
                         type="button"
                         key={avatar}
