@@ -37,6 +37,7 @@ import {
 } from "@/components/ui/popover"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { cn, getInitials } from "@/lib/utils"
+import { getCoachesOptions } from "@/services/coaches"
 import { getUsersOptions, type User } from "@/services/users"
 import { useSuspenseQuery } from "@tanstack/react-query"
 import { createFileRoute, Link } from "@tanstack/react-router"
@@ -57,9 +58,12 @@ import { useEffect, useRef, useState } from "react"
 
 export const Route = createFileRoute("/_authenticated/workshops/new")({
   loader: ({ context }) =>
-    context.queryClient.query(
-      getUsersOptions({ is_active: true, role: "Admin" })
-    ),
+    Promise.all([
+      context.queryClient.query(
+        getUsersOptions({ is_active: true, role: "Admin" })
+      ),
+      context.queryClient.query(getCoachesOptions()),
+    ]),
   component: RouteComponent,
 })
 
@@ -115,7 +119,7 @@ const steps = [
   { title: "Coaches", description: "Configure workshop coaches" },
 ]
 
-const dummyAvatars = [
+const presetAvatars = [
   "https://i.pravatar.cc/160?img=12",
   "https://i.pravatar.cc/160?img=32",
   "https://i.pravatar.cc/160?img=47",
@@ -171,33 +175,7 @@ const initialWorkshop: Workshop = {
     { id: "walkthrough-initial", title: "", description: "" },
   ],
   usePasscode: false,
-  coaches: [
-    {
-      name: "Maya",
-      title: "Lead facilitator",
-      description: "Guides the group and keeps the workshop moving forward.",
-    },
-    {
-      name: "Chris",
-      title: "Creative strategist",
-      description: "Helps teams turn insights into focused creative ideas.",
-    },
-    {
-      name: "Robin",
-      title: "Workshop producer",
-      description: "Supports the session flow and coordinates team activities.",
-    },
-    {
-      name: "Taylor",
-      title: "Team coach",
-      description: "Challenges assumptions and helps teams refine their work.",
-    },
-  ].map((coach, index) => ({
-    ...coach,
-    id: `coach-${index + 1}`,
-    avatar: dummyAvatars[index],
-    enabled: true,
-  })),
+  coaches: [],
 }
 
 function getStepErrors(step: number, workshop: Workshop) {
@@ -322,7 +300,23 @@ function RouteComponent() {
     ...getUsersOptions({ is_active: true, role: "Admin" }),
     select: (data) => data.data,
   })
-  const [workshop, setWorkshop] = useState(initialWorkshop)
+  const { data: coaches } = useSuspenseQuery({
+    ...getCoachesOptions(),
+    select: (data) => data.data,
+  })
+  const [workshop, setWorkshop] = useState<Workshop>(() => ({
+    ...initialWorkshop,
+    coaches: coaches
+      .filter((coach) => coach.IsActive)
+      .map((coach, index) => ({
+        id: coach.ID,
+        name: coach.CoachName,
+        title: coach.CoachTitle,
+        description: coach.CoachDescription,
+        avatar: presetAvatars[index % presetAvatars.length],
+        enabled: true,
+      })),
+  }))
   const [activeStep, setActiveStep] = useState(0)
   const [highestReached, setHighestReached] = useState(0)
   const [completedSteps, setCompletedSteps] = useState<number[]>([])
@@ -2214,7 +2208,7 @@ function CoachesStep({
                     Choose avatar
                   </legend>
                   <div className="flex flex-wrap gap-2">
-                    {dummyAvatars.map((avatar, avatarIndex) => (
+                    {presetAvatars.map((avatar, avatarIndex) => (
                       <button
                         type="button"
                         key={avatar}
