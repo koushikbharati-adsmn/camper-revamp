@@ -328,7 +328,7 @@ function UsersTable({
           <TableHead>User</TableHead>
           <TableHead>Role</TableHead>
           <TableHead>Status</TableHead>
-          <TableHead className="hidden lg:table-cell">Created At</TableHead>
+          <TableHead className="hidden lg:table-cell">Created</TableHead>
           <TableHead className="w-12">
             <span className="sr-only">Actions</span>
           </TableHead>
@@ -565,11 +565,11 @@ function UserEditorDialog({
         if (!saveUserMutation.isPending) onOpenChange(nextOpen)
       }}
     >
-      <DialogContent className="max-h-[calc(100svh-2rem)] overflow-hidden sm:max-w-md">
+      <DialogContent className="sm:max-w-md">
         <form
           noValidate
           aria-busy={saveUserMutation.isPending}
-          className="flex min-h-0 flex-1 flex-col"
+          className="space-y-4"
           onSubmit={(event) => {
             event.preventDefault()
             void form.handleSubmit()
@@ -584,7 +584,7 @@ function UserEditorDialog({
             </DialogDescription>
           </DialogHeader>
 
-          <FieldGroup className="min-h-0 flex-1 overflow-y-auto p-4">
+          <FieldGroup className="min-h-0 flex-1 overflow-y-auto">
             <form.Field
               name="name"
               children={(field) => {

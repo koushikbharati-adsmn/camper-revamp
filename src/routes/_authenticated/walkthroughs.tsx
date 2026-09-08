@@ -66,8 +66,8 @@ import {
 } from "@tanstack/react-router"
 import { format } from "date-fns"
 import {
-  BadgeInfoIcon,
   GripVerticalIcon,
+  InfoIcon,
   ListOrderedIcon,
   PencilIcon,
   PlusIcon,
@@ -145,7 +145,7 @@ function RouteComponent() {
             id="walkthrough-reorder-instructions"
             className="mb-4 flex items-start gap-2 bg-muted/40 px-3 py-2 text-xs text-muted-foreground"
           >
-            <BadgeInfoIcon className="mt-0.5 size-3.5 shrink-0" />
+            <InfoIcon className="mt-0.5 size-3.5 shrink-0" />
             <span>
               Drag walkthroughs to change their display order. Keyboard users
               can press Space, then use the arrow keys.
@@ -298,7 +298,7 @@ function SortableWalkthroughCard({
               </h2>
               <StatusBadge isActive={walkthrough.IsActive} />
             </div>
-            <p className="mt-1 line-clamp-2 text-sm text-muted-foreground">
+            <p className="mt-1 line-clamp-2 text-sm/relaxed text-muted-foreground">
               {walkthrough.Description}
             </p>
             <p className="mt-2 text-xs text-muted-foreground">
@@ -417,11 +417,11 @@ function WalkthroughEditorDialog({
         if (!saveMutation.isPending) onOpenChange(nextOpen)
       }}
     >
-      <DialogContent className="max-h-[calc(100svh-2rem)] overflow-hidden sm:max-w-lg">
+      <DialogContent className="sm:max-w-lg">
         <form
           noValidate
           aria-busy={saveMutation.isPending}
-          className="flex min-h-0 flex-col gap-4"
+          className="space-y-4"
           onSubmit={(event) => {
             event.preventDefault()
             void form.handleSubmit()
@@ -436,7 +436,7 @@ function WalkthroughEditorDialog({
             </DialogDescription>
           </DialogHeader>
 
-          <FieldGroup className="min-h-0 overflow-y-auto pr-1">
+          <FieldGroup>
             <form.Field
               name="title"
               children={(field) => {
@@ -487,7 +487,7 @@ function WalkthroughEditorDialog({
                         field.handleChange(event.target.value)
                       }
                       placeholder="Explain what participants should do next."
-                      className="min-h-28 resize-y"
+                      className="h-28 resize-none"
                       aria-invalid={isInvalid}
                     />
                     {isInvalid && (

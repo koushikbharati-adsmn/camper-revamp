@@ -252,7 +252,7 @@ function CoachAvatar({
   return (
     <Avatar className={className}>
       <AvatarImage
-        src={coach.AvatarFileName + `?${Date.now()}&${coach.ID}`}
+        src={coach.AvatarFileName + `?${crypto.randomUUID()}`}
         alt={`${coach.CoachName} avatar`}
       />
       <AvatarFallback>{getInitials(coach.CoachName, "C")}</AvatarFallback>
@@ -331,7 +331,7 @@ function CoachEditorDialog({
         <form
           noValidate
           aria-busy={saveCoachMutation.isPending}
-          className="flex min-h-0 flex-1 flex-col"
+          className="space-y-4"
           onSubmit={(event) => {
             event.preventDefault()
             void form.handleSubmit()
@@ -346,7 +346,7 @@ function CoachEditorDialog({
             </DialogDescription>
           </DialogHeader>
 
-          <FieldGroup className="min-h-0 flex-1 overflow-y-auto p-4">
+          <FieldGroup>
             <form.Field
               name="name"
               children={(field) => {
@@ -578,11 +578,11 @@ function CoachPromptDialog({
         if (!saveCoachMutation.isPending) onOpenChange(nextOpen)
       }}
     >
-      <DialogContent className="overflow-hidden sm:max-w-2xl">
+      <DialogContent className="sm:max-w-2xl">
         <form
           noValidate
           aria-busy={saveCoachMutation.isPending}
-          className="flex min-h-0 flex-1 flex-col"
+          className="space-y-4"
           onSubmit={(event) => {
             event.preventDefault()
             void form.handleSubmit()
@@ -596,7 +596,7 @@ function CoachPromptDialog({
             </DialogDescription>
           </DialogHeader>
 
-          <FieldGroup className="min-h-0 flex-1 overflow-y-auto p-4">
+          <FieldGroup>
             <form.Field
               name="prompt"
               children={(field) => {
@@ -605,7 +605,9 @@ function CoachPromptDialog({
 
                 return (
                   <Field data-invalid={isInvalid}>
-                    <FieldLabel htmlFor="coach-prompt">Prompt</FieldLabel>
+                    <FieldLabel htmlFor="coach-prompt">
+                      System Prompt
+                    </FieldLabel>
                     <Textarea
                       id="coach-prompt"
                       name={field.name}
@@ -616,7 +618,7 @@ function CoachPromptDialog({
                         field.handleChange(event.target.value)
                       }
                       placeholder="Define how this coach should guide participants."
-                      className="h-96 resize-none"
+                      className="h-80 resize-none"
                       aria-invalid={isInvalid}
                     />
                     {isInvalid && (
