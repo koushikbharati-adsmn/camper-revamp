@@ -776,8 +776,8 @@ function DeleteUserDialog({
         description: response.message,
       })
       onOpenChange(false)
-    } catch {
-      return
+    } finally {
+      onOpenChange(false)
     }
   }
 

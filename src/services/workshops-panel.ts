@@ -117,3 +117,37 @@ export const useDuplicateWorkshop = () => {
     },
   })
 }
+
+interface DeleteWorkshopPayload {
+  id: string
+}
+
+const deleteWorkshop = async (payload: DeleteWorkshopPayload) => {
+  const res = await apiClient.delete<{
+    success: boolean
+    message: string
+  }>(`/admin/workshop/delete/${payload.id}`)
+
+  if (!res.data.success) throw new Error(res.data.message)
+
+  return res.data
+}
+
+export const useDeleteWorkshop = () => {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (payload: DeleteWorkshopPayload) => deleteWorkshop(payload),
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: ["WORKSHOPS"],
+      })
+    },
+    onError: (error) => {
+      toast.add({
+        type: "error",
+        title: "Oops! Something went wrong",
+        description: error.message,
+      })
+    },
+  })
+}

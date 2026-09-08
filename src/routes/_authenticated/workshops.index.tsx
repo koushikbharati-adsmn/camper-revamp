@@ -47,6 +47,7 @@ import {
   type WorkshopList,
   type WorkshopStatus,
   getWorkshopsOptions,
+  useDeleteWorkshop,
   useDuplicateWorkshop,
   useResetWorkshop,
 } from "@/services/workshops-panel"
@@ -173,6 +174,7 @@ function RouteComponent() {
                 setActionTarget({ action: "duplicate", workshop })
               }
               onReset={() => setActionTarget({ action: "reset", workshop })}
+              onDelete={() => setActionTarget({ action: "delete", workshop })}
             />
           ))}
         </div>
@@ -212,10 +214,12 @@ function WorkshopCard({
   workshop,
   onDuplicate,
   onReset,
+  onDelete,
 }: {
   workshop: WorkshopList
   onDuplicate: () => void
   onReset: () => void
+  onDelete: () => void
 }) {
   const status = getDisplayStatus(workshop.status, workshop.isPromptGen)
 
@@ -265,7 +269,7 @@ function WorkshopCard({
                 Reset Workshop
               </DropdownMenuItem>
               <DropdownMenuSeparator />
-              <DropdownMenuItem variant="destructive">
+              <DropdownMenuItem variant="destructive" onClick={onDelete}>
                 <TrashIcon />
                 Delete Workshop
               </DropdownMenuItem>
@@ -300,7 +304,7 @@ function WorkshopCard({
 }
 
 type WorkshopActionTarget = {
-  action: "duplicate" | "reset"
+  action: "duplicate" | "reset" | "delete"
   workshop: WorkshopList
 }
 
@@ -313,9 +317,14 @@ function WorkshopActionDialog({
 }) {
   const resetWorkshopMutation = useResetWorkshop()
   const duplicateWorkshopMutation = useDuplicateWorkshop()
+  const deleteWorkshopMutation = useDeleteWorkshop()
   const isReset = target?.action === "reset"
+  const isDelete = target?.action === "delete"
+  const isDuplicate = target?.action === "duplicate"
   const isPending =
-    resetWorkshopMutation.isPending || duplicateWorkshopMutation.isPending
+    resetWorkshopMutation.isPending ||
+    duplicateWorkshopMutation.isPending ||
+    deleteWorkshopMutation.isPending
 
   const confirmAction = async () => {
     if (!target) return
@@ -326,20 +335,28 @@ function WorkshopActionDialog({
           ? await resetWorkshopMutation.mutateAsync({
               id: target.workshop.ID,
             })
-          : await duplicateWorkshopMutation.mutateAsync({
-              workshop_id: target.workshop.ID,
-              workshop_code: target.workshop.WorkshopCode,
-            })
+          : target.action === "duplicate"
+            ? await duplicateWorkshopMutation.mutateAsync({
+                workshop_id: target.workshop.ID,
+                workshop_code: target.workshop.WorkshopCode,
+              })
+            : await deleteWorkshopMutation.mutateAsync({
+                id: target.workshop.ID,
+              })
 
       toast.add({
         type: "success",
         title:
-          target.action === "reset" ? "Workshop reset" : "Workshop duplicated",
+          target.action === "reset"
+            ? "Workshop reset"
+            : target.action === "duplicate"
+              ? "Workshop duplicated"
+              : "Workshop deleted",
         description: response.message,
       })
       onOpenChange(false)
-    } catch {
-      return
+    } finally {
+      onOpenChange(false)
     }
   }
 
@@ -353,27 +370,32 @@ function WorkshopActionDialog({
       <AlertDialogContent>
         <AlertDialogHeader>
           <AlertDialogMedia
-            className={isReset ? "text-destructive" : undefined}
+            className={isDuplicate ? undefined : "text-destructive"}
           >
             {isReset ? (
               <RotateCcwIcon className="size-5" />
+            ) : isDelete ? (
+              <TrashIcon className="size-5" />
             ) : (
               <CopyIcon className="size-5" />
             )}
           </AlertDialogMedia>
           <AlertDialogTitle>
-            {isReset ? "Reset" : "Duplicate"} {target?.workshop.Name}?
+            {isReset ? "Reset" : isDelete ? "Delete" : "Duplicate"}{" "}
+            {target?.workshop.Name}?
           </AlertDialogTitle>
           <AlertDialogDescription>
             {isReset
               ? `This will return ${target?.workshop.Name} to its initial state. Confirm that you want to continue.`
-              : `This will create a new workshop using ${target?.workshop.Name} as its source. Confirm that you want to continue.`}
+              : isDelete
+                ? `This will permanently delete ${target?.workshop.Name}. This action cannot be undone.`
+                : `This will create a new workshop using ${target?.workshop.Name} as its source. Confirm that you want to continue.`}
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
           <AlertDialogCancel disabled={isPending}>Cancel</AlertDialogCancel>
           <AlertDialogAction
-            variant="destructive"
+            variant={isDuplicate ? "default" : "destructive"}
             disabled={!target || isPending}
             onClick={() => void confirmAction()}
           >
@@ -381,10 +403,14 @@ function WorkshopActionDialog({
             {isPending
               ? isReset
                 ? "Resetting..."
-                : "Duplicating..."
+                : isDelete
+                  ? "Deleting..."
+                  : "Duplicating..."
               : isReset
                 ? "Reset workshop"
-                : "Duplicate workshop"}
+                : isDelete
+                  ? "Delete workshop"
+                  : "Duplicate workshop"}
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>
