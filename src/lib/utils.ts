@@ -28,3 +28,27 @@ export const getRolesLabel = (role: UserRole) => {
       return "User"
   }
 }
+
+export async function urlToFile(
+  url: string | null,
+  fileName?: string
+): Promise<File | null> {
+  if (!url) return null
+
+  const response = await fetch(url)
+
+  if (!response.ok) {
+    throw new Error(
+      `Failed to fetch file: ${response.status} ${response.statusText}`
+    )
+  }
+
+  const blob = await response.blob()
+
+  const finalFileName =
+    fileName || url.split("/").pop()?.split("?")[0] || "file"
+
+  return new File([blob], finalFileName, {
+    type: blob.type || "application/octet-stream",
+  })
+}
