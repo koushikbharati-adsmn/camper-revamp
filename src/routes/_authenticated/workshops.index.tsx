@@ -137,10 +137,6 @@ function RouteComponent() {
             </SelectGroup>
           </SelectContent>
         </Select>
-        <Button render={<Link to="/workshops/new" />}>
-          <PlusIcon />
-          New Workshop
-        </Button>
       </section>
 
       {response.data.length === 0 ? (
@@ -163,11 +159,20 @@ function RouteComponent() {
 
 function WorkshopsHeader() {
   return (
-    <header className="mb-6">
-      <h1 className="text-2xl font-bold">Workshops</h1>
-      <p className="text-sm text-muted-foreground">
-        View, Create & Assign Workshops and Create New Administrators
-      </p>
+    <header className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+      <div>
+        <h1 className="text-2xl font-bold">Workshops</h1>
+        <p className="text-sm text-muted-foreground">
+          View, Create & Assign Workshops and Create New Administrators
+        </p>
+      </div>
+      <Button
+        render={<Link to="/workshops/new" />}
+        className="w-full sm:w-auto"
+      >
+        <PlusIcon />
+        New Workshop
+      </Button>
     </header>
   )
 }

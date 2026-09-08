@@ -44,7 +44,9 @@ import { Input } from "@/components/ui/input"
 import {
   Select,
   SelectContent,
+  SelectGroup,
   SelectItem,
+  SelectLabel,
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
@@ -60,7 +62,7 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { toast } from "@/components/ui/toast"
-import { getInitials } from "@/lib/utils"
+import { getInitials, getRolesLabel } from "@/lib/utils"
 import {
   getUsersOptions,
   type User,
@@ -87,6 +89,11 @@ import {
 } from "lucide-react"
 import { useDeferredValue, useState } from "react"
 import * as z from "zod"
+import {
+  USER_ROLES,
+  USER_ROLES_FILTER,
+  USER_STATUS_FILTER,
+} from "@/lib/constants"
 
 const roleFilterSchema = z.enum(["all", "Admin", "SuperAdmin"])
 const statusFilterSchema = z.enum(["all", "active", "inactive"])
@@ -97,18 +104,6 @@ const userFormSchema = z.object({
   role: z.enum(["Admin", "SuperAdmin"]),
   isActive: z.boolean(),
 })
-
-const roleFilterItems = [
-  { label: "All roles", value: "all" },
-  { label: "Admin", value: "Admin" },
-  { label: "Super Admin", value: "SuperAdmin" },
-]
-
-const statusFilterItems = [
-  { label: "All statuses", value: "all" },
-  { label: "Active", value: "active" },
-  { label: "Inactive", value: "inactive" },
-]
 
 export const Route = createFileRoute("/_authenticated/users")({
   validateSearch: z.object({
@@ -189,7 +184,7 @@ function RouteComponent() {
 
   return (
     <div>
-      <UsersHeader />
+      <UsersHeader onAdd={() => setEditor({ open: true, user: null })} />
 
       <section
         aria-label="User filters"
@@ -208,7 +203,7 @@ function RouteComponent() {
         </InputGroup>
 
         <Select
-          items={roleFilterItems}
+          items={USER_ROLES_FILTER}
           value={filters.role}
           onValueChange={updateRoleFilter}
         >
@@ -219,7 +214,7 @@ function RouteComponent() {
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            {roleFilterItems.map((item) => (
+            {USER_ROLES_FILTER.map((item) => (
               <SelectItem key={item.value} value={item.value}>
                 {item.label}
               </SelectItem>
@@ -228,7 +223,7 @@ function RouteComponent() {
         </Select>
 
         <Select
-          items={statusFilterItems}
+          items={USER_STATUS_FILTER}
           value={filters.status}
           onValueChange={updateStatusFilter}
         >
@@ -239,20 +234,13 @@ function RouteComponent() {
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            {statusFilterItems.map((item) => (
+            {USER_STATUS_FILTER.map((item) => (
               <SelectItem key={item.value} value={item.value}>
                 {item.label}
               </SelectItem>
             ))}
           </SelectContent>
         </Select>
-
-        <Button
-          onClick={() => setEditor({ open: true, user: null })}
-          className="w-full sm:w-auto"
-        >
-          <PlusIcon /> Add user
-        </Button>
       </section>
 
       {filteredUsers.length ? (
@@ -304,13 +292,20 @@ function RouteComponent() {
   )
 }
 
-function UsersHeader() {
+function UsersHeader({ onAdd }: { onAdd?: () => void }) {
   return (
-    <header className="mb-6">
-      <h1 className="text-2xl font-bold">Users</h1>
-      <p className="text-sm text-muted-foreground">
-        Manage account access, roles, and status.
-      </p>
+    <header className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+      <div>
+        <h1 className="text-2xl font-bold">Users</h1>
+        <p className="text-sm text-muted-foreground">
+          Manage account access, roles, and status.
+        </p>
+      </div>
+      {onAdd && (
+        <Button onClick={onAdd} className="w-full sm:w-auto">
+          <PlusIcon /> Add user
+        </Button>
+      )}
     </header>
   )
 }
@@ -333,7 +328,7 @@ function UsersTable({
           <TableHead>User</TableHead>
           <TableHead>Role</TableHead>
           <TableHead>Status</TableHead>
-          <TableHead className="hidden lg:table-cell">Created</TableHead>
+          <TableHead className="hidden lg:table-cell">Created At</TableHead>
           <TableHead className="w-12">
             <span className="sr-only">Actions</span>
           </TableHead>
@@ -435,7 +430,7 @@ function UserIdentity({
 function RoleBadge({ role }: { role: UserRole }) {
   return (
     <Badge variant={role === "SuperAdmin" ? "default" : "secondary"}>
-      {role === "SuperAdmin" ? "Super Admin" : "Admin"}
+      {getRolesLabel(role)}
     </Badge>
   )
 }
@@ -570,7 +565,7 @@ function UserEditorDialog({
         if (!saveUserMutation.isPending) onOpenChange(nextOpen)
       }}
     >
-      <DialogContent className="max-h-[calc(100svh-2rem)] gap-0 overflow-hidden p-0 sm:max-w-md">
+      <DialogContent className="max-h-[calc(100svh-2rem)] overflow-hidden sm:max-w-md">
         <form
           noValidate
           aria-busy={saveUserMutation.isPending}
@@ -664,6 +659,7 @@ function UserEditorDialog({
                   >
                     <FieldLabel htmlFor="user-role">Role</FieldLabel>
                     <Select
+                      items={USER_ROLES}
                       value={field.state.value}
                       disabled={saveUserMutation.isPending || isProtectedRole}
                       onValueChange={(value) => {
@@ -680,8 +676,14 @@ function UserEditorDialog({
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="Admin">Admin</SelectItem>
-                        <SelectItem value="SuperAdmin">Super Admin</SelectItem>
+                        <SelectGroup>
+                          <SelectLabel>Roles</SelectLabel>
+                          {USER_ROLES.map((role) => (
+                            <SelectItem key={role.value} value={role.value}>
+                              {role.label}
+                            </SelectItem>
+                          ))}
+                        </SelectGroup>
                       </SelectContent>
                     </Select>
                     {isProtectedRole && (
@@ -727,7 +729,7 @@ function UserEditorDialog({
             />
           </FieldGroup>
 
-          <DialogFooter className="border-t border-border p-4">
+          <DialogFooter>
             <Button
               type="button"
               variant="outline"
@@ -835,7 +837,7 @@ function UsersEmpty({ hasSearch }: { hasSearch: boolean }) {
 
 function formatCreatedDate(value: number) {
   const date = new Date(value < 1_000_000_000_000 ? value * 1000 : value)
-  return Number.isNaN(date.getTime()) ? "Unknown" : format(date, "MMM d, yyyy")
+  return Number.isNaN(date.getTime()) ? "Unknown" : format(date, "PPPp")
 }
 
 function UsersPending() {

@@ -1,3 +1,4 @@
+import type { UserRole } from "@/services/users"
 import { clsx, type ClassValue } from "clsx"
 import { twMerge } from "tailwind-merge"
 
@@ -15,4 +16,15 @@ export function getInitials(name?: string, fallback = "U") {
   }
 
   return `${parts[0][0]}${parts[parts.length - 1][0]}`.toUpperCase()
+}
+
+export const getRolesLabel = (role: UserRole) => {
+  switch (role) {
+    case "SuperAdmin":
+      return "Super Admin"
+    case "Admin":
+      return "Admin"
+    default:
+      return "User"
+  }
 }
