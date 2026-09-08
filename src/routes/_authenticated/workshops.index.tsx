@@ -175,6 +175,7 @@ function RouteComponent() {
               }
               onReset={() => setActionTarget({ action: "reset", workshop })}
               onDelete={() => setActionTarget({ action: "delete", workshop })}
+              onCopyLink={() => copyBigscreenLink(workshop)}
             />
           ))}
         </div>
@@ -215,11 +216,13 @@ function WorkshopCard({
   onDuplicate,
   onReset,
   onDelete,
+  onCopyLink,
 }: {
   workshop: WorkshopList
   onDuplicate: () => void
   onReset: () => void
   onDelete: () => void
+  onCopyLink: () => void
 }) {
   const status = getDisplayStatus(workshop.status, workshop.isPromptGen)
 
@@ -260,7 +263,7 @@ function WorkshopCard({
                 <CopyIcon />
                 Duplicate Workshop
               </DropdownMenuItem>
-              <DropdownMenuItem>
+              <DropdownMenuItem onClick={onCopyLink}>
                 <ClipboardIcon />
                 Copy Bigscreen Link
               </DropdownMenuItem>
@@ -416,6 +419,28 @@ function WorkshopActionDialog({
       </AlertDialogContent>
     </AlertDialog>
   )
+}
+
+function getBigscreenLink(workshop: WorkshopList) {
+  return `${window.location.origin}/workshops/${workshop.ID}/big-screen`
+}
+
+const copyBigscreenLink = async (workshop: WorkshopList) => {
+  try {
+    await navigator.clipboard.writeText(getBigscreenLink(workshop))
+    toast.add({
+      type: "success",
+      title: "Bigscreen link copied",
+      description: "The link is ready to share.",
+    })
+  } catch (error) {
+    toast.add({
+      type: "error",
+      title: "Oops! Something went wrong",
+      description:
+        error instanceof Error ? error.message : "Unable to copy the link",
+    })
+  }
 }
 
 function WorkshopLogo({
