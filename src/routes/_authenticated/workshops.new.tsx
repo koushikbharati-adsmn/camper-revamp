@@ -37,6 +37,8 @@ import {
 } from "@/components/ui/popover"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { cn, getInitials } from "@/lib/utils"
+import { getUsersOptions, type User } from "@/services/users"
+import { useSuspenseQuery } from "@tanstack/react-query"
 import { createFileRoute, Link } from "@tanstack/react-router"
 import { REGEXP_ONLY_DIGITS } from "input-otp"
 import { HexColorPicker } from "react-colorful"
@@ -54,6 +56,10 @@ import {
 import { useEffect, useRef, useState } from "react"
 
 export const Route = createFileRoute("/_authenticated/workshops/new")({
+  loader: ({ context }) =>
+    context.queryClient.query(
+      getUsersOptions({ is_active: true, role: "Admin" })
+    ),
   component: RouteComponent,
 })
 
@@ -109,12 +115,6 @@ const steps = [
   { title: "Coaches", description: "Configure workshop coaches" },
 ]
 
-const dummyUsers = [
-  "Koushik Bharati",
-  "Alex Morgan",
-  "Jordan Lee",
-  "Sam Taylor",
-]
 const dummyAvatars = [
   "https://i.pravatar.cc/160?img=12",
   "https://i.pravatar.cc/160?img=32",
@@ -318,6 +318,10 @@ function getThemeTabForErrors(errors: Record<string, string>): ThemeTab {
 }
 
 function RouteComponent() {
+  const { data: users } = useSuspenseQuery({
+    ...getUsersOptions({ is_active: true, role: "Admin" }),
+    select: (data) => data.data,
+  })
   const [workshop, setWorkshop] = useState(initialWorkshop)
   const [activeStep, setActiveStep] = useState(0)
   const [highestReached, setHighestReached] = useState(0)
@@ -538,7 +542,8 @@ function RouteComponent() {
                 errors,
                 activeThemeTab,
                 setActiveThemeTab,
-                markFieldChanged
+                markFieldChanged,
+                users
               )}
             </div>
 
@@ -717,10 +722,18 @@ function renderStep(
   errors: Record<string, string>,
   activeThemeTab: ThemeTab,
   setActiveThemeTab: React.Dispatch<React.SetStateAction<ThemeTab>>,
-  markFieldChanged: (step: number, errorKey?: string | string[]) => void
+  markFieldChanged: (step: number, errorKey?: string | string[]) => void,
+  users: User[]
 ) {
   if (step === 0)
-    return <IdentityStep workshop={workshop} update={update} errors={errors} />
+    return (
+      <IdentityStep
+        workshop={workshop}
+        update={update}
+        errors={errors}
+        users={users}
+      />
+    )
   if (step === 1)
     return (
       <ThemeStep
@@ -813,10 +826,12 @@ function IdentityStep({
   workshop,
   update,
   errors,
+  users,
 }: {
   workshop: Workshop
   update: <K extends keyof Workshop>(field: K, value: Workshop[K]) => void
   errors: Record<string, string>
+  users: User[]
 }) {
   return (
     <div className="space-y-8">
@@ -852,6 +867,10 @@ function IdentityStep({
             <Select
               value={workshop.assignee}
               onValueChange={(value) => update("assignee", value ?? "")}
+              items={users.map((user) => ({
+                value: String(user.UserID),
+                label: user.Name,
+              }))}
             >
               <SelectTrigger
                 id="workshop-assignee"
@@ -866,9 +885,9 @@ function IdentityStep({
                 <SelectValue placeholder="Select an assignee" />
               </SelectTrigger>
               <SelectContent>
-                {dummyUsers.map((user) => (
-                  <SelectItem key={user} value={user}>
-                    {user}
+                {users.map((user) => (
+                  <SelectItem key={user.UserID} value={String(user.UserID)}>
+                    {user.Name}
                   </SelectItem>
                 ))}
               </SelectContent>
