@@ -1,5 +1,10 @@
+import { toast } from "@/components/ui/toast"
 import apiClient from "@/lib/api-client"
-import { queryOptions } from "@tanstack/react-query"
+import {
+  queryOptions,
+  useMutation,
+  useQueryClient,
+} from "@tanstack/react-query"
 
 export type WorkshopFilterStatus =
   "in-progress" | "not-started" | "completed" | "all"
@@ -40,5 +45,75 @@ export function getWorkshopsOptions(params: WorkshopParams) {
   return queryOptions({
     queryKey: ["WORKSHOPS", params],
     queryFn: () => getWorkshops(params),
+  })
+}
+
+interface ResetWorkshopPayload {
+  id: string
+}
+
+const resetWorkshop = async (payload: ResetWorkshopPayload) => {
+  const res = await apiClient.post<{
+    success: boolean
+    message: string
+  }>(`/admin/workshop/reset/${payload.id}`, payload)
+
+  if (!res.data.success) throw new Error(res.data.message)
+
+  return res.data
+}
+
+export const useResetWorkshop = () => {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (payload: ResetWorkshopPayload) => resetWorkshop(payload),
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: ["WORKSHOPS"],
+      })
+    },
+    onError: (error) => {
+      toast.add({
+        type: "error",
+        title: "Oops! Something went wrong",
+        description: error.message,
+      })
+    },
+  })
+}
+
+interface DuplicateWorkshopPayload {
+  workshop_id: string
+  workshop_code: string
+}
+
+const duplicateWorkshop = async (payload: DuplicateWorkshopPayload) => {
+  const res = await apiClient.post<{
+    success: boolean
+    message: string
+  }>(`/admin/duplicate`, payload)
+
+  if (!res.data.success) throw new Error(res.data.message)
+
+  return res.data
+}
+
+export const useDuplicateWorkshop = () => {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (payload: DuplicateWorkshopPayload) =>
+      duplicateWorkshop(payload),
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: ["WORKSHOPS"],
+      })
+    },
+    onError: (error) => {
+      toast.add({
+        type: "error",
+        title: "Oops! Something went wrong",
+        description: error.message,
+      })
+    },
   })
 }

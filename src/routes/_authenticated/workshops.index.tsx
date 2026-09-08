@@ -1,3 +1,14 @@
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogMedia,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import {
@@ -21,6 +32,8 @@ import {
   InputGroupInput,
 } from "@/components/ui/input-group"
 import { Skeleton } from "@/components/ui/skeleton"
+import { Spinner } from "@/components/ui/spinner"
+import { toast } from "@/components/ui/toast"
 import {
   Select,
   SelectContent,
@@ -34,6 +47,8 @@ import {
   type WorkshopList,
   type WorkshopStatus,
   getWorkshopsOptions,
+  useDuplicateWorkshop,
+  useResetWorkshop,
 } from "@/services/workshops-panel"
 import { useSuspenseQuery } from "@tanstack/react-query"
 import {
@@ -58,7 +73,6 @@ import {
 } from "lucide-react"
 import { useState } from "react"
 import * as z from "zod"
-import { Spinner } from "@/components/ui/spinner"
 
 const workshopFilterStatusSchema = z.enum([
   "all",
@@ -93,6 +107,9 @@ function RouteComponent() {
   const { status: searchStatus } = Route.useSearch()
   const { data: response } = useSuspenseQuery(
     getWorkshopsOptions({ status: searchStatus })
+  )
+  const [actionTarget, setActionTarget] = useState<WorkshopActionTarget | null>(
+    null
   )
 
   return (
@@ -149,10 +166,24 @@ function RouteComponent() {
       ) : (
         <div className="grid grid-cols-[repeat(auto-fill,minmax(min(320px,100%),1fr))] gap-4">
           {response.data.map((workshop) => (
-            <WorkshopCard key={workshop.ID} workshop={workshop} />
+            <WorkshopCard
+              key={workshop.ID}
+              workshop={workshop}
+              onDuplicate={() =>
+                setActionTarget({ action: "duplicate", workshop })
+              }
+              onReset={() => setActionTarget({ action: "reset", workshop })}
+            />
           ))}
         </div>
       )}
+
+      <WorkshopActionDialog
+        target={actionTarget}
+        onOpenChange={(open) => {
+          if (!open) setActionTarget(null)
+        }}
+      />
     </div>
   )
 }
@@ -177,7 +208,15 @@ function WorkshopsHeader() {
   )
 }
 
-function WorkshopCard({ workshop }: { workshop: WorkshopList }) {
+function WorkshopCard({
+  workshop,
+  onDuplicate,
+  onReset,
+}: {
+  workshop: WorkshopList
+  onDuplicate: () => void
+  onReset: () => void
+}) {
   const status = getDisplayStatus(workshop.status, workshop.isPromptGen)
 
   return (
@@ -213,7 +252,7 @@ function WorkshopCard({ workshop }: { workshop: WorkshopList }) {
                 <SquarePenIcon />
                 Edit Workshop
               </DropdownMenuItem>
-              <DropdownMenuItem>
+              <DropdownMenuItem onClick={onDuplicate}>
                 <CopyIcon />
                 Duplicate Workshop
               </DropdownMenuItem>
@@ -221,7 +260,7 @@ function WorkshopCard({ workshop }: { workshop: WorkshopList }) {
                 <ClipboardIcon />
                 Copy Bigscreen Link
               </DropdownMenuItem>
-              <DropdownMenuItem>
+              <DropdownMenuItem onClick={onReset}>
                 <RotateCcwIcon />
                 Reset Workshop
               </DropdownMenuItem>
@@ -257,6 +296,99 @@ function WorkshopCard({ workshop }: { workshop: WorkshopList }) {
         </ul>
       </CardContent>
     </Card>
+  )
+}
+
+type WorkshopActionTarget = {
+  action: "duplicate" | "reset"
+  workshop: WorkshopList
+}
+
+function WorkshopActionDialog({
+  target,
+  onOpenChange,
+}: {
+  target: WorkshopActionTarget | null
+  onOpenChange: (open: boolean) => void
+}) {
+  const resetWorkshopMutation = useResetWorkshop()
+  const duplicateWorkshopMutation = useDuplicateWorkshop()
+  const isReset = target?.action === "reset"
+  const isPending =
+    resetWorkshopMutation.isPending || duplicateWorkshopMutation.isPending
+
+  const confirmAction = async () => {
+    if (!target) return
+
+    try {
+      const response =
+        target.action === "reset"
+          ? await resetWorkshopMutation.mutateAsync({
+              id: target.workshop.ID,
+            })
+          : await duplicateWorkshopMutation.mutateAsync({
+              workshop_id: target.workshop.ID,
+              workshop_code: target.workshop.WorkshopCode,
+            })
+
+      toast.add({
+        type: "success",
+        title:
+          target.action === "reset" ? "Workshop reset" : "Workshop duplicated",
+        description: response.message,
+      })
+      onOpenChange(false)
+    } catch {
+      return
+    }
+  }
+
+  return (
+    <AlertDialog
+      open={Boolean(target)}
+      onOpenChange={(open) => {
+        if (!isPending) onOpenChange(open)
+      }}
+    >
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogMedia
+            className={isReset ? "text-destructive" : undefined}
+          >
+            {isReset ? (
+              <RotateCcwIcon className="size-5" />
+            ) : (
+              <CopyIcon className="size-5" />
+            )}
+          </AlertDialogMedia>
+          <AlertDialogTitle>
+            {isReset ? "Reset" : "Duplicate"} {target?.workshop.Name}?
+          </AlertDialogTitle>
+          <AlertDialogDescription>
+            {isReset
+              ? `This will return ${target?.workshop.Name} to its initial state. Confirm that you want to continue.`
+              : `This will create a new workshop using ${target?.workshop.Name} as its source. Confirm that you want to continue.`}
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel disabled={isPending}>Cancel</AlertDialogCancel>
+          <AlertDialogAction
+            variant="destructive"
+            disabled={!target || isPending}
+            onClick={() => void confirmAction()}
+          >
+            {isPending && <Spinner />}
+            {isPending
+              ? isReset
+                ? "Resetting..."
+                : "Duplicating..."
+              : isReset
+                ? "Reset workshop"
+                : "Duplicate workshop"}
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
   )
 }
 
@@ -325,7 +457,7 @@ function WorkshopsPending() {
   return (
     <div>
       <WorkshopsHeader />
-      <div className="grid grid-cols-[repeat(auto-fill,minmax(min(300px,100%),1fr))] gap-4">
+      <div className="grid grid-cols-[repeat(auto-fill,minmax(min(320px,100%),1fr))] gap-4">
         {Array.from({ length: 6 }).map((_, index) => (
           <Card key={index}>
             <CardHeader>
