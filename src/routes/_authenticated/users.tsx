@@ -575,7 +575,7 @@ function UserEditorDialog({
             void form.handleSubmit()
           }}
         >
-          <DialogHeader className="border-b border-border p-4 pr-12">
+          <DialogHeader>
             <DialogTitle>{user ? "Edit user" : "Add user"}</DialogTitle>
             <DialogDescription>
               {user
