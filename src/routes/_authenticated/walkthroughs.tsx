@@ -251,66 +251,70 @@ function SortableWalkthroughCard({
         transition,
       }}
       className={cn(
-        "relative grid grid-cols-[2rem_minmax(0,1fr)] gap-3 pb-3 last:pb-0",
+        "group/step relative grid grid-cols-[2rem_minmax(0,1fr)] gap-3 pb-3 last:pb-0",
         isDragging && "z-10"
       )}
     >
       <div className="relative flex justify-center" aria-hidden="true">
         <span
           className={cn(
-            "relative z-10 flex size-8 items-center justify-center border bg-background text-xs font-semibold text-foreground transition-colors",
+            "relative z-10 flex size-8 items-center justify-center border border-primary/30 bg-primary/5 text-xs font-semibold text-primary transition-colors group-hover/step:border-primary/60 group-hover/step:bg-primary/10",
             isDragging && "border-primary bg-primary text-primary-foreground"
           )}
         >
           {position}
         </span>
         {!isLast && (
-          <span className="absolute top-8 -bottom-3 w-px bg-border" />
+          <span className="absolute top-8 -bottom-3 w-px bg-primary/20" />
         )}
       </div>
 
       <Card
         size="sm"
         className={cn(
-          "border-l-2 border-l-transparent py-0 transition-[background-color,box-shadow,border-color]",
+          "py-0 transition-[background-color,box-shadow] hover:shadow-sm hover:ring-foreground/20",
           !walkthrough.IsActive && "bg-muted/20",
-          isDragging &&
-            "border-l-primary bg-card opacity-90 shadow-lg ring-primary/40"
+          isDragging && "bg-card opacity-90 shadow-lg ring-primary/40"
         )}
       >
-        <div className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-start gap-3 p-3 sm:p-4">
-          <Button
-            {...attributes}
-            {...listeners}
-            type="button"
-            variant="ghost"
-            size="icon"
-            className="-ml-1 cursor-grab touch-none text-muted-foreground hover:text-foreground active:cursor-grabbing"
-            aria-label={`Move ${walkthrough.Title}. Current position ${position}.`}
-          >
-            <GripVerticalIcon />
-          </Button>
+        <div className="grid grid-cols-[2.5rem_minmax(0,1fr)_auto] items-stretch">
+          <div className="flex items-center justify-center border-r border-border bg-muted/30 transition-colors group-hover/step:bg-muted/50">
+            <Button
+              {...attributes}
+              {...listeners}
+              type="button"
+              variant="ghost"
+              size="icon-sm"
+              className="cursor-grab touch-none text-muted-foreground hover:text-foreground active:cursor-grabbing"
+              aria-label={`Move ${walkthrough.Title}. Current position ${position}.`}
+            >
+              <GripVerticalIcon />
+            </Button>
+          </div>
 
-          <div className="min-w-0">
-            <div className="flex min-w-0 flex-wrap items-center gap-2">
-              <h2 className="min-w-0 flex-1 truncate text-sm font-semibold">
-                {walkthrough.Title}
-              </h2>
-              <StatusBadge isActive={walkthrough.IsActive} />
-            </div>
+          <div className="min-w-0 p-3 sm:p-4">
+            <h2 className="truncate text-sm font-semibold text-foreground">
+              {walkthrough.Title}
+            </h2>
             <p className="mt-1 line-clamp-2 text-sm/relaxed text-muted-foreground">
               {walkthrough.Description}
             </p>
-            <p className="mt-2 text-xs text-muted-foreground">
-              Created {formatCreatedDate(walkthrough.CreatedDttm)}
-            </p>
+            <div className="mt-3 flex flex-wrap items-center gap-2">
+              <StatusBadge isActive={walkthrough.IsActive} />
+              <span className="h-3 w-px bg-border" aria-hidden="true" />
+              <p className="text-xs text-muted-foreground">
+                Created {formatCreatedDate(walkthrough.CreatedDttm)}
+              </p>
+            </div>
           </div>
 
-          <WalkthroughActions
-            walkthrough={walkthrough}
-            onEdit={onEdit}
-            onDelete={onDelete}
-          />
+          <div className="self-start p-2 sm:p-3">
+            <WalkthroughActions
+              walkthrough={walkthrough}
+              onEdit={onEdit}
+              onDelete={onDelete}
+            />
+          </div>
         </div>
       </Card>
     </li>
@@ -333,6 +337,7 @@ function WalkthroughActions({
         variant="ghost"
         size="icon-sm"
         aria-label={`Edit ${walkthrough.Title}`}
+        title="Edit walkthrough"
         onClick={onEdit}
       >
         <PencilIcon />
@@ -343,6 +348,7 @@ function WalkthroughActions({
         size="icon-sm"
         className="text-destructive hover:bg-destructive/10 hover:text-destructive"
         aria-label={`Delete ${walkthrough.Title}`}
+        title="Delete walkthrough"
         onClick={onDelete}
       >
         <Trash2Icon />
@@ -645,20 +651,25 @@ function WalkthroughsPending() {
               <div className="relative flex justify-center">
                 <Skeleton className="relative z-10 size-8" />
                 {index < 4 && (
-                  <span className="absolute top-8 -bottom-3 w-px bg-border" />
+                  <span className="absolute top-8 -bottom-3 w-px bg-primary/20" />
                 )}
               </div>
-              <div className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-start gap-3 border border-border p-3 sm:p-4">
-                <Skeleton className="size-8 shrink-0" />
-                <div className="min-w-0 space-y-2.5">
-                  <div className="flex gap-2">
-                    <Skeleton className="h-5 w-48 max-w-full" />
-                    <Skeleton className="h-5 w-14" />
-                  </div>
-                  <Skeleton className="h-8 w-96 max-w-full" />
-                  <Skeleton className="h-3 w-28" />
+              <div className="grid grid-cols-[2.5rem_minmax(0,1fr)_auto] items-stretch border border-border">
+                <div className="flex items-center justify-center border-r border-border bg-muted/30">
+                  <Skeleton className="size-7" />
                 </div>
-                <Skeleton className="h-7 w-20 shrink-0" />
+                <div className="min-w-0 space-y-2.5 p-3 sm:p-4">
+                  <Skeleton className="h-5 w-48 max-w-full" />
+                  <Skeleton className="h-8 w-96 max-w-full" />
+                  <div className="flex items-center gap-2">
+                    <Skeleton className="h-5 w-14" />
+                    <Skeleton className="h-3 w-28" />
+                  </div>
+                </div>
+                <div className="flex gap-1 self-start p-2 sm:p-3">
+                  <Skeleton className="size-7" />
+                  <Skeleton className="size-7" />
+                </div>
               </div>
             </div>
           ))}
