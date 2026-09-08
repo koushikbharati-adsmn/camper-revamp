@@ -258,14 +258,14 @@ function SortableWalkthroughCard({
       <div className="relative flex justify-center" aria-hidden="true">
         <span
           className={cn(
-            "relative z-10 flex size-8 items-center justify-center border border-primary/30 bg-primary/5 text-xs font-semibold text-primary transition-colors group-hover/step:border-primary/60 group-hover/step:bg-primary/10",
+            "relative z-10 flex size-8 items-center justify-center border bg-background text-xs font-semibold text-foreground transition-colors",
             isDragging && "border-primary bg-primary text-primary-foreground"
           )}
         >
           {position}
         </span>
         {!isLast && (
-          <span className="absolute top-8 -bottom-3 w-px bg-primary/20" />
+          <span className="absolute top-8 -bottom-3 w-px bg-border" />
         )}
       </div>
 
@@ -651,7 +651,7 @@ function WalkthroughsPending() {
               <div className="relative flex justify-center">
                 <Skeleton className="relative z-10 size-8" />
                 {index < 4 && (
-                  <span className="absolute top-8 -bottom-3 w-px bg-primary/20" />
+                  <span className="absolute top-8 -bottom-3 w-px bg-border" />
                 )}
               </div>
               <div className="grid grid-cols-[2.5rem_minmax(0,1fr)_auto] items-stretch border border-border">
