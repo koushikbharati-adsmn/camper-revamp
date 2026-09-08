@@ -51,6 +51,7 @@ import {
   useSensor,
   useSensors,
 } from "@dnd-kit/core"
+import { restrictToWindowEdges } from "@dnd-kit/modifiers"
 import {
   arrayMove,
   sortableKeyboardCoordinates,
@@ -154,6 +155,7 @@ function RouteComponent() {
           <DndContext
             sensors={sensors}
             collisionDetection={closestCenter}
+            modifiers={[restrictToWindowEdges]}
             onDragEnd={reorderWalkthroughs}
           >
             <SortableContext
