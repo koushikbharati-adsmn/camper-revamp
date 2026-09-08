@@ -20,8 +20,8 @@ import { Route as AuthenticatedWalkthroughsRouteImport } from './routes/_authent
 import { Route as AuthenticatedWorkshopsIndexRouteImport } from './routes/_authenticated/workshops.index'
 import { Route as AuthenticatedWorkshopsNewRouteImport } from './routes/_authenticated/workshops.new'
 import { Route as WorkshopsIdBigScreenRouteImport } from './routes/workshops.$id.big-screen'
+import { Route as AuthenticatedWorkshopsCodeManageRouteImport } from './routes/_authenticated/workshops.$code.manage'
 import { Route as AuthenticatedWorkshopsIdEditRouteImport } from './routes/_authenticated/workshops.$id.edit'
-import { Route as AuthenticatedWorkshopsIdManageRouteImport } from './routes/_authenticated/workshops.$id.manage'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -80,16 +80,16 @@ const WorkshopsIdBigScreenRoute = WorkshopsIdBigScreenRouteImport.update({
   path: '/workshops/$id/big-screen',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AuthenticatedWorkshopsCodeManageRoute =
+  AuthenticatedWorkshopsCodeManageRouteImport.update({
+    id: '/workshops/$code/manage',
+    path: '/workshops/$code/manage',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedWorkshopsIdEditRoute =
   AuthenticatedWorkshopsIdEditRouteImport.update({
     id: '/workshops/$id/edit',
     path: '/workshops/$id/edit',
-    getParentRoute: () => AuthenticatedRouteRoute,
-  } as any)
-const AuthenticatedWorkshopsIdManageRoute =
-  AuthenticatedWorkshopsIdManageRouteImport.update({
-    id: '/workshops/$id/manage',
-    path: '/workshops/$id/manage',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
 
@@ -104,8 +104,8 @@ export interface FileRoutesByFullPath {
   '/workshops/new': typeof AuthenticatedWorkshopsNewRoute
   '/workshops/$id/big-screen': typeof WorkshopsIdBigScreenRoute
   '/workshops/': typeof AuthenticatedWorkshopsIndexRoute
+  '/workshops/$code/manage': typeof AuthenticatedWorkshopsCodeManageRoute
   '/workshops/$id/edit': typeof AuthenticatedWorkshopsIdEditRoute
-  '/workshops/$id/manage': typeof AuthenticatedWorkshopsIdManageRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -118,8 +118,8 @@ export interface FileRoutesByTo {
   '/workshops/new': typeof AuthenticatedWorkshopsNewRoute
   '/workshops/$id/big-screen': typeof WorkshopsIdBigScreenRoute
   '/workshops': typeof AuthenticatedWorkshopsIndexRoute
+  '/workshops/$code/manage': typeof AuthenticatedWorkshopsCodeManageRoute
   '/workshops/$id/edit': typeof AuthenticatedWorkshopsIdEditRoute
-  '/workshops/$id/manage': typeof AuthenticatedWorkshopsIdManageRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -134,8 +134,8 @@ export interface FileRoutesById {
   '/_authenticated/workshops/new': typeof AuthenticatedWorkshopsNewRoute
   '/workshops/$id/big-screen': typeof WorkshopsIdBigScreenRoute
   '/_authenticated/workshops/': typeof AuthenticatedWorkshopsIndexRoute
+  '/_authenticated/workshops/$code/manage': typeof AuthenticatedWorkshopsCodeManageRoute
   '/_authenticated/workshops/$id/edit': typeof AuthenticatedWorkshopsIdEditRoute
-  '/_authenticated/workshops/$id/manage': typeof AuthenticatedWorkshopsIdManageRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -150,8 +150,8 @@ export interface FileRouteTypes {
     | '/workshops/new'
     | '/workshops/$id/big-screen'
     | '/workshops/'
+    | '/workshops/$code/manage'
     | '/workshops/$id/edit'
-    | '/workshops/$id/manage'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -164,8 +164,8 @@ export interface FileRouteTypes {
     | '/workshops/new'
     | '/workshops/$id/big-screen'
     | '/workshops'
+    | '/workshops/$code/manage'
     | '/workshops/$id/edit'
-    | '/workshops/$id/manage'
   id:
     | '__root__'
     | '/'
@@ -179,8 +179,8 @@ export interface FileRouteTypes {
     | '/_authenticated/workshops/new'
     | '/workshops/$id/big-screen'
     | '/_authenticated/workshops/'
+    | '/_authenticated/workshops/$code/manage'
     | '/_authenticated/workshops/$id/edit'
-    | '/_authenticated/workshops/$id/manage'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -271,18 +271,18 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof WorkshopsIdBigScreenRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_authenticated/workshops/$code/manage': {
+      id: '/_authenticated/workshops/$code/manage'
+      path: '/workshops/$code/manage'
+      fullPath: '/workshops/$code/manage'
+      preLoaderRoute: typeof AuthenticatedWorkshopsCodeManageRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/workshops/$id/edit': {
       id: '/_authenticated/workshops/$id/edit'
       path: '/workshops/$id/edit'
       fullPath: '/workshops/$id/edit'
       preLoaderRoute: typeof AuthenticatedWorkshopsIdEditRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/workshops/$id/manage': {
-      id: '/_authenticated/workshops/$id/manage'
-      path: '/workshops/$id/manage'
-      fullPath: '/workshops/$id/manage'
-      preLoaderRoute: typeof AuthenticatedWorkshopsIdManageRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
   }
@@ -294,8 +294,8 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedWalkthroughsRoute: typeof AuthenticatedWalkthroughsRoute
   AuthenticatedWorkshopsNewRoute: typeof AuthenticatedWorkshopsNewRoute
   AuthenticatedWorkshopsIndexRoute: typeof AuthenticatedWorkshopsIndexRoute
+  AuthenticatedWorkshopsCodeManageRoute: typeof AuthenticatedWorkshopsCodeManageRoute
   AuthenticatedWorkshopsIdEditRoute: typeof AuthenticatedWorkshopsIdEditRoute
-  AuthenticatedWorkshopsIdManageRoute: typeof AuthenticatedWorkshopsIdManageRoute
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
@@ -304,8 +304,8 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedWalkthroughsRoute: AuthenticatedWalkthroughsRoute,
   AuthenticatedWorkshopsNewRoute: AuthenticatedWorkshopsNewRoute,
   AuthenticatedWorkshopsIndexRoute: AuthenticatedWorkshopsIndexRoute,
+  AuthenticatedWorkshopsCodeManageRoute: AuthenticatedWorkshopsCodeManageRoute,
   AuthenticatedWorkshopsIdEditRoute: AuthenticatedWorkshopsIdEditRoute,
-  AuthenticatedWorkshopsIdManageRoute: AuthenticatedWorkshopsIdManageRoute,
 }
 
 const AuthenticatedRouteRouteWithChildren =

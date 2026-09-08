@@ -175,7 +175,7 @@ function RouteComponent() {
               }
               onReset={() => setActionTarget({ action: "reset", workshop })}
               onDelete={() => setActionTarget({ action: "delete", workshop })}
-              onCopyLink={() => copyBigscreenLink(workshop)}
+              onCopyLink={() => copyBigScreenLink(workshop)}
             />
           ))}
         </div>
@@ -251,11 +251,22 @@ function WorkshopCard({
               }
             />
             <DropdownMenuContent className="w-40">
-              <DropdownMenuItem>
+              <DropdownMenuItem
+                render={
+                  <Link
+                    to="/workshops/$code/manage"
+                    params={{ code: workshop.WorkshopCode }}
+                  />
+                }
+              >
                 <PlayIcon />
                 Manage Workshop
               </DropdownMenuItem>
-              <DropdownMenuItem>
+              <DropdownMenuItem
+                render={
+                  <Link to="/workshops/$id/edit" params={{ id: workshop.ID }} />
+                }
+              >
                 <SquarePenIcon />
                 Edit Workshop
               </DropdownMenuItem>
@@ -265,7 +276,7 @@ function WorkshopCard({
               </DropdownMenuItem>
               <DropdownMenuItem onClick={onCopyLink}>
                 <ClipboardIcon />
-                Copy Bigscreen Link
+                Copy BigScreen Link
               </DropdownMenuItem>
               <DropdownMenuItem onClick={onReset}>
                 <RotateCcwIcon />
@@ -421,16 +432,16 @@ function WorkshopActionDialog({
   )
 }
 
-function getBigscreenLink(workshop: WorkshopList) {
-  return `${window.location.origin}/workshops/${workshop.ID}/big-screen`
+function getBigScreenLink(workshop: WorkshopList) {
+  return `${window.location.origin}/workshops/${workshop.WorkshopCode}/big-screen`
 }
 
-const copyBigscreenLink = async (workshop: WorkshopList) => {
+const copyBigScreenLink = async (workshop: WorkshopList) => {
   try {
-    await navigator.clipboard.writeText(getBigscreenLink(workshop))
+    await navigator.clipboard.writeText(getBigScreenLink(workshop))
     toast.add({
       type: "success",
-      title: "Bigscreen link copied",
+      title: "BigScreen link copied",
       description: "The link is ready to share.",
     })
   } catch (error) {
