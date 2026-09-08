@@ -21,13 +21,6 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
-import {
   Field,
   FieldDescription,
   FieldError,
@@ -73,7 +66,7 @@ import {
 } from "@tanstack/react-router"
 import { format } from "date-fns"
 import {
-  EllipsisIcon,
+  BadgeInfoIcon,
   GripVerticalIcon,
   ListOrderedIcon,
   PencilIcon,
@@ -147,14 +140,16 @@ function RouteComponent() {
       <WalkthroughsHeader onAdd={() => setEditor("new")} />
 
       {orderedWalkthroughs.length ? (
-        <div>
+        <div className="mx-auto w-full max-w-5xl">
           <p
             id="walkthrough-reorder-instructions"
-            className="mb-3 flex items-center gap-1.5 text-xs text-muted-foreground"
+            className="mb-4 flex items-start gap-2 bg-muted/40 px-3 py-2 text-xs text-muted-foreground"
           >
-            <GripVerticalIcon className="size-3.5" />
-            Drag the handles to change the display order for this session.
-            Keyboard users can press Space, then use the arrow keys.
+            <BadgeInfoIcon className="mt-0.5 size-3.5 shrink-0" />
+            <span>
+              Drag walkthroughs to change their display order. Keyboard users
+              can press Space, then use the arrow keys.
+            </span>
           </p>
           <DndContext
             sensors={sensors}
@@ -166,7 +161,6 @@ function RouteComponent() {
               strategy={verticalListSortingStrategy}
             >
               <ol
-                className="space-y-3"
                 aria-label="Walkthrough display order"
                 aria-describedby="walkthrough-reorder-instructions"
               >
@@ -175,6 +169,7 @@ function RouteComponent() {
                     key={walkthrough.ID}
                     walkthrough={walkthrough}
                     position={index + 1}
+                    isLast={index === orderedWalkthroughs.length - 1}
                     onEdit={() => setEditor(walkthrough)}
                     onDelete={() => setDeleteTarget(walkthrough)}
                   />
@@ -229,11 +224,13 @@ function WalkthroughsHeader({ onAdd }: { onAdd?: () => void }) {
 function SortableWalkthroughCard({
   walkthrough,
   position,
+  isLast,
   onEdit,
   onDelete,
 }: {
   walkthrough: Walkthrough
   position: number
+  isLast: boolean
   onEdit: () => void
   onDelete: () => void
 }) {
@@ -253,11 +250,33 @@ function SortableWalkthroughCard({
         transform: CSS.Transform.toString(transform),
         transition,
       }}
-      className={cn("relative", isDragging && "z-10 opacity-70")}
+      className={cn(
+        "relative grid grid-cols-[2rem_minmax(0,1fr)] gap-3 pb-3 last:pb-0",
+        isDragging && "z-10"
+      )}
     >
+      <div className="relative flex justify-center" aria-hidden="true">
+        <span
+          className={cn(
+            "relative z-10 flex size-8 items-center justify-center border bg-background text-xs font-semibold text-foreground transition-colors",
+            isDragging && "border-primary bg-primary text-primary-foreground"
+          )}
+        >
+          {position}
+        </span>
+        {!isLast && (
+          <span className="absolute top-8 -bottom-3 w-px bg-border" />
+        )}
+      </div>
+
       <Card
         size="sm"
-        className={cn("py-0", isDragging && "shadow-lg ring-primary/40")}
+        className={cn(
+          "border-l-2 border-l-transparent py-0 transition-[background-color,box-shadow,border-color]",
+          !walkthrough.IsActive && "bg-muted/20",
+          isDragging &&
+            "border-l-primary bg-card opacity-90 shadow-lg ring-primary/40"
+        )}
       >
         <div className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-start gap-3 p-3 sm:p-4">
           <Button
@@ -266,22 +285,19 @@ function SortableWalkthroughCard({
             type="button"
             variant="ghost"
             size="icon"
-            className="-ml-1 cursor-grab touch-none text-muted-foreground active:cursor-grabbing"
+            className="-ml-1 cursor-grab touch-none text-muted-foreground hover:text-foreground active:cursor-grabbing"
             aria-label={`Move ${walkthrough.Title}. Current position ${position}.`}
           >
             <GripVerticalIcon />
           </Button>
 
           <div className="min-w-0">
-            <div className="mb-1.5 flex flex-wrap items-center gap-2">
-              <span className="text-xs font-medium text-muted-foreground">
-                Position {position}
-              </span>
+            <div className="flex min-w-0 flex-wrap items-center gap-2">
+              <h2 className="min-w-0 flex-1 truncate text-sm font-semibold">
+                {walkthrough.Title}
+              </h2>
               <StatusBadge isActive={walkthrough.IsActive} />
             </div>
-            <h2 className="truncate text-sm font-semibold">
-              {walkthrough.Title}
-            </h2>
             <p className="mt-1 line-clamp-2 text-sm text-muted-foreground">
               {walkthrough.Description}
             </p>
@@ -311,25 +327,27 @@ function WalkthroughActions({
   onDelete: () => void
 }) {
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger
-        aria-label={`Actions for ${walkthrough.Title}`}
-        render={
-          <Button variant="ghost" size="icon-sm">
-            <EllipsisIcon />
-          </Button>
-        }
-      />
-      <DropdownMenuContent align="end" className="w-44">
-        <DropdownMenuItem onClick={onEdit}>
-          <PencilIcon /> Edit walkthrough
-        </DropdownMenuItem>
-        <DropdownMenuSeparator />
-        <DropdownMenuItem variant="destructive" onClick={onDelete}>
-          <Trash2Icon /> Delete walkthrough
-        </DropdownMenuItem>
-      </DropdownMenuContent>
-    </DropdownMenu>
+    <div className="flex items-center gap-1">
+      <Button
+        type="button"
+        variant="ghost"
+        size="icon-sm"
+        aria-label={`Edit ${walkthrough.Title}`}
+        onClick={onEdit}
+      >
+        <PencilIcon />
+      </Button>
+      <Button
+        type="button"
+        variant="ghost"
+        size="icon-sm"
+        className="text-destructive hover:bg-destructive/10 hover:text-destructive"
+        aria-label={`Delete ${walkthrough.Title}`}
+        onClick={onDelete}
+      >
+        <Trash2Icon />
+      </Button>
+    </div>
   )
 }
 
@@ -414,7 +432,7 @@ function WalkthroughEditorDialog({
               {walkthrough ? "Edit walkthrough" : "Add walkthrough"}
             </DialogTitle>
             <DialogDescription>
-              Configure the message, sequence, and availability for workshops.
+              Configure the message and its availability in workshops.
             </DialogDescription>
           </DialogHeader>
 
@@ -489,10 +507,10 @@ function WalkthroughEditorDialog({
                 >
                   <div className="flex-1">
                     <FieldLabel htmlFor="walkthrough-active">
-                      Active walkthrough
+                      Available in workshops
                     </FieldLabel>
                     <FieldDescription>
-                      Inactive walkthroughs are unavailable when configuring a
+                      Turn this off to hide the walkthrough when configuring a
                       workshop.
                     </FieldDescription>
                   </div>
@@ -501,7 +519,7 @@ function WalkthroughEditorDialog({
                     checked={field.state.value}
                     disabled={saveMutation.isPending}
                     onCheckedChange={field.handleChange}
-                    aria-label="Active walkthrough"
+                    aria-label="Available in workshops"
                   />
                 </Field>
               )}
@@ -616,24 +634,35 @@ function WalkthroughsPending() {
   return (
     <div>
       <WalkthroughsHeader />
-      <div className="space-y-3">
-        {Array.from({ length: 5 }).map((_, index) => (
-          <div
-            key={index}
-            className="flex items-start gap-3 border border-border p-4"
-          >
-            <Skeleton className="size-8 shrink-0" />
-            <div className="flex-1 space-y-2.5">
-              <div className="flex gap-2">
-                <Skeleton className="h-5 w-16" />
-                <Skeleton className="h-5 w-14" />
+      <div className="mx-auto w-full max-w-5xl">
+        <Skeleton className="mb-4 h-9 w-full" />
+        <div>
+          {Array.from({ length: 5 }).map((_, index) => (
+            <div
+              key={index}
+              className="grid grid-cols-[2rem_minmax(0,1fr)] gap-3 pb-3 last:pb-0"
+            >
+              <div className="relative flex justify-center">
+                <Skeleton className="relative z-10 size-8" />
+                {index < 4 && (
+                  <span className="absolute top-8 -bottom-3 w-px bg-border" />
+                )}
               </div>
-              <Skeleton className="h-4 w-48 max-w-full" />
-              <Skeleton className="h-8 w-96 max-w-full" />
+              <div className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-start gap-3 border border-border p-3 sm:p-4">
+                <Skeleton className="size-8 shrink-0" />
+                <div className="min-w-0 space-y-2.5">
+                  <div className="flex gap-2">
+                    <Skeleton className="h-5 w-48 max-w-full" />
+                    <Skeleton className="h-5 w-14" />
+                  </div>
+                  <Skeleton className="h-8 w-96 max-w-full" />
+                  <Skeleton className="h-3 w-28" />
+                </div>
+                <Skeleton className="h-7 w-20 shrink-0" />
+              </div>
             </div>
-            <Skeleton className="size-7 shrink-0" />
-          </div>
-        ))}
+          ))}
+        </div>
       </div>
     </div>
   )
