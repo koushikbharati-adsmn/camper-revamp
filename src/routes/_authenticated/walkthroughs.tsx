@@ -1,9 +1,664 @@
-import { createFileRoute } from "@tanstack/react-router"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogMedia,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
+import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
+import { Card } from "@/components/ui/card"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
+import {
+  Field,
+  FieldDescription,
+  FieldError,
+  FieldGroup,
+  FieldLabel,
+} from "@/components/ui/field"
+import { Input } from "@/components/ui/input"
+import { Skeleton } from "@/components/ui/skeleton"
+import { Spinner } from "@/components/ui/spinner"
+import { Switch } from "@/components/ui/switch"
+import { Textarea } from "@/components/ui/textarea"
+import { toast } from "@/components/ui/toast"
+import { cn } from "@/lib/utils"
+import {
+  getWalkthroughOptions,
+  type Walkthrough,
+  useDeleteWalkthrough,
+  useSaveWalkthrough,
+} from "@/services/walkthroughs"
+import { useForm } from "@tanstack/react-form"
+import { useSuspenseQuery } from "@tanstack/react-query"
+import {
+  closestCenter,
+  DndContext,
+  type DragEndEvent,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+} from "@dnd-kit/core"
+import {
+  arrayMove,
+  sortableKeyboardCoordinates,
+  SortableContext,
+  useSortable,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable"
+import { CSS } from "@dnd-kit/utilities"
+import {
+  createFileRoute,
+  type ErrorComponentProps,
+  useRouter,
+} from "@tanstack/react-router"
+import { format } from "date-fns"
+import {
+  EllipsisIcon,
+  GripVerticalIcon,
+  ListOrderedIcon,
+  PencilIcon,
+  PlusIcon,
+  ShieldAlertIcon,
+  Trash2Icon,
+} from "lucide-react"
+import { useState } from "react"
+import * as z from "zod"
+
+const walkthroughFormSchema = z.object({
+  title: z.string().trim().min(1, "Title is required."),
+  description: z.string().trim().min(1, "Description is required."),
+  isActive: z.boolean(),
+})
 
 export const Route = createFileRoute("/_authenticated/walkthroughs")({
+  loader: ({ context }) => context.queryClient.query(getWalkthroughOptions()),
+  pendingMs: 150,
+  pendingMinMs: 250,
+  pendingComponent: WalkthroughsPending,
+  errorComponent: WalkthroughsError,
   component: RouteComponent,
 })
 
 function RouteComponent() {
-  return <div>Hello "/_authenticated/walkthrough"!</div>
+  const { data: walkthroughs } = useSuspenseQuery({
+    ...getWalkthroughOptions(),
+    select: (response) => response.data,
+  })
+  const [editor, setEditor] = useState<Walkthrough | "new" | null>(null)
+  const [deleteTarget, setDeleteTarget] = useState<Walkthrough | null>(null)
+  const [orderOverride, setOrderOverride] = useState<string[]>([])
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
+  )
+
+  const sortedWalkthroughs = [...walkthroughs].sort(
+    (first, second) =>
+      first.DisplayOrder - second.DisplayOrder ||
+      first.Title.localeCompare(second.Title)
+  )
+  const walkthroughById = new Map(
+    walkthroughs.map((walkthrough) => [walkthrough.ID, walkthrough])
+  )
+  const serverIds = new Set(walkthroughById.keys())
+  const orderedIds = [
+    ...orderOverride.filter((id) => serverIds.has(id)),
+    ...sortedWalkthroughs
+      .map((walkthrough) => walkthrough.ID)
+      .filter((id) => !orderOverride.includes(id)),
+  ]
+  const orderedWalkthroughs = orderedIds.flatMap((id) => {
+    const walkthrough = walkthroughById.get(id)
+    return walkthrough ? [walkthrough] : []
+  })
+
+  const reorderWalkthroughs = ({ active, over }: DragEndEvent) => {
+    if (!over || active.id === over.id) return
+
+    const previousIndex = orderedIds.indexOf(String(active.id))
+    const nextIndex = orderedIds.indexOf(String(over.id))
+    if (previousIndex < 0 || nextIndex < 0) return
+
+    setOrderOverride(arrayMove(orderedIds, previousIndex, nextIndex))
+  }
+
+  return (
+    <div>
+      <WalkthroughsHeader onAdd={() => setEditor("new")} />
+
+      {orderedWalkthroughs.length ? (
+        <div>
+          <p
+            id="walkthrough-reorder-instructions"
+            className="mb-3 flex items-center gap-1.5 text-xs text-muted-foreground"
+          >
+            <GripVerticalIcon className="size-3.5" />
+            Drag the handles to change the display order for this session.
+            Keyboard users can press Space, then use the arrow keys.
+          </p>
+          <DndContext
+            sensors={sensors}
+            collisionDetection={closestCenter}
+            onDragEnd={reorderWalkthroughs}
+          >
+            <SortableContext
+              items={orderedIds}
+              strategy={verticalListSortingStrategy}
+            >
+              <ol
+                className="space-y-3"
+                aria-label="Walkthrough display order"
+                aria-describedby="walkthrough-reorder-instructions"
+              >
+                {orderedWalkthroughs.map((walkthrough, index) => (
+                  <SortableWalkthroughCard
+                    key={walkthrough.ID}
+                    walkthrough={walkthrough}
+                    position={index + 1}
+                    onEdit={() => setEditor(walkthrough)}
+                    onDelete={() => setDeleteTarget(walkthrough)}
+                  />
+                ))}
+              </ol>
+            </SortableContext>
+          </DndContext>
+        </div>
+      ) : (
+        <WalkthroughsEmpty />
+      )}
+
+      {editor && (
+        <WalkthroughEditorDialog
+          key={editor === "new" ? "new" : editor.ID}
+          open
+          walkthrough={editor === "new" ? null : editor}
+          onOpenChange={(open) => {
+            if (!open) setEditor(null)
+          }}
+        />
+      )}
+
+      <DeleteWalkthroughDialog
+        walkthrough={deleteTarget}
+        onOpenChange={(open) => {
+          if (!open) setDeleteTarget(null)
+        }}
+      />
+    </div>
+  )
+}
+
+function WalkthroughsHeader({ onAdd }: { onAdd?: () => void }) {
+  return (
+    <header className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+      <div>
+        <h1 className="text-2xl font-bold">Walkthroughs</h1>
+        <p className="text-sm text-muted-foreground">
+          Manage the messages that guide participants through workshops.
+        </p>
+      </div>
+      {onAdd && (
+        <Button onClick={onAdd} className="w-full sm:w-auto">
+          <PlusIcon /> Add walkthrough
+        </Button>
+      )}
+    </header>
+  )
+}
+
+function SortableWalkthroughCard({
+  walkthrough,
+  position,
+  onEdit,
+  onDelete,
+}: {
+  walkthrough: Walkthrough
+  position: number
+  onEdit: () => void
+  onDelete: () => void
+}) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: walkthrough.ID })
+
+  return (
+    <li
+      ref={setNodeRef}
+      style={{
+        transform: CSS.Transform.toString(transform),
+        transition,
+      }}
+      className={cn("relative", isDragging && "z-10 opacity-70")}
+    >
+      <Card
+        size="sm"
+        className={cn("py-0", isDragging && "shadow-lg ring-primary/40")}
+      >
+        <div className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-start gap-3 p-3 sm:p-4">
+          <Button
+            {...attributes}
+            {...listeners}
+            type="button"
+            variant="ghost"
+            size="icon"
+            className="-ml-1 cursor-grab touch-none text-muted-foreground active:cursor-grabbing"
+            aria-label={`Move ${walkthrough.Title}. Current position ${position}.`}
+          >
+            <GripVerticalIcon />
+          </Button>
+
+          <div className="min-w-0">
+            <div className="mb-1.5 flex flex-wrap items-center gap-2">
+              <span className="text-xs font-medium text-muted-foreground">
+                Position {position}
+              </span>
+              <StatusBadge isActive={walkthrough.IsActive} />
+            </div>
+            <h2 className="truncate text-sm font-semibold">
+              {walkthrough.Title}
+            </h2>
+            <p className="mt-1 line-clamp-2 text-sm text-muted-foreground">
+              {walkthrough.Description}
+            </p>
+            <p className="mt-2 text-xs text-muted-foreground">
+              Created {formatCreatedDate(walkthrough.CreatedDttm)}
+            </p>
+          </div>
+
+          <WalkthroughActions
+            walkthrough={walkthrough}
+            onEdit={onEdit}
+            onDelete={onDelete}
+          />
+        </div>
+      </Card>
+    </li>
+  )
+}
+
+function WalkthroughActions({
+  walkthrough,
+  onEdit,
+  onDelete,
+}: {
+  walkthrough: Walkthrough
+  onEdit: () => void
+  onDelete: () => void
+}) {
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger
+        aria-label={`Actions for ${walkthrough.Title}`}
+        render={
+          <Button variant="ghost" size="icon-sm">
+            <EllipsisIcon />
+          </Button>
+        }
+      />
+      <DropdownMenuContent align="end" className="w-44">
+        <DropdownMenuItem onClick={onEdit}>
+          <PencilIcon /> Edit walkthrough
+        </DropdownMenuItem>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem variant="destructive" onClick={onDelete}>
+          <Trash2Icon /> Delete walkthrough
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  )
+}
+
+function StatusBadge({ isActive }: { isActive: boolean }) {
+  return (
+    <Badge
+      variant="outline"
+      className={
+        isActive
+          ? "border-green-600/30 bg-green-600/10 text-green-700 dark:text-green-400"
+          : "text-muted-foreground"
+      }
+    >
+      <span
+        aria-hidden="true"
+        className={`size-1.5 rounded-full ${isActive ? "bg-green-600" : "bg-muted-foreground"}`}
+      />
+      {isActive ? "Active" : "Inactive"}
+    </Badge>
+  )
+}
+
+function WalkthroughEditorDialog({
+  open,
+  walkthrough,
+  onOpenChange,
+}: {
+  open: boolean
+  walkthrough: Walkthrough | null
+  onOpenChange: (open: boolean) => void
+}) {
+  const saveMutation = useSaveWalkthrough()
+  const form = useForm({
+    defaultValues: {
+      title: walkthrough?.Title ?? "",
+      description: walkthrough?.Description ?? "",
+      isActive: walkthrough?.IsActive ?? true,
+    },
+    validators: {
+      onSubmit: walkthroughFormSchema,
+    },
+    onSubmit: async ({ value }) => {
+      try {
+        const response = await saveMutation.mutateAsync({
+          ...(walkthrough ? { ID: walkthrough.ID } : {}),
+          Title: value.title.trim(),
+          Description: value.description.trim(),
+          IsActive: value.isActive,
+        })
+
+        toast.add({
+          type: "success",
+          title: walkthrough ? "Walkthrough updated" : "Walkthrough created",
+          description: response.message,
+        })
+        onOpenChange(false)
+      } catch {
+        return
+      }
+    },
+  })
+
+  return (
+    <Dialog
+      open={open}
+      onOpenChange={(nextOpen) => {
+        if (!saveMutation.isPending) onOpenChange(nextOpen)
+      }}
+    >
+      <DialogContent className="max-h-[calc(100svh-2rem)] overflow-hidden sm:max-w-lg">
+        <form
+          noValidate
+          aria-busy={saveMutation.isPending}
+          className="flex min-h-0 flex-col gap-4"
+          onSubmit={(event) => {
+            event.preventDefault()
+            void form.handleSubmit()
+          }}
+        >
+          <DialogHeader>
+            <DialogTitle>
+              {walkthrough ? "Edit walkthrough" : "Add walkthrough"}
+            </DialogTitle>
+            <DialogDescription>
+              Configure the message, sequence, and availability for workshops.
+            </DialogDescription>
+          </DialogHeader>
+
+          <FieldGroup className="min-h-0 overflow-y-auto pr-1">
+            <form.Field
+              name="title"
+              children={(field) => {
+                const isInvalid =
+                  field.state.meta.isTouched && !field.state.meta.isValid
+
+                return (
+                  <Field data-invalid={isInvalid}>
+                    <FieldLabel htmlFor="walkthrough-title">Title</FieldLabel>
+                    <Input
+                      id="walkthrough-title"
+                      name={field.name}
+                      value={field.state.value}
+                      disabled={saveMutation.isPending}
+                      onBlur={field.handleBlur}
+                      onChange={(event) =>
+                        field.handleChange(event.target.value)
+                      }
+                      placeholder="Welcome to the workshop"
+                      aria-invalid={isInvalid}
+                    />
+                    {isInvalid && (
+                      <FieldError errors={field.state.meta.errors} />
+                    )}
+                  </Field>
+                )
+              }}
+            />
+
+            <form.Field
+              name="description"
+              children={(field) => {
+                const isInvalid =
+                  field.state.meta.isTouched && !field.state.meta.isValid
+
+                return (
+                  <Field data-invalid={isInvalid}>
+                    <FieldLabel htmlFor="walkthrough-description">
+                      Description
+                    </FieldLabel>
+                    <Textarea
+                      id="walkthrough-description"
+                      name={field.name}
+                      value={field.state.value}
+                      disabled={saveMutation.isPending}
+                      onBlur={field.handleBlur}
+                      onChange={(event) =>
+                        field.handleChange(event.target.value)
+                      }
+                      placeholder="Explain what participants should do next."
+                      className="min-h-28 resize-y"
+                      aria-invalid={isInvalid}
+                    />
+                    {isInvalid && (
+                      <FieldError errors={field.state.meta.errors} />
+                    )}
+                  </Field>
+                )
+              }}
+            />
+
+            <form.Field
+              name="isActive"
+              children={(field) => (
+                <Field
+                  orientation="horizontal"
+                  className="items-start border border-border p-3"
+                >
+                  <div className="flex-1">
+                    <FieldLabel htmlFor="walkthrough-active">
+                      Active walkthrough
+                    </FieldLabel>
+                    <FieldDescription>
+                      Inactive walkthroughs are unavailable when configuring a
+                      workshop.
+                    </FieldDescription>
+                  </div>
+                  <Switch
+                    id="walkthrough-active"
+                    checked={field.state.value}
+                    disabled={saveMutation.isPending}
+                    onCheckedChange={field.handleChange}
+                    aria-label="Active walkthrough"
+                  />
+                </Field>
+              )}
+            />
+          </FieldGroup>
+
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              disabled={saveMutation.isPending}
+              onClick={() => onOpenChange(false)}
+            >
+              Cancel
+            </Button>
+            <Button type="submit" disabled={saveMutation.isPending}>
+              {saveMutation.isPending && <Spinner />}
+              {saveMutation.isPending
+                ? "Saving..."
+                : walkthrough
+                  ? "Save changes"
+                  : "Create walkthrough"}
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
+function DeleteWalkthroughDialog({
+  walkthrough,
+  onOpenChange,
+}: {
+  walkthrough: Walkthrough | null
+  onOpenChange: (open: boolean) => void
+}) {
+  const deleteMutation = useDeleteWalkthrough()
+
+  const removeWalkthrough = async () => {
+    if (!walkthrough) return
+
+    try {
+      const response = await deleteMutation.mutateAsync({ id: walkthrough.ID })
+      toast.add({
+        type: "success",
+        title: "Walkthrough deleted",
+        description: response.message,
+      })
+      onOpenChange(false)
+    } catch {
+      return
+    }
+  }
+
+  return (
+    <AlertDialog
+      open={Boolean(walkthrough)}
+      onOpenChange={(open) => {
+        if (!deleteMutation.isPending) onOpenChange(open)
+      }}
+    >
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogMedia className="text-destructive">
+            <ShieldAlertIcon />
+          </AlertDialogMedia>
+          <AlertDialogTitle>Delete {walkthrough?.Title}?</AlertDialogTitle>
+          <AlertDialogDescription>
+            This permanently removes the walkthrough message. This action cannot
+            be undone.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel disabled={deleteMutation.isPending}>
+            Cancel
+          </AlertDialogCancel>
+          <AlertDialogAction
+            variant="destructive"
+            disabled={!walkthrough || deleteMutation.isPending}
+            onClick={() => void removeWalkthrough()}
+          >
+            {deleteMutation.isPending && <Spinner />}
+            {deleteMutation.isPending ? "Deleting..." : "Delete walkthrough"}
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+  )
+}
+
+function WalkthroughsEmpty() {
+  return (
+    <div className="flex min-h-64 flex-col items-center justify-center border border-dashed border-border px-6 text-center">
+      <div className="mb-3 flex size-10 items-center justify-center bg-muted">
+        <ListOrderedIcon className="size-5 text-muted-foreground" />
+      </div>
+      <h2 className="text-sm font-semibold">No walkthroughs found</h2>
+      <p className="mt-1 max-w-sm text-xs text-muted-foreground">
+        Add a walkthrough to start guiding workshop participants.
+      </p>
+    </div>
+  )
+}
+
+function formatCreatedDate(value: number) {
+  const date = new Date(value < 1_000_000_000_000 ? value * 1000 : value)
+  return Number.isNaN(date.getTime()) ? "Unknown" : format(date, "MMM d, yyyy")
+}
+
+function WalkthroughsPending() {
+  return (
+    <div>
+      <WalkthroughsHeader />
+      <div className="space-y-3">
+        {Array.from({ length: 5 }).map((_, index) => (
+          <div
+            key={index}
+            className="flex items-start gap-3 border border-border p-4"
+          >
+            <Skeleton className="size-8 shrink-0" />
+            <div className="flex-1 space-y-2.5">
+              <div className="flex gap-2">
+                <Skeleton className="h-5 w-16" />
+                <Skeleton className="h-5 w-14" />
+              </div>
+              <Skeleton className="h-4 w-48 max-w-full" />
+              <Skeleton className="h-8 w-96 max-w-full" />
+            </div>
+            <Skeleton className="size-7 shrink-0" />
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+function WalkthroughsError({ error, reset }: ErrorComponentProps) {
+  const router = useRouter()
+
+  return (
+    <div>
+      <WalkthroughsHeader />
+      <div className="border border-destructive/40 p-10 text-center">
+        <h2 className="font-semibold">Unable to load walkthroughs</h2>
+        <p className="mt-1 text-sm text-muted-foreground">{error.message}</p>
+        <Button
+          className="mt-4"
+          variant="outline"
+          onClick={() => {
+            reset()
+            void router.invalidate()
+          }}
+        >
+          Try again
+        </Button>
+      </div>
+    </div>
+  )
 }
