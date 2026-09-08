@@ -5,8 +5,8 @@ export interface CoachItem {
   ID: string
   CoachKey: string
   CoachName: string
-  CoachTitle: string
-  CoachDescription: string
+  Title: string
+  Description: string
   AvatarFileName: string
   PromptFileName: string
   IsActive: boolean

@@ -120,10 +120,10 @@ const steps = [
 ]
 
 const presetAvatars = [
-  "https://i.pravatar.cc/160?img=12",
-  "https://i.pravatar.cc/160?img=32",
-  "https://i.pravatar.cc/160?img=47",
-  "https://i.pravatar.cc/160?img=56",
+  "https://storage.googleapis.com/dev-ogilvy-base-camp-storage/global-coach/listener.png",
+  "https://storage.googleapis.com/dev-ogilvy-base-camp-storage/global-coach/provocateur.png",
+  "https://storage.googleapis.com/dev-ogilvy-base-camp-storage/global-coach/sharpener.png",
+  "https://storage.googleapis.com/dev-ogilvy-base-camp-storage/global-coach/tastemaker.png",
 ]
 
 const inputClassName = "h-11 text-base sm:h-10 sm:text-sm md:text-sm"
@@ -308,12 +308,12 @@ function RouteComponent() {
     ...initialWorkshop,
     coaches: coaches
       .filter((coach) => coach.IsActive)
-      .map((coach, index) => ({
+      .map((coach) => ({
         id: coach.ID,
         name: coach.CoachName,
-        title: coach.CoachTitle,
-        description: coach.CoachDescription,
-        avatar: presetAvatars[index % presetAvatars.length],
+        title: coach.Title,
+        description: coach.Description,
+        avatar: coach.AvatarFileName,
         enabled: true,
       })),
   }))
