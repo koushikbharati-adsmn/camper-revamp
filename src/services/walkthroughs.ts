@@ -122,3 +122,49 @@ export const useDeleteWalkthrough = () => {
     },
   })
 }
+
+interface WalkthroughSequenceItem {
+  id: string
+  sequence: number
+}
+
+interface UpdateWalkthroughSequencePayload {
+  order: WalkthroughSequenceItem[]
+}
+
+const updateWalkthroughSequence = async (
+  payload: UpdateWalkthroughSequencePayload
+): Promise<{
+  success: boolean
+  message: string
+}> => {
+  const res = await apiClient.post("/admin/walk-through/sequence", payload)
+
+  if (!res.data.success) {
+    throw new Error(res.data.message)
+  }
+
+  return res.data
+}
+
+export const useUpdateWalkthroughSequence = () => {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: updateWalkthroughSequence,
+
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: ["WALKTHROUGH"],
+      })
+    },
+
+    onError: (error: Error) => {
+      toast.add({
+        type: "error",
+        title: "Oops! Something went wrong",
+        description: error.message,
+      })
+    },
+  })
+}

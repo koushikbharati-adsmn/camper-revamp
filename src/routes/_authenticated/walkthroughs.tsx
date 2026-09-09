@@ -39,6 +39,7 @@ import {
   type Walkthrough,
   useDeleteWalkthrough,
   useSaveWalkthrough,
+  useUpdateWalkthroughSequence,
 } from "@/services/walkthroughs"
 import { useForm } from "@tanstack/react-form"
 import { useSuspenseQuery } from "@tanstack/react-query"
@@ -106,6 +107,8 @@ function RouteComponent() {
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
   )
 
+  const updateSequenceMutation = useUpdateWalkthroughSequence()
+
   const sortedWalkthroughs = [...walkthroughs].sort(
     (first, second) =>
       first.DisplayOrder - second.DisplayOrder ||
@@ -126,14 +129,33 @@ function RouteComponent() {
     return walkthrough ? [walkthrough] : []
   })
 
-  const reorderWalkthroughs = ({ active, over }: DragEndEvent) => {
-    if (!over || active.id === over.id) return
+  const reorderWalkthroughs = async ({ active, over }: DragEndEvent) => {
+    if (!over || active.id === over.id || updateSequenceMutation.isPending) {
+      return
+    }
 
     const previousIndex = orderedIds.indexOf(String(active.id))
     const nextIndex = orderedIds.indexOf(String(over.id))
+
     if (previousIndex < 0 || nextIndex < 0) return
 
-    setOrderOverride(arrayMove(orderedIds, previousIndex, nextIndex))
+    const previousOrder = orderedIds
+    const nextOrder = arrayMove(orderedIds, previousIndex, nextIndex)
+
+    // Update UI immediately
+    setOrderOverride(nextOrder)
+
+    try {
+      await updateSequenceMutation.mutateAsync({
+        order: nextOrder.map((id, index) => ({
+          id,
+          sequence: index + 1,
+        })),
+      })
+    } catch {
+      // Roll back UI if API fails
+      setOrderOverride(previousOrder)
+    }
   }
 
   return (
