@@ -2,7 +2,6 @@ import {
   createEditWorkshopFormValue,
   WorkshopForm,
 } from "@/components/workshop-form"
-import { getCoachesOptions } from "@/services/coaches"
 import { getUsersOptions } from "@/services/users"
 import { getWorkshopByIdOptions } from "@/services/workshops-panel"
 import { useSuspenseQuery } from "@tanstack/react-query"
@@ -18,7 +17,6 @@ export const Route = createFileRoute("/_authenticated/workshops/$id/edit")({
     Promise.all([
       context.queryClient.query(getWorkshopByIdOptions(params.id)),
       context.queryClient.query(activeAdminOptions),
-      context.queryClient.query(getCoachesOptions()),
     ]),
   component: RouteComponent,
 })
@@ -33,16 +31,11 @@ function RouteComponent() {
     ...activeAdminOptions,
     select: (data) => data.data,
   })
-  const { data: coaches } = useSuspenseQuery({
-    ...getCoachesOptions(),
-    select: (data) => data.data,
-  })
-
   return (
     <WorkshopForm
       key={workshop.ID}
       mode="edit"
-      initialValue={createEditWorkshopFormValue(workshop, coaches)}
+      initialValue={createEditWorkshopFormValue(workshop)}
       users={users}
       onSubmit={(updatedWorkshop) =>
         console.log("Updated workshop", updatedWorkshop)

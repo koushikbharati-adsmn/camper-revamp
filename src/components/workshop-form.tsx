@@ -218,19 +218,8 @@ export function createNewWorkshopFormValue(
 }
 
 export function createEditWorkshopFormValue(
-  workshop: WorkshopById,
-  coaches: CoachItem[]
+  workshop: WorkshopById
 ): WorkshopFormValue {
-  const assignedCoaches = new Map(
-    workshop.coaches.map((coach) => [String(coach.CoachID), coach])
-  )
-  const coachIds = [
-    ...new Set([
-      ...coaches.filter((coach) => coach.IsActive).map((coach) => coach.ID),
-      ...workshop.coaches.map((coach) => String(coach.CoachID)),
-    ]),
-  ]
-
   return {
     title: workshop.Name,
     assignee: workshop.AdminID == null ? "" : String(workshop.AdminID),
@@ -270,19 +259,14 @@ export function createEditWorkshopFormValue(
         description: message.Description,
       })),
     usePasscode: workshop.IsProtected,
-    coaches: coachIds.map((id) => {
-      const assigned = assignedCoaches.get(id)
-      const available = coaches.find((coach) => coach.ID === id)
-
-      return {
-        id,
-        name: assigned?.CoachName ?? available?.CoachName ?? "",
-        title: assigned?.Title ?? available?.Title ?? "",
-        description: assigned?.Description ?? available?.Description ?? "",
-        avatar: assigned?.AvatarFileName ?? available?.AvatarFileName ?? "",
-        enabled: !!assigned,
-      }
-    }),
+    coaches: workshop.coaches.map((coach) => ({
+      id: String(coach.CoachID),
+      name: coach.CoachName,
+      title: coach.Title,
+      description: coach.Description,
+      avatar: coach.AvatarFileName,
+      enabled: coach.IsActive,
+    })),
   }
 }
 
