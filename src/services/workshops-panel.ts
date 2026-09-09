@@ -239,30 +239,66 @@ export function getWorkshopByIdOptions(id: string) {
   })
 }
 
+type WorkshopAction = "add" | "update" | "delete"
+
 interface AddUpdateWorkshopPayload {
   id?: string
-  name: string
+  name: string // title
+  admin_id: string | null // assigned admin
   brand_name: string
-  admin_id: string | null
+  description: string // subtitle
   context: string
-  description: string
   guidelines: string
 
   primary_color: string
   secondary_color: string
+
+  logo_filename: File | null
   background_filename_portrait: File | null
   background_filename_landscape: File | null
-  logo_filename?: File | null
-  avatar_files: File[]
+  primary_font_filename: File | null
+  secondary_font_filename: File | null
 
-  flag_vote: boolean
-  flag_result: boolean
-  is_active: boolean
+  avatar_files: File[] // coach avatars
 
-  teams: string
-  categories: string
-  coach: string
-  is_changed: boolean
+  // flag_vote: boolean
+  // flag_result: boolean
+  // is_active: boolean
+  // is_changed: boolean
+
+  teams: {
+    id: string | null
+    teamName: string
+    description: string
+    teamCode: string | null
+    teamColorCode: string
+    thumbnailFileName: File | null
+    action: WorkshopAction
+  }[]
+  categories: {
+    id: string | null
+    name: string // pillar title
+    context: string
+    action: WorkshopAction
+  }[]
+  walkThrough: {
+    id: string | null
+    title: string
+    description: string
+    displayOrder: number
+    action: WorkshopAction
+  }[]
+  coach: {
+    coachID: string
+    coachName: string
+    // coachKey: string
+    title: string
+    description: string
+    // promptFileName: string
+    avatarFileName: string
+    isActive: boolean
+    action: WorkshopAction
+  }[]
 }
 
 interface AddUpdateWorkshopResponse {
@@ -301,15 +337,15 @@ const AddUpdateWorkshop = async (payload: AddUpdateWorkshopPayload) => {
     formData.append("avatar_files", file)
   })
 
-  formData.append("flag_vote", String(payload.flag_vote))
-  formData.append("flag_result", String(payload.flag_result))
-  formData.append("is_active", String(payload.is_active))
+  // formData.append("flag_vote", String(payload.flag_vote))
+  // formData.append("flag_result", String(payload.flag_result))
+  // formData.append("is_active", String(payload.is_active))
 
-  formData.append("teams", payload.teams)
-  formData.append("categories", payload.categories)
-  formData.append("coach", payload.coach)
+  formData.append("teams", JSON.stringify(payload.teams))
+  formData.append("categories", JSON.stringify(payload.categories))
+  formData.append("coach", JSON.stringify(payload.coach))
 
-  formData.append("is_changed", String(payload.is_changed))
+  // formData.append("is_changed", String(payload.is_changed))
 
   const res = await apiClient.post<AddUpdateWorkshopResponse>(
     "/admin/workshop",
