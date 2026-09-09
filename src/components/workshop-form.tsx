@@ -233,7 +233,7 @@ export function createEditWorkshopFormValue(
 
   return {
     title: workshop.Name,
-    assignee: workshop.AdminID ?? "",
+    assignee: workshop.AdminID == null ? "" : String(workshop.AdminID),
     brand: workshop.BrandName,
     subtitle: workshop.Desc,
     context: workshop.WorkshopContext,
@@ -1073,7 +1073,7 @@ function IdentityStep({
                 errors.context ? "workshop-context-error" : undefined
               }
               data-error-control
-              className="min-h-28 resize-none text-base sm:text-sm md:text-sm"
+              className="max-h-72 min-h-28 resize-none text-base sm:text-sm md:text-sm"
             />
             {errors.context && (
               <FieldError id="workshop-context-error">
@@ -1097,7 +1097,7 @@ function IdentityStep({
                 errors.guidelines ? "workshop-guidelines-error" : undefined
               }
               data-error-control
-              className="min-h-28 resize-none text-base sm:text-sm md:text-sm"
+              className="max-h-72 min-h-28 resize-none text-base sm:text-sm md:text-sm"
             />
             {errors.guidelines && (
               <FieldError id="workshop-guidelines-error">
@@ -1612,7 +1612,7 @@ function PillarsStep({
                           : undefined
                       }
                       data-error-control
-                      className="min-h-28 resize-none text-base sm:text-sm md:text-sm"
+                      className="max-h-72 min-h-28 resize-none text-base sm:text-sm md:text-sm"
                     />
                     {errors[contextKey] && (
                       <FieldError id={`${pillar.id}-context-error`}>
@@ -1867,7 +1867,7 @@ function TeamsStep({
                           : undefined
                       }
                       data-error-control
-                      className="min-h-28 resize-none text-base sm:text-sm md:text-sm"
+                      className="max-h-72 min-h-28 resize-none text-base sm:text-sm md:text-sm"
                     />
                     {errors[descriptionKey] && (
                       <FieldError id={`${team.id}-description-error`}>
@@ -2235,7 +2235,7 @@ function SortableWalkthroughMessage({
                     : undefined
                 }
                 data-error-control
-                className="min-h-28 resize-none text-base sm:text-sm md:text-sm"
+                className="max-h-72 min-h-28 resize-none text-base sm:text-sm md:text-sm"
               />
               {errors[descriptionKey] && (
                 <FieldError id={`${message.id}-description-error`}>
@@ -2442,7 +2442,7 @@ function CoachesStep({
                         : undefined
                     }
                     data-error-control
-                    className="min-h-28 resize-none text-base sm:text-sm md:text-sm"
+                    className="max-h-72 min-h-28 resize-none text-base sm:text-sm md:text-sm"
                   />
                   {errors[descriptionKey] && (
                     <FieldError id={`${coach.id}-description-error`}>

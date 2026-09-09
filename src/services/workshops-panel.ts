@@ -156,7 +156,7 @@ export interface WorkshopById {
   ID: string
   Name: string // title
   Desc: string // subtitle
-  AdminID: string | null // assigned admin
+  AdminID: number | null // assigned admin
   WorkshopCode: string
   BrandName: string // brand
   WorkshopContext: string // context
