@@ -99,63 +99,57 @@ function RouteComponent() {
     ...getWalkthroughOptions(),
     select: (response) => response.data,
   })
+
   const [editor, setEditor] = useState<Walkthrough | "new" | null>(null)
+
   const [deleteTarget, setDeleteTarget] = useState<Walkthrough | null>(null)
-  const [orderOverride, setOrderOverride] = useState<string[]>([])
-  const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
-    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
-  )
 
   const updateSequenceMutation = useUpdateWalkthroughSequence()
 
-  const sortedWalkthroughs = [...walkthroughs].sort(
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 8,
+      },
+    }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  )
+
+  // Cache is now the single source of truth.
+  const orderedWalkthroughs = [...walkthroughs].sort(
     (first, second) =>
       first.DisplayOrder - second.DisplayOrder ||
       first.Title.localeCompare(second.Title)
   )
-  const walkthroughById = new Map(
-    walkthroughs.map((walkthrough) => [walkthrough.ID, walkthrough])
-  )
-  const serverIds = new Set(walkthroughById.keys())
-  const orderedIds = [
-    ...orderOverride.filter((id) => serverIds.has(id)),
-    ...sortedWalkthroughs
-      .map((walkthrough) => walkthrough.ID)
-      .filter((id) => !orderOverride.includes(id)),
-  ]
-  const orderedWalkthroughs = orderedIds.flatMap((id) => {
-    const walkthrough = walkthroughById.get(id)
-    return walkthrough ? [walkthrough] : []
-  })
 
-  const reorderWalkthroughs = async ({ active, over }: DragEndEvent) => {
+  const orderedIds = orderedWalkthroughs.map((walkthrough) => walkthrough.ID)
+
+  const reorderWalkthroughs = ({ active, over }: DragEndEvent) => {
     if (!over || active.id === over.id || updateSequenceMutation.isPending) {
       return
     }
 
-    const previousIndex = orderedIds.indexOf(String(active.id))
-    const nextIndex = orderedIds.indexOf(String(over.id))
+    const activeId = String(active.id)
+    const overId = String(over.id)
 
-    if (previousIndex < 0 || nextIndex < 0) return
+    const previousIndex = orderedIds.indexOf(activeId)
 
-    const previousOrder = orderedIds
-    const nextOrder = arrayMove(orderedIds, previousIndex, nextIndex)
+    const nextIndex = orderedIds.indexOf(overId)
 
-    // Update UI immediately
-    setOrderOverride(nextOrder)
-
-    try {
-      await updateSequenceMutation.mutateAsync({
-        order: nextOrder.map((id, index) => ({
-          id,
-          sequence: index + 1,
-        })),
-      })
-    } catch {
-      // Roll back UI if API fails
-      setOrderOverride(previousOrder)
+    if (previousIndex < 0 || nextIndex < 0) {
+      return
     }
+
+    const reordered = arrayMove(orderedWalkthroughs, previousIndex, nextIndex)
+
+    updateSequenceMutation.mutate({
+      order: reordered.map((walkthrough, index) => ({
+        id: walkthrough.ID,
+        sequence: index + 1,
+      })),
+    })
   }
 
   return (
@@ -169,11 +163,13 @@ function RouteComponent() {
             className="mb-4 flex items-start gap-2 bg-muted/40 px-3 py-2 text-xs text-muted-foreground"
           >
             <InfoIcon className="mt-0.5 size-3.5 shrink-0" />
+
             <span>
               Drag walkthroughs to change their display order. Keyboard users
               can press Space, then use the arrow keys.
             </span>
           </p>
+
           <DndContext
             sensors={sensors}
             collisionDetection={closestCenter}
@@ -212,7 +208,9 @@ function RouteComponent() {
           open
           walkthrough={editor === "new" ? null : editor}
           onOpenChange={(open) => {
-            if (!open) setEditor(null)
+            if (!open) {
+              setEditor(null)
+            }
           }}
         />
       )}
@@ -220,7 +218,9 @@ function RouteComponent() {
       <DeleteWalkthroughDialog
         walkthrough={deleteTarget}
         onOpenChange={(open) => {
-          if (!open) setDeleteTarget(null)
+          if (!open) {
+            setDeleteTarget(null)
+          }
         }}
       />
     </div>
@@ -232,13 +232,16 @@ function WalkthroughsHeader({ onAdd }: { onAdd?: () => void }) {
     <header className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
       <div>
         <h1 className="text-2xl font-bold">Walkthroughs</h1>
+
         <p className="text-sm text-muted-foreground">
           Manage the messages that guide participants through workshops.
         </p>
       </div>
+
       {onAdd && (
         <Button onClick={onAdd} className="w-full sm:w-auto">
-          <PlusIcon /> Add walkthrough
+          <PlusIcon />
+          Add walkthrough
         </Button>
       )}
     </header>
@@ -265,7 +268,9 @@ function SortableWalkthroughCard({
     transform,
     transition,
     isDragging,
-  } = useSortable({ id: walkthrough.ID })
+  } = useSortable({
+    id: walkthrough.ID,
+  })
 
   return (
     <li
@@ -288,6 +293,7 @@ function SortableWalkthroughCard({
         >
           {position}
         </span>
+
         {!isLast && (
           <span className="absolute top-8 -bottom-3 w-px bg-border" />
         )}
@@ -320,12 +326,16 @@ function SortableWalkthroughCard({
             <h2 className="truncate text-sm font-semibold text-foreground">
               {walkthrough.Title}
             </h2>
+
             <p className="mt-1 line-clamp-2 text-sm/relaxed text-muted-foreground">
               {walkthrough.Description}
             </p>
+
             <div className="mt-3 flex flex-wrap items-center gap-2">
               <StatusBadge isActive={walkthrough.IsActive} />
+
               <span className="h-3 w-px bg-border" aria-hidden="true" />
+
               <p className="text-xs text-muted-foreground">
                 Created {formatCreatedDate(walkthrough.CreatedDttm)}
               </p>
@@ -366,6 +376,7 @@ function WalkthroughActions({
       >
         <PencilIcon />
       </Button>
+
       <Button
         type="button"
         variant="ghost"
@@ -393,8 +404,11 @@ function StatusBadge({ isActive }: { isActive: boolean }) {
     >
       <span
         aria-hidden="true"
-        className={`size-1.5 rounded-full ${isActive ? "bg-green-600" : "bg-muted-foreground"}`}
+        className={`size-1.5 rounded-full ${
+          isActive ? "bg-green-600" : "bg-muted-foreground"
+        }`}
       />
+
       {isActive ? "Active" : "Inactive"}
     </Badge>
   )
@@ -410,19 +424,26 @@ function WalkthroughEditorDialog({
   onOpenChange: (open: boolean) => void
 }) {
   const saveMutation = useSaveWalkthrough()
+
   const form = useForm({
     defaultValues: {
       title: walkthrough?.Title ?? "",
       description: walkthrough?.Description ?? "",
       isActive: walkthrough?.IsActive ?? true,
     },
+
     validators: {
       onSubmit: walkthroughFormSchema,
     },
+
     onSubmit: async ({ value }) => {
       try {
         const response = await saveMutation.mutateAsync({
-          ...(walkthrough ? { ID: walkthrough.ID } : {}),
+          ...(walkthrough
+            ? {
+                ID: walkthrough.ID,
+              }
+            : {}),
           Title: value.title.trim(),
           Description: value.description.trim(),
           IsActive: value.isActive,
@@ -433,6 +454,7 @@ function WalkthroughEditorDialog({
           title: walkthrough ? "Walkthrough updated" : "Walkthrough created",
           description: response.message,
         })
+
         onOpenChange(false)
       } catch {
         return
@@ -444,7 +466,9 @@ function WalkthroughEditorDialog({
     <Dialog
       open={open}
       onOpenChange={(nextOpen) => {
-        if (!saveMutation.isPending) onOpenChange(nextOpen)
+        if (!saveMutation.isPending) {
+          onOpenChange(nextOpen)
+        }
       }}
     >
       <DialogContent className="sm:max-w-lg">
@@ -461,6 +485,7 @@ function WalkthroughEditorDialog({
             <DialogTitle>
               {walkthrough ? "Edit walkthrough" : "Add walkthrough"}
             </DialogTitle>
+
             <DialogDescription>
               Configure the message and its availability in workshops.
             </DialogDescription>
@@ -476,6 +501,7 @@ function WalkthroughEditorDialog({
                 return (
                   <Field data-invalid={isInvalid}>
                     <FieldLabel htmlFor="walkthrough-title">Title</FieldLabel>
+
                     <Input
                       id="walkthrough-title"
                       name={field.name}
@@ -488,6 +514,7 @@ function WalkthroughEditorDialog({
                       placeholder="Welcome to the workshop"
                       aria-invalid={isInvalid}
                     />
+
                     {isInvalid && (
                       <FieldError errors={field.state.meta.errors} />
                     )}
@@ -507,6 +534,7 @@ function WalkthroughEditorDialog({
                     <FieldLabel htmlFor="walkthrough-description">
                       Description
                     </FieldLabel>
+
                     <Textarea
                       id="walkthrough-description"
                       name={field.name}
@@ -520,6 +548,7 @@ function WalkthroughEditorDialog({
                       className="h-28 resize-none"
                       aria-invalid={isInvalid}
                     />
+
                     {isInvalid && (
                       <FieldError errors={field.state.meta.errors} />
                     )}
@@ -539,11 +568,13 @@ function WalkthroughEditorDialog({
                     <FieldLabel htmlFor="walkthrough-active">
                       Available in workshops
                     </FieldLabel>
+
                     <FieldDescription>
                       Turn this off to hide the walkthrough when configuring a
                       workshop.
                     </FieldDescription>
                   </div>
+
                   <Switch
                     id="walkthrough-active"
                     checked={field.state.value}
@@ -565,8 +596,10 @@ function WalkthroughEditorDialog({
             >
               Cancel
             </Button>
+
             <Button type="submit" disabled={saveMutation.isPending}>
               {saveMutation.isPending && <Spinner />}
+
               {saveMutation.isPending
                 ? "Saving..."
                 : walkthrough
@@ -590,15 +623,21 @@ function DeleteWalkthroughDialog({
   const deleteMutation = useDeleteWalkthrough()
 
   const removeWalkthrough = async () => {
-    if (!walkthrough) return
+    if (!walkthrough) {
+      return
+    }
 
     try {
-      const response = await deleteMutation.mutateAsync({ id: walkthrough.ID })
+      const response = await deleteMutation.mutateAsync({
+        id: walkthrough.ID,
+      })
+
       toast.add({
         type: "success",
         title: "Walkthrough deleted",
         description: response.message,
       })
+
       onOpenChange(false)
     } catch {
       return
@@ -609,7 +648,9 @@ function DeleteWalkthroughDialog({
     <AlertDialog
       open={Boolean(walkthrough)}
       onOpenChange={(open) => {
-        if (!deleteMutation.isPending) onOpenChange(open)
+        if (!deleteMutation.isPending) {
+          onOpenChange(open)
+        }
       }}
     >
       <AlertDialogContent>
@@ -617,22 +658,27 @@ function DeleteWalkthroughDialog({
           <AlertDialogMedia className="text-destructive">
             <ShieldAlertIcon />
           </AlertDialogMedia>
+
           <AlertDialogTitle>Delete {walkthrough?.Title}?</AlertDialogTitle>
+
           <AlertDialogDescription>
             This permanently removes the walkthrough message. This action cannot
             be undone.
           </AlertDialogDescription>
         </AlertDialogHeader>
+
         <AlertDialogFooter>
           <AlertDialogCancel disabled={deleteMutation.isPending}>
             Cancel
           </AlertDialogCancel>
+
           <AlertDialogAction
             variant="destructive"
             disabled={!walkthrough || deleteMutation.isPending}
             onClick={() => void removeWalkthrough()}
           >
             {deleteMutation.isPending && <Spinner />}
+
             {deleteMutation.isPending ? "Deleting..." : "Delete walkthrough"}
           </AlertDialogAction>
         </AlertDialogFooter>
@@ -647,7 +693,9 @@ function WalkthroughsEmpty() {
       <div className="mb-3 flex size-10 items-center justify-center bg-muted">
         <ListOrderedIcon className="size-5 text-muted-foreground" />
       </div>
+
       <h2 className="text-sm font-semibold">No walkthroughs found</h2>
+
       <p className="mt-1 max-w-sm text-xs text-muted-foreground">
         Add a walkthrough to start guiding workshop participants.
       </p>
@@ -657,6 +705,7 @@ function WalkthroughsEmpty() {
 
 function formatCreatedDate(value: number) {
   const date = new Date(value < 1_000_000_000_000 ? value * 1000 : value)
+
   return Number.isNaN(date.getTime()) ? "Unknown" : format(date, "MMM d, yyyy")
 }
 
@@ -664,32 +713,41 @@ function WalkthroughsPending() {
   return (
     <div>
       <WalkthroughsHeader />
+
       <div className="mx-auto w-full max-w-5xl">
         <Skeleton className="mb-4 h-9 w-full" />
+
         <div>
-          {Array.from({ length: 5 }).map((_, index) => (
+          {Array.from({
+            length: 5,
+          }).map((_, index) => (
             <div
               key={index}
               className="grid grid-cols-[2rem_minmax(0,1fr)] gap-3 pb-3 last:pb-0"
             >
               <div className="relative flex justify-center">
                 <Skeleton className="relative z-10 size-8" />
+
                 {index < 4 && (
                   <span className="absolute top-8 -bottom-3 w-px bg-border" />
                 )}
               </div>
+
               <div className="grid grid-cols-[2.5rem_minmax(0,1fr)_auto] items-stretch border border-border">
                 <div className="flex items-center justify-center border-r border-border bg-muted/30">
                   <Skeleton className="size-7" />
                 </div>
+
                 <div className="min-w-0 space-y-2.5 p-3 sm:p-4">
                   <Skeleton className="h-5 w-48 max-w-full" />
                   <Skeleton className="h-8 w-96 max-w-full" />
+
                   <div className="flex items-center gap-2">
                     <Skeleton className="h-5 w-14" />
                     <Skeleton className="h-3 w-28" />
                   </div>
                 </div>
+
                 <div className="flex gap-1 self-start p-2 sm:p-3">
                   <Skeleton className="size-7" />
                   <Skeleton className="size-7" />
@@ -709,9 +767,12 @@ function WalkthroughsError({ error, reset }: ErrorComponentProps) {
   return (
     <div>
       <WalkthroughsHeader />
+
       <div className="border border-destructive/40 p-10 text-center">
         <h2 className="font-semibold">Unable to load walkthroughs</h2>
+
         <p className="mt-1 text-sm text-muted-foreground">{error.message}</p>
+
         <Button
           className="mt-4"
           variant="outline"

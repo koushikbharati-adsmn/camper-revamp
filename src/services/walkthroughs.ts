@@ -1,7 +1,14 @@
 import { toast } from "@/components/ui/toast"
 import apiClient from "@/lib/api-client"
-import { queryOptions } from "@tanstack/react-query"
-import { useMutation, useQueryClient } from "@tanstack/react-query"
+import {
+  queryOptions,
+  useMutation,
+  useQueryClient,
+} from "@tanstack/react-query"
+
+// ---------------------------------------------
+// TYPES
+// ---------------------------------------------
 
 export interface Walkthrough {
   ID: string
@@ -22,6 +29,40 @@ interface GetWalkthroughParams {
   id?: string
 }
 
+interface SaveWalkthroughPayload {
+  ID?: string
+  Title: string
+  Description: string
+  IsActive: boolean
+}
+
+interface DeleteWalkthroughPayload {
+  id: string
+}
+
+export interface WalkthroughSequenceItem {
+  id: string
+  sequence: number
+}
+
+export interface UpdateWalkthroughSequencePayload {
+  order: WalkthroughSequenceItem[]
+}
+
+// ---------------------------------------------
+// QUERY KEYS
+// ---------------------------------------------
+
+export const walkthroughKeys = {
+  all: ["WALKTHROUGH"] as const,
+
+  list: (params?: GetWalkthroughParams) => ["WALKTHROUGH", params] as const,
+}
+
+// ---------------------------------------------
+// GET WALKTHROUGHS
+// ---------------------------------------------
+
 const getWalkthrough = async (
   params?: GetWalkthroughParams
 ): Promise<WalkthroughResponse> => {
@@ -34,16 +75,13 @@ const getWalkthrough = async (
 
 export const getWalkthroughOptions = (params?: GetWalkthroughParams) =>
   queryOptions({
-    queryKey: ["WALKTHROUGH", params],
+    queryKey: walkthroughKeys.list(params),
     queryFn: () => getWalkthrough(params),
   })
 
-interface SaveWalkthroughPayload {
-  ID?: string
-  Title: string
-  Description: string
-  IsActive: boolean
-}
+// ---------------------------------------------
+// SAVE WALKTHROUGH
+// ---------------------------------------------
 
 const saveWalkthrough = async (
   payload: SaveWalkthroughPayload
@@ -67,8 +105,8 @@ export const useSaveWalkthrough = () => {
     mutationFn: saveWalkthrough,
 
     onSuccess: () => {
-      queryClient.invalidateQueries({
-        queryKey: ["WALKTHROUGH"],
+      return queryClient.invalidateQueries({
+        queryKey: walkthroughKeys.all,
       })
     },
 
@@ -82,9 +120,9 @@ export const useSaveWalkthrough = () => {
   })
 }
 
-interface DeleteWalkthroughPayload {
-  id: string
-}
+// ---------------------------------------------
+// DELETE WALKTHROUGH
+// ---------------------------------------------
 
 const deleteWalkthrough = async (
   payload: DeleteWalkthroughPayload
@@ -108,8 +146,8 @@ export const useDeleteWalkthrough = () => {
     mutationFn: deleteWalkthrough,
 
     onSuccess: () => {
-      queryClient.invalidateQueries({
-        queryKey: ["WALKTHROUGH"],
+      return queryClient.invalidateQueries({
+        queryKey: walkthroughKeys.all,
       })
     },
 
@@ -123,14 +161,9 @@ export const useDeleteWalkthrough = () => {
   })
 }
 
-interface WalkthroughSequenceItem {
-  id: string
-  sequence: number
-}
-
-interface UpdateWalkthroughSequencePayload {
-  order: WalkthroughSequenceItem[]
-}
+// ---------------------------------------------
+// UPDATE WALKTHROUGH SEQUENCE
+// ---------------------------------------------
 
 const updateWalkthroughSequence = async (
   payload: UpdateWalkthroughSequencePayload
@@ -147,23 +180,91 @@ const updateWalkthroughSequence = async (
   return res.data
 }
 
+// ---------------------------------------------
+// OPTIMISTIC WALKTHROUGH SEQUENCE
+// ---------------------------------------------
+
 export const useUpdateWalkthroughSequence = () => {
   const queryClient = useQueryClient()
+
+  const queryKey = walkthroughKeys.list()
 
   return useMutation({
     mutationFn: updateWalkthroughSequence,
 
-    onSuccess: () => {
-      queryClient.invalidateQueries({
-        queryKey: ["WALKTHROUGH"],
+    onMutate: async ({ order }) => {
+      // Prevent an in-flight refetch from overwriting
+      // our optimistic ordering.
+      await queryClient.cancelQueries({
+        queryKey,
+        exact: true,
       })
+
+      // Snapshot current server/cache state.
+      const previousWalkthroughs =
+        queryClient.getQueryData<WalkthroughResponse>(queryKey)
+
+      const sequenceMap = new Map(
+        order.map(({ id, sequence }) => [id, sequence])
+      )
+
+      // Update cache immediately.
+      queryClient.setQueryData<WalkthroughResponse>(queryKey, (current) => {
+        if (!current) {
+          return current
+        }
+
+        const data = current.data
+          .map((walkthrough) => {
+            const sequence = sequenceMap.get(walkthrough.ID)
+
+            if (sequence === undefined) {
+              return walkthrough
+            }
+
+            return {
+              ...walkthrough,
+              DisplayOrder: sequence,
+            }
+          })
+          .sort(
+            (first, second) =>
+              first.DisplayOrder - second.DisplayOrder ||
+              first.Title.localeCompare(second.Title)
+          )
+
+        return {
+          ...current,
+          data,
+        }
+      })
+
+      // Returned value becomes onError context.
+      return {
+        previousWalkthroughs,
+      }
     },
 
-    onError: (error: Error) => {
+    onError: (error, _variables, context) => {
+      // Roll back optimistic update.
+      if (context?.previousWalkthroughs) {
+        queryClient.setQueryData(queryKey, context.previousWalkthroughs)
+      }
+
       toast.add({
         type: "error",
         title: "Oops! Something went wrong",
-        description: error.message,
+        description:
+          error instanceof Error
+            ? error.message
+            : "Unable to update walkthrough order.",
+      })
+    },
+
+    onSettled: () => {
+      // Confirm order against server state.
+      return queryClient.invalidateQueries({
+        queryKey: walkthroughKeys.all,
       })
     },
   })
