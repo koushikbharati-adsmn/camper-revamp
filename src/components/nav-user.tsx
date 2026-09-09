@@ -19,7 +19,7 @@ import {
   SidebarMenuItem,
 } from "@/components/ui/sidebar"
 import { clearAuthToken } from "@/lib/auth-session"
-import { getInitials } from "@/lib/utils"
+import { getInitials, getRolesLabel } from "@/lib/utils"
 import type { User } from "@/services/users"
 import { LogOutIcon } from "lucide-react"
 
@@ -27,7 +27,7 @@ export function NavUser({ user }: { user: User }) {
   const [logoutDialogOpen, setLogoutDialogOpen] = useState(false)
 
   const initials = getInitials(user.Name)
-  const role = user.Role === "SuperAdmin" ? "Super Admin" : "Admin"
+  const role = getRolesLabel(user.Role)
 
   const handleLogout = () => {
     clearAuthToken()
