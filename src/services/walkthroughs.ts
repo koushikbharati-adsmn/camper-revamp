@@ -27,6 +27,7 @@ export interface WalkthroughResponse {
 
 interface GetWalkthroughParams {
   id?: string
+  active?: boolean
 }
 
 interface SaveWalkthroughPayload {

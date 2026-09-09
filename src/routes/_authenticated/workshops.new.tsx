@@ -39,6 +39,28 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { cn, getInitials } from "@/lib/utils"
 import { getCoachesOptions } from "@/services/coaches"
 import { getUsersOptions, type User } from "@/services/users"
+import {
+  getWalkthroughOptions,
+  type Walkthrough,
+} from "@/services/walkthroughs"
+import {
+  closestCenter,
+  DndContext,
+  type DragEndEvent,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+} from "@dnd-kit/core"
+import { restrictToWindowEdges } from "@dnd-kit/modifiers"
+import {
+  arrayMove,
+  sortableKeyboardCoordinates,
+  SortableContext,
+  useSortable,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable"
+import { CSS } from "@dnd-kit/utilities"
 import { useSuspenseQuery } from "@tanstack/react-query"
 import { createFileRoute, Link } from "@tanstack/react-router"
 import { REGEXP_ONLY_DIGITS } from "input-otp"
@@ -49,6 +71,7 @@ import {
   ArrowUpRightIcon,
   CheckIcon,
   FileIcon,
+  GripVerticalIcon,
   PlusIcon,
   Trash2Icon,
   UploadIcon,
@@ -64,6 +87,7 @@ export const Route = createFileRoute("/_authenticated/workshops/new")({
         getUsersOptions({ is_active: true, role: "Admin" })
       ),
       context.queryClient.query(getCoachesOptions()),
+      context.queryClient.query(getWalkthroughOptions({ active: true })),
     ]),
   component: RouteComponent,
 })
@@ -162,11 +186,30 @@ const initialWorkshop: Workshop = {
       passcode: "",
     },
   ],
-  walkthroughMessages: [
-    { id: "walkthrough-initial", title: "", description: "" },
-  ],
+  walkthroughMessages: [],
   usePasscode: false,
   coaches: [],
+}
+
+function getInitialWalkthroughMessages(
+  walkthroughs: Walkthrough[]
+): WalkthroughMessage[] {
+  const messages = [...walkthroughs]
+    .filter((walkthrough) => walkthrough.IsActive)
+    .sort(
+      (first, second) =>
+        first.DisplayOrder - second.DisplayOrder ||
+        first.Title.localeCompare(second.Title)
+    )
+    .map((walkthrough) => ({
+      id: walkthrough.ID,
+      title: walkthrough.Title,
+      description: walkthrough.Description,
+    }))
+
+  return messages.length
+    ? messages
+    : [{ id: "walkthrough-initial", title: "", description: "" }]
 }
 
 function getStepErrors(step: number, workshop: Workshop) {
@@ -295,8 +338,13 @@ function RouteComponent() {
     ...getCoachesOptions(),
     select: (data) => data.data,
   })
+  const { data: walkthroughs } = useSuspenseQuery({
+    ...getWalkthroughOptions({ active: true }),
+    select: (data) => data.data,
+  })
   const [workshop, setWorkshop] = useState<Workshop>(() => ({
     ...initialWorkshop,
+    walkthroughMessages: getInitialWalkthroughMessages(walkthroughs),
     coaches: coaches
       .filter((coach) => coach.IsActive)
       .map((coach) => ({
@@ -1802,6 +1850,16 @@ function WalkthroughStep({
 }) {
   const pendingFocusId = useRef<string | null>(null)
   const addButtonRef = useRef<HTMLButtonElement>(null)
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 8,
+      },
+    }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  )
 
   const change = (
     id: string,
@@ -1841,6 +1899,32 @@ function WalkthroughStep({
     window.requestAnimationFrame(() => addButtonRef.current?.focus())
   }
 
+  const reorderMessages = ({ active, over }: DragEndEvent) => {
+    if (!over || active.id === over.id) return
+
+    const previousIndex = workshop.walkthroughMessages.findIndex(
+      (message) => message.id === String(active.id)
+    )
+    const nextIndex = workshop.walkthroughMessages.findIndex(
+      (message) => message.id === String(over.id)
+    )
+
+    if (previousIndex < 0 || nextIndex < 0) return
+
+    setWorkshop((current) => ({
+      ...current,
+      walkthroughMessages: arrayMove(
+        current.walkthroughMessages,
+        previousIndex,
+        nextIndex
+      ),
+    }))
+    onFieldChange()
+  }
+
+  const messageIds = workshop.walkthroughMessages.map((message) => message.id)
+  const canReorder = workshop.walkthroughMessages.length > 1
+
   return (
     <div className="space-y-5">
       <div className="flex items-end justify-between gap-4 border-b border-border pb-3">
@@ -1857,119 +1941,54 @@ function WalkthroughStep({
         </Badge>
       </div>
 
-      <div className="grid gap-4">
-        {workshop.walkthroughMessages.map((message, index) => {
-          const titleKey = `walkthrough-${message.id}-title`
-          const descriptionKey = `walkthrough-${message.id}-description`
+      {canReorder && (
+        <p
+          id="workshop-walkthrough-reorder-instructions"
+          className="text-xs text-muted-foreground"
+        >
+          Drag messages to change their workshop order. Keyboard users can press
+          Space, then use the arrow keys.
+        </p>
+      )}
 
-          return (
-            <fieldset key={message.id}>
-              <legend className="sr-only">
-                Walkthrough message {index + 1}
-              </legend>
-              <Card size="sm" className="gap-0 py-0">
-                <CardHeader className="border-b border-border py-3">
-                  <div className="flex min-w-0 items-center gap-3">
-                    <span className="flex size-7 shrink-0 items-center justify-center bg-primary text-[11px] font-semibold text-primary-foreground">
-                      {String(index + 1).padStart(2, "0")}
-                    </span>
-                    <div className="min-w-0">
-                      <CardTitle>
-                        <h3 className="truncate">
-                          {message.title || `Message ${index + 1}`}
-                        </h3>
-                      </CardTitle>
-                      <CardDescription>Walkthrough message</CardDescription>
-                    </div>
-                  </div>
-                  {workshop.walkthroughMessages.length > 1 && (
-                    <CardAction>
-                      <Button
-                        type="button"
-                        variant="destructive"
-                        size="icon-sm"
-                        className="size-10 sm:size-8"
-                        aria-label={`Remove ${message.title || `message ${index + 1}`}`}
-                        onClick={() => removeMessage(message.id)}
-                      >
-                        <Trash2Icon />
-                      </Button>
-                    </CardAction>
-                  )}
-                </CardHeader>
-                <CardContent className="grid gap-5 py-4">
-                  <Field
-                    data-invalid={!!errors[titleKey]}
-                    data-error-key={titleKey}
-                  >
-                    <FieldLabel htmlFor={`${message.id}-title`}>
-                      Title
-                    </FieldLabel>
-                    <Input
-                      id={`${message.id}-title`}
-                      ref={(node) => {
-                        if (!node || pendingFocusId.current !== message.id)
-                          return
-                        pendingFocusId.current = null
-                        node.focus()
-                      }}
-                      value={message.title}
-                      onChange={(event) =>
-                        change(message.id, "title", event.target.value)
-                      }
-                      placeholder="e.g. Choose your team"
-                      aria-invalid={!!errors[titleKey]}
-                      aria-required="true"
-                      aria-describedby={
-                        errors[titleKey]
-                          ? `${message.id}-title-error`
-                          : undefined
-                      }
-                      data-error-control
-                    />
-                    {errors[titleKey] && (
-                      <FieldError id={`${message.id}-title-error`}>
-                        {errors[titleKey]}
-                      </FieldError>
-                    )}
-                  </Field>
-
-                  <Field
-                    data-invalid={!!errors[descriptionKey]}
-                    data-error-key={descriptionKey}
-                  >
-                    <FieldLabel htmlFor={`${message.id}-description`}>
-                      Description
-                    </FieldLabel>
-                    <Textarea
-                      id={`${message.id}-description`}
-                      value={message.description}
-                      onChange={(event) =>
-                        change(message.id, "description", event.target.value)
-                      }
-                      placeholder="Explain what participants should do at this point."
-                      aria-invalid={!!errors[descriptionKey]}
-                      aria-required="true"
-                      aria-describedby={
-                        errors[descriptionKey]
-                          ? `${message.id}-description-error`
-                          : undefined
-                      }
-                      data-error-control
-                      className="min-h-28 resize-none text-base sm:text-sm md:text-sm"
-                    />
-                    {errors[descriptionKey] && (
-                      <FieldError id={`${message.id}-description-error`}>
-                        {errors[descriptionKey]}
-                      </FieldError>
-                    )}
-                  </Field>
-                </CardContent>
-              </Card>
-            </fieldset>
-          )
-        })}
-      </div>
+      <DndContext
+        sensors={sensors}
+        collisionDetection={closestCenter}
+        modifiers={[restrictToWindowEdges]}
+        onDragEnd={reorderMessages}
+      >
+        <SortableContext
+          items={messageIds}
+          strategy={verticalListSortingStrategy}
+        >
+          <ol
+            aria-label="Workshop walkthrough order"
+            aria-describedby={
+              canReorder
+                ? "workshop-walkthrough-reorder-instructions"
+                : undefined
+            }
+            className="grid gap-4"
+          >
+            {workshop.walkthroughMessages.map((message, index) => (
+              <SortableWalkthroughMessage
+                key={message.id}
+                message={message}
+                position={index + 1}
+                canReorder={canReorder}
+                errors={errors}
+                onTitleRef={(node) => {
+                  if (!node || pendingFocusId.current !== message.id) return
+                  pendingFocusId.current = null
+                  node.focus()
+                }}
+                onChange={(field, value) => change(message.id, field, value)}
+                onRemove={() => removeMessage(message.id)}
+              />
+            ))}
+          </ol>
+        </SortableContext>
+      </DndContext>
 
       <Button
         ref={addButtonRef}
@@ -1981,6 +2000,153 @@ function WalkthroughStep({
         <PlusIcon /> Add message
       </Button>
     </div>
+  )
+}
+
+function SortableWalkthroughMessage({
+  message,
+  position,
+  canReorder,
+  errors,
+  onTitleRef,
+  onChange,
+  onRemove,
+}: {
+  message: WalkthroughMessage
+  position: number
+  canReorder: boolean
+  errors: Record<string, string>
+  onTitleRef: (node: HTMLInputElement | null) => void
+  onChange: (field: keyof Omit<WalkthroughMessage, "id">, value: string) => void
+  onRemove: () => void
+}) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: message.id })
+  const titleKey = `walkthrough-${message.id}-title`
+  const descriptionKey = `walkthrough-${message.id}-description`
+
+  return (
+    <li
+      ref={setNodeRef}
+      style={{
+        transform: CSS.Transform.toString(transform),
+        transition,
+      }}
+      className={cn(isDragging && "z-10")}
+    >
+      <fieldset>
+        <legend className="sr-only">Walkthrough message {position}</legend>
+        <Card
+          size="sm"
+          className={cn(
+            "gap-0 py-0",
+            isDragging && "bg-card opacity-90 shadow-lg ring-primary/40"
+          )}
+        >
+          <CardHeader className="border-b border-border py-3">
+            <div className="flex min-w-0 items-center gap-3">
+              <span className="flex size-7 shrink-0 items-center justify-center bg-primary text-[11px] font-semibold text-primary-foreground">
+                {String(position).padStart(2, "0")}
+              </span>
+              <div className="min-w-0">
+                <CardTitle>
+                  <h3 className="truncate">
+                    {message.title || `Message ${position}`}
+                  </h3>
+                </CardTitle>
+                <CardDescription>Walkthrough message</CardDescription>
+              </div>
+            </div>
+            {canReorder && (
+              <CardAction className="flex items-center gap-1">
+                <Button
+                  {...attributes}
+                  {...listeners}
+                  type="button"
+                  variant="ghost"
+                  size="icon-sm"
+                  className="size-10 cursor-grab touch-none text-muted-foreground active:cursor-grabbing sm:size-8"
+                  aria-label={`Move ${message.title || `message ${position}`}. Current position ${position}.`}
+                  aria-describedby="workshop-walkthrough-reorder-instructions"
+                >
+                  <GripVerticalIcon />
+                </Button>
+                <Button
+                  type="button"
+                  variant="destructive"
+                  size="icon-sm"
+                  className="size-10 sm:size-8"
+                  aria-label={`Remove ${message.title || `message ${position}`}`}
+                  onClick={onRemove}
+                >
+                  <Trash2Icon />
+                </Button>
+              </CardAction>
+            )}
+          </CardHeader>
+          <CardContent className="grid gap-5 py-4">
+            <Field data-invalid={!!errors[titleKey]} data-error-key={titleKey}>
+              <FieldLabel htmlFor={`${message.id}-title`}>Title</FieldLabel>
+              <Input
+                id={`${message.id}-title`}
+                ref={onTitleRef}
+                value={message.title}
+                onChange={(event) => onChange("title", event.target.value)}
+                placeholder="e.g. Choose your team"
+                aria-invalid={!!errors[titleKey]}
+                aria-required="true"
+                aria-describedby={
+                  errors[titleKey] ? `${message.id}-title-error` : undefined
+                }
+                data-error-control
+              />
+              {errors[titleKey] && (
+                <FieldError id={`${message.id}-title-error`}>
+                  {errors[titleKey]}
+                </FieldError>
+              )}
+            </Field>
+
+            <Field
+              data-invalid={!!errors[descriptionKey]}
+              data-error-key={descriptionKey}
+            >
+              <FieldLabel htmlFor={`${message.id}-description`}>
+                Description
+              </FieldLabel>
+              <Textarea
+                id={`${message.id}-description`}
+                value={message.description}
+                onChange={(event) =>
+                  onChange("description", event.target.value)
+                }
+                placeholder="Explain what participants should do at this point."
+                aria-invalid={!!errors[descriptionKey]}
+                aria-required="true"
+                aria-describedby={
+                  errors[descriptionKey]
+                    ? `${message.id}-description-error`
+                    : undefined
+                }
+                data-error-control
+                className="min-h-28 resize-none text-base sm:text-sm md:text-sm"
+              />
+              {errors[descriptionKey] && (
+                <FieldError id={`${message.id}-description-error`}>
+                  {errors[descriptionKey]}
+                </FieldError>
+              )}
+            </Field>
+          </CardContent>
+        </Card>
+      </fieldset>
+    </li>
   )
 }
 
