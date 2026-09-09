@@ -151,3 +151,90 @@ export const useDeleteWorkshop = () => {
     },
   })
 }
+
+export interface WorkshopById {
+  ID: string
+  Name: string // title
+  Desc: string // subtitle
+  AdminID: string | null // assigned admin
+  WorkshopCode: string
+  BrandName: string // brand
+  WorkshopContext: string // context
+  GuidelineFileName: string // brand guidelines content
+  logoFileName: string // logo url
+  PrimaryColor: string // primary color hex code
+  SecondaryColor: string // secondary color hex code
+  PortraitFileName: string // portrait background url
+  LandscapeFileName: string // landscape background url
+  HeadingFontFileName: string // heading font url
+  BodyFontFileName: string // body font url
+  CreatedBy: number
+  CreatedDttm: string
+  CreateDate: string
+  ModifiedBy: null | string
+  ModifiedDttm: string
+  status: WorkshopStatus | null
+  ReportFileName: null | string
+  IsProtected: boolean // is teams protected with passcode
+  teams: {
+    ID: string
+    WorkshopID: string
+    TeamName: string
+    TeamCode: string | null // optional team passcode (4 digits)
+    TeamColorCode: string // team color hex code
+    Description: string
+    ThumbnailFileName: string
+    CreatedDttm: string
+  }[]
+  categories: {
+    ID: string
+    WorkshopID: string
+    Name: string // title
+    Context: string
+    CreatedDttm: string
+  }[] // pillars
+  coaches: {
+    ID: string
+    WorkshopID: string
+    CoachID: number
+    Title: string
+    Description: string
+    CoachName: string
+    CoachKey: string
+    AvatarFileName: string // coach avatar url
+    PromptFileName: string
+    IsActive: boolean
+    CreatedDttm: string
+    Prompt: string
+  }[]
+  walkThrough: {
+    ID: string
+    Title: string
+    Description: string
+    DisplayOrder: number
+    IsActive: boolean
+    CreatedDttm: string
+    WorkshopID: string
+  }[]
+}
+
+interface GetWorkshopByIdResponse {
+  success: boolean
+  message: string
+  data: WorkshopById
+}
+
+const getWorkshopById = async (id: string) => {
+  const res = await apiClient.get<GetWorkshopByIdResponse>(
+    `/admin/workshop/${id}`
+  )
+
+  return res.data
+}
+
+export function getWorkshopByIdOptions(id: string) {
+  return queryOptions({
+    queryKey: ["WORKSHOP_ID", id],
+    queryFn: () => getWorkshopById(id),
+  })
+}
