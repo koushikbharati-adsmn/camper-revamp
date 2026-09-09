@@ -238,3 +238,102 @@ export function getWorkshopByIdOptions(id: string) {
     queryFn: () => getWorkshopById(id),
   })
 }
+
+interface AddUpdateWorkshopPayload {
+  id?: string
+  name: string
+  brand_name: string
+  admin_id: string | null
+  context: string
+  description: string
+  guidelines: string
+
+  primary_color: string
+  secondary_color: string
+  background_filename_portrait: File | null
+  background_filename_landscape: File | null
+  logo_filename?: File | null
+  avatar_files: File[]
+
+  flag_vote: boolean
+  flag_result: boolean
+  is_active: boolean
+
+  teams: string
+  categories: string
+  coach: string
+  is_changed: boolean
+}
+
+interface AddUpdateWorkshopResponse {
+  success: boolean
+  message: string
+}
+
+const AddUpdateWorkshop = async (payload: AddUpdateWorkshopPayload) => {
+  const formData = new FormData()
+
+  if (payload.id) formData.append("id", payload.id)
+
+  formData.append("name", payload.name)
+  formData.append("brand_name", payload.brand_name)
+  formData.append("admin_id", String(payload.admin_id))
+  formData.append("context", payload.context)
+  formData.append("description", payload.description)
+  formData.append("guidelines", payload.guidelines)
+
+  formData.append("primary_color", payload.primary_color)
+  formData.append("secondary_color", payload.secondary_color)
+  if (payload.background_filename_portrait)
+    formData.append(
+      "background_filename_portrait",
+      payload.background_filename_portrait
+    )
+  if (payload.background_filename_landscape)
+    formData.append(
+      "background_filename_landscape",
+      payload.background_filename_landscape
+    )
+  if (payload.logo_filename)
+    formData.append("logo_filename", payload.logo_filename)
+
+  payload.avatar_files.forEach((file) => {
+    formData.append("avatar_files", file)
+  })
+
+  formData.append("flag_vote", String(payload.flag_vote))
+  formData.append("flag_result", String(payload.flag_result))
+  formData.append("is_active", String(payload.is_active))
+
+  formData.append("teams", payload.teams)
+  formData.append("categories", payload.categories)
+  formData.append("coach", payload.coach)
+
+  formData.append("is_changed", String(payload.is_changed))
+
+  const res = await apiClient.post<AddUpdateWorkshopResponse>(
+    "/admin/workshop",
+    formData,
+    {
+      headers: {
+        "Content-Type": "multipart/form-data",
+      },
+    }
+  )
+
+  return res.data
+}
+
+export const useAddUpdateWorkshop = () => {
+  return useMutation({
+    mutationFn: (payload: AddUpdateWorkshopPayload) =>
+      AddUpdateWorkshop(payload),
+    onError: (error) => {
+      toast.add({
+        type: "error",
+        title: "Oops! Something went wrong",
+        description: error.message,
+      })
+    },
+  })
+}
