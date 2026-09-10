@@ -2,8 +2,13 @@ import {
   createEditWorkshopFormValue,
   WorkshopForm,
 } from "@/components/workshop-form"
+import { toast } from "@/components/ui/toast"
+import { updateWorkshopPayload } from "@/lib/workshop-payload"
 import { getUsersOptions } from "@/services/users"
-import { getWorkshopByIdOptions } from "@/services/workshops-panel"
+import {
+  getWorkshopByIdOptions,
+  useAddUpdateWorkshop,
+} from "@/services/workshops-panel"
 import { useSuspenseQuery } from "@tanstack/react-query"
 import { createFileRoute } from "@tanstack/react-router"
 
@@ -23,6 +28,8 @@ export const Route = createFileRoute("/_authenticated/workshops/$id/edit")({
 
 function RouteComponent() {
   const { id } = Route.useParams()
+  const navigate = Route.useNavigate()
+  const addUpdateWorkshopMutation = useAddUpdateWorkshop()
   const { data: workshop } = useSuspenseQuery({
     ...getWorkshopByIdOptions(id),
     select: (data) => data.data,
@@ -37,9 +44,22 @@ function RouteComponent() {
       mode="edit"
       initialValue={createEditWorkshopFormValue(workshop)}
       users={users}
-      onSubmit={(updatedWorkshop) =>
-        console.log("Updated workshop", updatedWorkshop)
-      }
+      isSubmitting={addUpdateWorkshopMutation.isPending}
+      onSubmit={async (updatedWorkshop) => {
+        try {
+          const response = await addUpdateWorkshopMutation.mutateAsync(
+            updateWorkshopPayload(updatedWorkshop, workshop)
+          )
+          toast.add({
+            type: "success",
+            title: "Workshop updated",
+            description: response.message,
+          })
+          await navigate({ to: "/workshops" })
+        } catch {
+          return
+        }
+      }}
     />
   )
 }

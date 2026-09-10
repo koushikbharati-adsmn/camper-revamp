@@ -30,6 +30,7 @@ import {
 } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
 import { Switch } from "@/components/ui/switch"
+import { Spinner } from "@/components/ui/spinner"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { cn, getInitials } from "@/lib/utils"
@@ -87,6 +88,7 @@ type Team = {
 }
 type Coach = {
   id: string
+  key: string
   name: string
   title: string
   description: string
@@ -269,6 +271,7 @@ export function createNewWorkshopFormValue(
       .filter((coach) => coach.IsActive)
       .map((coach) => ({
         id: coach.ID,
+        key: coach.CoachKey,
         name: coach.CoachName,
         title: coach.Title,
         description: coach.Description,
@@ -300,30 +303,58 @@ export function createEditWorkshopFormValue(
     subtitle: workshop.Desc,
     context: workshop.WorkshopContext,
     guidelines: workshop.GuidelineFileName,
-    headerBackgroundColor: initialWorkshop.headerBackgroundColor,
-    headerTextColor: initialWorkshop.headerTextColor,
-    pageBackgroundColor: initialWorkshop.pageBackgroundColor,
-    primaryTextColor: initialWorkshop.primaryTextColor,
-    secondaryTextColor: initialWorkshop.secondaryTextColor,
-    primaryButtonBackgroundColor: initialWorkshop.primaryButtonBackgroundColor,
-    primaryButtonTextColor: initialWorkshop.primaryButtonTextColor,
+    headerBackgroundColor:
+      workshop.HeaderBGColor ?? initialWorkshop.headerBackgroundColor,
+    headerTextColor: workshop.HeaderTxtColor ?? initialWorkshop.headerTextColor,
+    pageBackgroundColor:
+      workshop.PageBGColor ?? initialWorkshop.pageBackgroundColor,
+    primaryTextColor:
+      workshop.TxtPrimaryColor ?? initialWorkshop.primaryTextColor,
+    secondaryTextColor:
+      workshop.TxtSecondaryColor ?? initialWorkshop.secondaryTextColor,
+    primaryButtonBackgroundColor:
+      workshop.BtnPrimaryBGColor ??
+      initialWorkshop.primaryButtonBackgroundColor,
+    primaryButtonTextColor:
+      workshop.BtnPrimaryTxtColor ?? initialWorkshop.primaryButtonTextColor,
     secondaryButtonBackgroundColor:
+      workshop.BtnSecondaryBGColor ??
       initialWorkshop.secondaryButtonBackgroundColor,
     secondaryButtonActiveBackgroundColor:
+      workshop.BtnSecondaryActiveBGColor ??
       initialWorkshop.secondaryButtonActiveBackgroundColor,
-    secondaryButtonTextColor: initialWorkshop.secondaryButtonTextColor,
-    secondaryButtonBorderColor: initialWorkshop.secondaryButtonBorderColor,
-    primaryCardBackgroundColor: initialWorkshop.primaryCardBackgroundColor,
-    primaryCardBorderColor: initialWorkshop.primaryCardBorderColor,
-    primaryCardBorderRadius: initialWorkshop.primaryCardBorderRadius,
-    primaryCardBorderWidth: initialWorkshop.primaryCardBorderWidth,
-    secondaryCardBackgroundColor: initialWorkshop.secondaryCardBackgroundColor,
-    secondaryCardBorderRadius: initialWorkshop.secondaryCardBorderRadius,
-    secondaryCardTextColor: initialWorkshop.secondaryCardTextColor,
-    tickerLiveBackgroundColor: initialWorkshop.tickerLiveBackgroundColor,
-    tickerLiveTextColor: initialWorkshop.tickerLiveTextColor,
-    tickerBackgroundColor: initialWorkshop.tickerBackgroundColor,
-    tickerTextColor: initialWorkshop.tickerTextColor,
+    secondaryButtonTextColor:
+      workshop.BtnSecondaryTxtColor ?? initialWorkshop.secondaryButtonTextColor,
+    secondaryButtonBorderColor:
+      workshop.BtnSecondaryBorderColor ??
+      initialWorkshop.secondaryButtonBorderColor,
+    primaryCardBackgroundColor:
+      workshop.CardPrimaryBGColor ?? initialWorkshop.primaryCardBackgroundColor,
+    primaryCardBorderColor:
+      workshop.CardPrimaryBorderColor ?? initialWorkshop.primaryCardBorderColor,
+    primaryCardBorderRadius: String(
+      workshop.CardPrimaryBorderRadius ??
+        initialWorkshop.primaryCardBorderRadius
+    ),
+    primaryCardBorderWidth: String(
+      workshop.CardPrimaryBorderWidth ?? initialWorkshop.primaryCardBorderWidth
+    ),
+    secondaryCardBackgroundColor:
+      workshop.CardSecondaryBGColor ??
+      initialWorkshop.secondaryCardBackgroundColor,
+    secondaryCardBorderRadius: String(
+      workshop.CardSecondaryBorderRadius ??
+        initialWorkshop.secondaryCardBorderRadius
+    ),
+    secondaryCardTextColor:
+      workshop.CardSecondaryTxtColor ?? initialWorkshop.secondaryCardTextColor,
+    tickerLiveBackgroundColor:
+      workshop.TickerLiveBGColor ?? initialWorkshop.tickerLiveBackgroundColor,
+    tickerLiveTextColor:
+      workshop.TickerLiveTxtColor ?? initialWorkshop.tickerLiveTextColor,
+    tickerBackgroundColor:
+      workshop.TickerBGColor ?? initialWorkshop.tickerBackgroundColor,
+    tickerTextColor: workshop.TickerTxtColor ?? initialWorkshop.tickerTextColor,
     logo: workshop.logoFileName || null,
     pageBackgroundImage:
       workshop.LandscapeFileName || workshop.PortraitFileName || null,
@@ -356,6 +387,7 @@ export function createEditWorkshopFormValue(
     usePasscode: workshop.IsProtected,
     coaches: workshop.coaches.map((coach) => ({
       id: String(coach.CoachID),
+      key: coach.CoachKey,
       name: coach.CoachName,
       title: coach.Title,
       description: coach.Description,
@@ -538,11 +570,13 @@ export function WorkshopForm({
   initialValue,
   users,
   onSubmit,
+  isSubmitting = false,
 }: {
   mode: "create" | "edit"
   initialValue: WorkshopFormValue
   users: User[]
   onSubmit: (workshop: WorkshopFormValue) => void
+  isSubmitting?: boolean
 }) {
   const [workshop, setWorkshop] = useState<WorkshopFormValue>(initialValue)
   const [activeStep, setActiveStep] = useState(0)
@@ -654,6 +688,7 @@ export function WorkshopForm({
 
   const submit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault()
+    if (isSubmitting) return
 
     if (activeStep < steps.length - 1) {
       next()
@@ -736,7 +771,12 @@ export function WorkshopForm({
             onStepChange={goToStep}
           />
 
-          <form onSubmit={submit} noValidate className="min-w-0">
+          <form
+            onSubmit={submit}
+            noValidate
+            className="min-w-0"
+            aria-busy={isSubmitting}
+          >
             <header className="border-b border-border px-5 py-5 sm:px-7 sm:py-6">
               <div className="mb-2 flex flex-wrap items-center gap-2">
                 <span className="text-xs font-medium tracking-[0.14em] text-muted-foreground uppercase">
@@ -790,15 +830,28 @@ export function WorkshopForm({
                 <Button
                   type="button"
                   className="flex-1 sm:flex-none"
-                  onClick={next}
+                  onClick={(event) => {
+                    event.preventDefault()
+                    next()
+                  }}
                 >
                   Continue
                   <ArrowRightIcon />
                 </Button>
               ) : (
-                <Button type="submit" className="flex-1 sm:flex-none">
-                  <CheckIcon />
-                  {mode === "create" ? "Create workshop" : "Save changes"}
+                <Button
+                  type="submit"
+                  className="flex-1 sm:flex-none"
+                  disabled={isSubmitting}
+                >
+                  {isSubmitting ? <Spinner /> : <CheckIcon />}
+                  {isSubmitting
+                    ? mode === "create"
+                      ? "Creating..."
+                      : "Saving..."
+                    : mode === "create"
+                      ? "Create workshop"
+                      : "Save changes"}
                 </Button>
               )}
             </div>

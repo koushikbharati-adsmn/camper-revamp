@@ -2,9 +2,12 @@ import {
   createNewWorkshopFormValue,
   WorkshopForm,
 } from "@/components/workshop-form"
+import { toast } from "@/components/ui/toast"
+import { createWorkshopPayload } from "@/lib/workshop-payload"
 import { getCoachesOptions } from "@/services/coaches"
 import { getUsersOptions } from "@/services/users"
 import { getWalkthroughOptions } from "@/services/walkthroughs"
+import { useAddUpdateWorkshop } from "@/services/workshops-panel"
 import { useSuspenseQuery } from "@tanstack/react-query"
 import { createFileRoute } from "@tanstack/react-router"
 
@@ -25,6 +28,8 @@ export const Route = createFileRoute("/_authenticated/workshops/new")({
 })
 
 function RouteComponent() {
+  const navigate = Route.useNavigate()
+  const addUpdateWorkshopMutation = useAddUpdateWorkshop()
   const { data: users } = useSuspenseQuery({
     ...activeAdminOptions,
     select: (data) => data.data,
@@ -43,7 +48,22 @@ function RouteComponent() {
       mode="create"
       initialValue={createNewWorkshopFormValue(coaches, walkthroughs)}
       users={users}
-      onSubmit={(workshop) => console.log("New workshop", workshop)}
+      isSubmitting={addUpdateWorkshopMutation.isPending}
+      onSubmit={async (workshop) => {
+        try {
+          const response = await addUpdateWorkshopMutation.mutateAsync(
+            createWorkshopPayload(workshop)
+          )
+          toast.add({
+            type: "success",
+            title: "Workshop created",
+            description: response.message,
+          })
+          await navigate({ to: "/workshops" })
+        } catch {
+          return
+        }
+      }}
     />
   )
 }

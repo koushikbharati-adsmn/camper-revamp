@@ -168,6 +168,28 @@ export interface WorkshopById {
   LandscapeFileName: string // landscape background url
   HeadingFontFileName: string // heading font url
   BodyFontFileName: string // body font url
+  HeaderBGColor?: string
+  HeaderTxtColor?: string
+  PageBGColor?: string
+  TxtPrimaryColor?: string
+  TxtSecondaryColor?: string
+  BtnPrimaryBGColor?: string
+  BtnPrimaryTxtColor?: string
+  BtnSecondaryBGColor?: string
+  BtnSecondaryActiveBGColor?: string
+  BtnSecondaryTxtColor?: string
+  BtnSecondaryBorderColor?: string
+  CardPrimaryBGColor?: string
+  CardPrimaryBorderColor?: string
+  CardPrimaryBorderRadius?: number
+  CardPrimaryBorderWidth?: number
+  CardSecondaryBGColor?: string
+  CardSecondaryBorderRadius?: number
+  CardSecondaryTxtColor?: string
+  TickerLiveBGColor?: string
+  TickerLiveTxtColor?: string
+  TickerBGColor?: string
+  TickerTxtColor?: string
   CreatedBy: number
   CreatedDttm: string
   CreateDate: string
@@ -242,9 +264,9 @@ export function getWorkshopByIdOptions(id: string) {
   })
 }
 
-type WorkshopAction = "add" | "update" | "delete"
+export type WorkshopAction = "add" | "update" | "delete"
 
-interface AddUpdateWorkshopPayload {
+export interface AddUpdateWorkshopPayload {
   id?: string
   name: string // title
   admin_id: string | null // assigned admin
@@ -330,7 +352,7 @@ interface AddUpdateWorkshopResponse {
   message: string
 }
 
-const AddUpdateWorkshop = async (payload: AddUpdateWorkshopPayload) => {
+const addUpdateWorkshop = async (payload: AddUpdateWorkshopPayload) => {
   const formData = new FormData()
 
   if (payload.id) formData.append("id", payload.id)
@@ -415,13 +437,25 @@ const AddUpdateWorkshop = async (payload: AddUpdateWorkshopPayload) => {
     formData
   )
 
+  if (!res.data.success) throw new Error(res.data.message)
+
   return res.data
 }
 
 export const useAddUpdateWorkshop = () => {
+  const queryClient = useQueryClient()
+
   return useMutation({
     mutationFn: (payload: AddUpdateWorkshopPayload) =>
-      AddUpdateWorkshop(payload),
+      addUpdateWorkshop(payload),
+    onSuccess: (_, payload) => {
+      void queryClient.invalidateQueries({ queryKey: ["WORKSHOPS"] })
+      if (payload.id) {
+        void queryClient.invalidateQueries({
+          queryKey: ["WORKSHOP_ID", payload.id],
+        })
+      }
+    },
     onError: (error) => {
       toast.add({
         type: "error",
