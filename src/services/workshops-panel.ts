@@ -198,6 +198,9 @@ export interface WorkshopById {
   status: WorkshopStatus | null
   ReportFileName: null | string
   IsProtected: boolean // is teams protected with passcode
+  WinningIdeaCount: number
+  VotingScope: "workshop" | "pillar"
+  VotingLimit: number | null
   teams: {
     ID: string
     WorkshopID: string
@@ -307,6 +310,9 @@ export interface AddUpdateWorkshopPayload {
   team_thumbnails: File[] // team thumbnails
 
   is_changed: boolean
+  winning_idea_count: number
+  voting_scope: "workshop" | "pillar"
+  voting_limit: number | null
 
   teams: {
     id: string | null
@@ -406,6 +412,12 @@ const addUpdateWorkshop = async (payload: AddUpdateWorkshopPayload) => {
   formData.append("ticker_live_txt_color", payload.ticker_live_txt_color)
   formData.append("ticker_bg_color", payload.ticker_bg_color)
   formData.append("ticker_txt_color", payload.ticker_txt_color)
+  formData.append("winning_idea_count", String(payload.winning_idea_count))
+  formData.append("voting_scope", payload.voting_scope)
+  formData.append(
+    "voting_limit",
+    payload.voting_limit === null ? "null" : String(payload.voting_limit)
+  )
 
   if (payload.page_bg_image)
     formData.append("page_bg_image", payload.page_bg_image)

@@ -75,6 +75,7 @@ import { COACH_PRESET_AVATARS } from "@/lib/constants"
 
 type Upload = File | string | null
 type ThemeTab = "colors" | "assets"
+type VotingScope = "workshop" | "pillar"
 
 type Pillar = { id: string; title: string; context: string }
 type WalkthroughMessage = { id: string; title: string; description: string }
@@ -137,6 +138,9 @@ export type WorkshopFormValue = {
   walkthroughMessages: WalkthroughMessage[]
   usePasscode: boolean
   coaches: Coach[]
+  winningIdeaCount: string
+  votingScope: VotingScope
+  votingLimit: string | null
 }
 
 const steps = [
@@ -146,6 +150,7 @@ const steps = [
   { title: "Teams", description: "Set up participant groups" },
   { title: "Walkthrough", description: "Guide participants through the flow" },
   { title: "Coaches", description: "Configure workshop coaches" },
+  { title: "Settings", description: "Configure voting and outcomes" },
 ]
 
 const workshopFieldSteps: Partial<Record<keyof WorkshopFormValue, number>> = {
@@ -182,6 +187,9 @@ const workshopFieldSteps: Partial<Record<keyof WorkshopFormValue, number>> = {
   primaryFont: 1,
   secondaryFont: 1,
   usePasscode: 3,
+  winningIdeaCount: 6,
+  votingScope: 6,
+  votingLimit: 6,
 }
 
 const DEFAULT_COACH_COLORS = {
@@ -237,6 +245,9 @@ const initialWorkshop: WorkshopFormValue = {
   walkthroughMessages: [],
   usePasscode: false,
   coaches: [],
+  winningIdeaCount: "1",
+  votingScope: "workshop",
+  votingLimit: null,
 }
 
 function getInitialWalkthroughMessages(
@@ -406,6 +417,10 @@ export function createEditWorkshopFormValue(
       avatar: coach.AvatarFileName,
       enabled: coach.IsActive,
     })),
+    winningIdeaCount: String(workshop.WinningIdeaCount ?? 1),
+    votingScope: workshop.VotingScope === "pillar" ? "pillar" : "workshop",
+    votingLimit:
+      workshop.VotingLimit == null ? null : String(workshop.VotingLimit),
   }
 }
 
@@ -550,6 +565,20 @@ function getStepErrors(step: number, workshop: WorkshopFormValue) {
           nextErrors[`coach-${coach.id}-${field}`] = "Enter a valid hex color."
       }
     })
+
+  if (step === 6) {
+    if (!isPositiveInteger(workshop.winningIdeaCount))
+      nextErrors.winningIdeaCount = "Enter a whole number of at least one."
+
+    if (!(["workshop", "pillar"] as const).includes(workshop.votingScope))
+      nextErrors.votingScope = "Select a voting scope."
+
+    if (
+      workshop.votingLimit !== null &&
+      !isPositiveInteger(workshop.votingLimit)
+    )
+      nextErrors.votingLimit = "Enter a whole number of at least one."
+  }
 
   return nextErrors
 }
@@ -739,8 +768,8 @@ export function WorkshopForm({
           </h1>
           <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
             {mode === "create"
-              ? "Set the workshop foundation, visual system, participant groups, walkthrough, and coaching team."
-              : "Update the workshop foundation, visual system, participant groups, walkthrough, and coaching team."}
+              ? "Set the workshop foundation, visual system, participant groups, walkthrough, coaching team, and voting settings."
+              : "Update the workshop foundation, visual system, participant groups, walkthrough, coaching team, and voting settings."}
           </p>
         </div>
         <Button>
@@ -883,7 +912,7 @@ function StepNavigation({
         aria-label="Workshop setup steps"
         className="border-b border-border bg-muted/25 @min-[56rem]/wizard:hidden"
       >
-        <ol className="grid grid-cols-6">
+        <ol className="grid grid-cols-7">
           {steps.map((step, index) => {
             const isActive = index === activeStep
             const isComplete = completedSteps.includes(index)
@@ -1056,19 +1085,26 @@ function renderStep(
         onFieldChange={(errorKey) => markFieldChanged(4, errorKey)}
       />
     )
-  return (
-    <CoachesStep
-      workshop={workshop}
-      setWorkshop={setWorkshop}
-      errors={errors}
-      onFieldChange={(errorKey) => markFieldChanged(5, errorKey)}
-    />
-  )
+  if (step === 5)
+    return (
+      <CoachesStep
+        workshop={workshop}
+        setWorkshop={setWorkshop}
+        errors={errors}
+        onFieldChange={(errorKey) => markFieldChanged(5, errorKey)}
+      />
+    )
+  return <SettingsStep workshop={workshop} update={update} errors={errors} />
 }
 
 function isNonNegativeNumber(value: string) {
   const number = Number(value)
   return Number.isFinite(number) && number >= 0
+}
+
+function isPositiveInteger(value: string) {
+  const number = Number(value)
+  return /^\d+$/.test(value) && Number.isSafeInteger(number) && number >= 1
 }
 
 function getCoachColor(value: string | null | undefined, fallback: string) {
@@ -2941,6 +2977,161 @@ function CoachesStep({
           )
         })}
       </div>
+    </div>
+  )
+}
+
+function SettingsStep({
+  workshop,
+  update,
+  errors,
+}: {
+  workshop: WorkshopFormValue
+  update: <K extends keyof WorkshopFormValue>(
+    field: K,
+    value: WorkshopFormValue[K]
+  ) => void
+  errors: Record<string, string>
+}) {
+  return (
+    <div className="space-y-8">
+      <section aria-labelledby="settings-outcomes-heading">
+        <FormSectionHeader
+          id="settings-outcomes-heading"
+          title="Workshop outcomes"
+          description="Control how many ideas are selected when voting is complete."
+        />
+        <div className="max-w-md">
+          <Field
+            data-invalid={!!errors.winningIdeaCount}
+            data-error-key="winningIdeaCount"
+          >
+            <div className="space-y-1">
+              <FieldLabel htmlFor="workshop-winning-idea-count">
+                Winning idea count
+              </FieldLabel>
+              <FieldDescription id="workshop-winning-idea-count-description">
+                The number of ideas that can be selected as winners.
+              </FieldDescription>
+            </div>
+            <Input
+              id="workshop-winning-idea-count"
+              type="number"
+              min="1"
+              step="1"
+              inputMode="numeric"
+              value={workshop.winningIdeaCount}
+              onChange={(event) =>
+                update("winningIdeaCount", event.target.value)
+              }
+              aria-invalid={!!errors.winningIdeaCount}
+              aria-required="true"
+              aria-describedby={`workshop-winning-idea-count-description${
+                errors.winningIdeaCount
+                  ? " workshop-winning-idea-count-error"
+                  : ""
+              }`}
+              data-error-control
+            />
+            {errors.winningIdeaCount && (
+              <FieldError id="workshop-winning-idea-count-error">
+                {errors.winningIdeaCount}
+              </FieldError>
+            )}
+          </Field>
+        </div>
+      </section>
+
+      <section aria-labelledby="settings-voting-heading">
+        <FormSectionHeader
+          id="settings-voting-heading"
+          title="Voting"
+          description="Choose where vote limits apply and optionally cap each participant's votes."
+        />
+        <div className="grid gap-5 sm:grid-cols-2">
+          <Field
+            data-invalid={!!errors.votingScope}
+            data-error-key="votingScope"
+          >
+            <div className="space-y-1">
+              <FieldLabel htmlFor="workshop-voting-scope">
+                Voting scope
+              </FieldLabel>
+              <FieldDescription id="workshop-voting-scope-description">
+                Apply each participant's limit across the workshop or separately
+                to every pillar.
+              </FieldDescription>
+            </div>
+            <Select
+              value={workshop.votingScope}
+              onValueChange={(value) =>
+                update("votingScope", value as VotingScope)
+              }
+              items={[
+                { value: "workshop", label: "Workshop-wise" },
+                { value: "pillar", label: "Pillar-wise" },
+              ]}
+            >
+              <SelectTrigger
+                id="workshop-voting-scope"
+                aria-invalid={!!errors.votingScope}
+                aria-required="true"
+                aria-describedby={`workshop-voting-scope-description${
+                  errors.votingScope ? " workshop-voting-scope-error" : ""
+                }`}
+                data-error-control
+              >
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="workshop">Workshop-wise</SelectItem>
+                <SelectItem value="pillar">Pillar-wise</SelectItem>
+              </SelectContent>
+            </Select>
+            {errors.votingScope && (
+              <FieldError id="workshop-voting-scope-error">
+                {errors.votingScope}
+              </FieldError>
+            )}
+          </Field>
+
+          <Field
+            data-invalid={!!errors.votingLimit}
+            data-error-key="votingLimit"
+          >
+            <div className="space-y-1">
+              <FieldLabel htmlFor="workshop-voting-limit">
+                Voting limit
+              </FieldLabel>
+              <FieldDescription id="workshop-voting-limit-description">
+                Leave blank to allow unlimited votes per participant.
+              </FieldDescription>
+            </div>
+            <Input
+              id="workshop-voting-limit"
+              type="number"
+              min="1"
+              step="1"
+              inputMode="numeric"
+              value={workshop.votingLimit ?? ""}
+              placeholder="Unlimited"
+              onChange={(event) =>
+                update("votingLimit", event.target.value || null)
+              }
+              aria-invalid={!!errors.votingLimit}
+              aria-describedby={`workshop-voting-limit-description${
+                errors.votingLimit ? " workshop-voting-limit-error" : ""
+              }`}
+              data-error-control
+            />
+            {errors.votingLimit && (
+              <FieldError id="workshop-voting-limit-error">
+                {errors.votingLimit}
+              </FieldError>
+            )}
+          </Field>
+        </div>
+      </section>
     </div>
   )
 }

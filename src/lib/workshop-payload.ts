@@ -74,6 +74,10 @@ function buildBasePayload(workshop: WorkshopFormValue): WorkshopBasePayload {
     font_primary: uploadFile(workshop.primaryFont),
     font_secondary: uploadFile(workshop.secondaryFont),
     is_changed: true,
+    winning_idea_count: Number(workshop.winningIdeaCount),
+    voting_scope: workshop.votingScope,
+    voting_limit:
+      workshop.votingLimit === null ? null : Number(workshop.votingLimit),
   }
 }
 
