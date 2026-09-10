@@ -126,7 +126,7 @@ const deleteWorkshop = async (payload: DeleteWorkshopPayload) => {
   const res = await apiClient.delete<{
     success: boolean
     message: string
-  }>(`/admin/workshop/delete/${payload.id}`)
+  }>(`/admin/workshop/${payload.id}`)
 
   if (!res.data.success) throw new Error(res.data.message)
 
