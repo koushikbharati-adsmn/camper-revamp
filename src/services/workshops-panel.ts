@@ -253,21 +253,38 @@ interface AddUpdateWorkshopPayload {
   context: string
   guidelines: string
 
-  primary_color: string
-  secondary_color: string
+  header_bg_color: string
+  header_txt_color: string
+  page_bg_color: string
+  txt_primary_color: string
+  txt_secondary_color: string
+  btn_primary_bg_color: string
+  btn_primary_txt_color: string
+  btn_secondary_bg_color: string
+  btn_secondary_active_bg_color: string
+  btn_secondary_txt_color: string
+  btn_secondary_border_color: string
+  card_primary_bg_color: string
+  card_primary_border_color: string
+  card_primary_border_radius: number
+  card_primary_border_width: number
+  card_secondary_bg_color: string
+  card_secondary_border_radius: number
+  card_secondary_txt_color: string
+  ticker_live_bg_color: string
+  ticker_live_txt_color: string
+  ticker_bg_color: string
+  ticker_txt_color: string
 
   logo_filename: File | null
-  background_filename_portrait: File | null
-  background_filename_landscape: File | null
-  primary_font_filename: File | null
-  secondary_font_filename: File | null
+  page_bg_image: File | null
+  font_primary: File | null
+  font_secondary: File | null
 
   avatar_files: File[] // coach avatars
+  team_thumbnails: File[] // team thumbnails
 
-  // flag_vote: boolean
-  // flag_result: boolean
-  // is_active: boolean
-  // is_changed: boolean
+  is_changed: boolean
 
   teams: {
     id: string | null
@@ -275,7 +292,8 @@ interface AddUpdateWorkshopPayload {
     description: string
     teamCode: string | null
     teamColorCode: string
-    thumbnailFileName: File | null
+    thumbnailFileName: string | null
+    thumbnailFileIndex: number | null
     action: WorkshopAction
   }[]
   categories: {
@@ -294,11 +312,14 @@ interface AddUpdateWorkshopPayload {
   coach: {
     coachID: string
     coachName: string
-    // coachKey: string
+    coachKey: string
     title: string
     description: string
-    // promptFileName: string
-    avatarFileName: string
+    bGColor: string
+    primaryTxtColor: string
+    secondaryTxtColor: string
+    avatarFileName: string | null
+    avatarFileIndex: number | null
     isActive: boolean
     action: WorkshopAction
   }[]
@@ -316,23 +337,61 @@ const AddUpdateWorkshop = async (payload: AddUpdateWorkshopPayload) => {
 
   formData.append("name", payload.name)
   formData.append("brand_name", payload.brand_name)
-  formData.append("admin_id", String(payload.admin_id))
+  if (payload.admin_id) {
+    formData.append("admin_id", payload.admin_id)
+  }
   formData.append("context", payload.context)
   formData.append("description", payload.description)
   formData.append("guidelines", payload.guidelines)
 
-  formData.append("primary_color", payload.primary_color)
-  formData.append("secondary_color", payload.secondary_color)
-  if (payload.background_filename_portrait)
-    formData.append(
-      "background_filename_portrait",
-      payload.background_filename_portrait
-    )
-  if (payload.background_filename_landscape)
-    formData.append(
-      "background_filename_landscape",
-      payload.background_filename_landscape
-    )
+  formData.append("header_bg_color", payload.header_bg_color)
+  formData.append("header_txt_color", payload.header_txt_color)
+  formData.append("page_bg_color", payload.page_bg_color)
+  formData.append("txt_primary_color", payload.txt_primary_color)
+  formData.append("txt_secondary_color", payload.txt_secondary_color)
+  formData.append("btn_primary_bg_color", payload.btn_primary_bg_color)
+  formData.append("btn_primary_txt_color", payload.btn_primary_txt_color)
+  formData.append("btn_secondary_bg_color", payload.btn_secondary_bg_color)
+  formData.append(
+    "btn_secondary_active_bg_color",
+    payload.btn_secondary_active_bg_color
+  )
+  formData.append("btn_secondary_txt_color", payload.btn_secondary_txt_color)
+  formData.append(
+    "btn_secondary_border_color",
+    payload.btn_secondary_border_color
+  )
+  formData.append("card_primary_bg_color", payload.card_primary_bg_color)
+  formData.append(
+    "card_primary_border_color",
+    payload.card_primary_border_color
+  )
+  formData.append(
+    "card_primary_border_radius",
+    String(payload.card_primary_border_radius)
+  )
+  formData.append(
+    "card_primary_border_width",
+    String(payload.card_primary_border_width)
+  )
+  formData.append("card_secondary_bg_color", payload.card_secondary_bg_color)
+  formData.append(
+    "card_secondary_border_radius",
+    String(payload.card_secondary_border_radius)
+  )
+  formData.append("card_secondary_txt_color", payload.card_secondary_txt_color)
+  formData.append("ticker_live_bg_color", payload.ticker_live_bg_color)
+  formData.append("ticker_live_txt_color", payload.ticker_live_txt_color)
+  formData.append("ticker_bg_color", payload.ticker_bg_color)
+  formData.append("ticker_txt_color", payload.ticker_txt_color)
+
+  if (payload.page_bg_image)
+    formData.append("page_bg_image", payload.page_bg_image)
+  if (payload.font_primary)
+    formData.append("font_primary", payload.font_primary)
+  if (payload.font_secondary)
+    formData.append("font_secondary", payload.font_secondary)
+
   if (payload.logo_filename)
     formData.append("logo_filename", payload.logo_filename)
 
@@ -340,24 +399,20 @@ const AddUpdateWorkshop = async (payload: AddUpdateWorkshopPayload) => {
     formData.append("avatar_files", file)
   })
 
-  // formData.append("flag_vote", String(payload.flag_vote))
-  // formData.append("flag_result", String(payload.flag_result))
-  // formData.append("is_active", String(payload.is_active))
+  payload.team_thumbnails.forEach((file) => {
+    formData.append("team_thumbnails", file)
+  })
 
   formData.append("teams", JSON.stringify(payload.teams))
   formData.append("categories", JSON.stringify(payload.categories))
   formData.append("coach", JSON.stringify(payload.coach))
+  formData.append("welcome", JSON.stringify(payload.walkThrough))
 
-  // formData.append("is_changed", String(payload.is_changed))
+  formData.append("is_changed", String(payload.is_changed))
 
   const res = await apiClient.post<AddUpdateWorkshopResponse>(
     "/admin/workshop",
-    formData,
-    {
-      headers: {
-        "Content-Type": "multipart/form-data",
-      },
-    }
+    formData
   )
 
   return res.data
