@@ -12,6 +12,7 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
+import { ColorPickerField, isHexColor } from "@/components/color-picker-field"
 import {
   Card,
   CardAction,
@@ -81,6 +82,18 @@ const coachFormSchema = z.object({
   name: z.string().trim().min(1, "Name is required."),
   title: z.string().trim().min(1, "Title is required."),
   description: z.string().trim().min(1, "Description is required."),
+  bgColor: z
+    .string()
+    .trim()
+    .regex(/^#[0-9a-f]{6}$/i, "Enter a valid hex color."),
+  primaryTextColor: z
+    .string()
+    .trim()
+    .regex(/^#[0-9a-f]{6}$/i, "Enter a valid hex color."),
+  secondaryTextColor: z
+    .string()
+    .trim()
+    .regex(/^#[0-9a-f]{6}$/i, "Enter a valid hex color."),
   avatarUrl: z.string().trim().min(1, "Choose an avatar."),
   isActive: z.boolean(),
 })
@@ -88,6 +101,12 @@ const coachFormSchema = z.object({
 const coachPromptSchema = z.object({
   prompt: z.string().trim().min(1, "Prompt is required."),
 })
+
+const DEFAULT_COACH_COLORS = {
+  background: "#FFFFFF",
+  primaryText: "#111111",
+  secondaryText: "#6B7280",
+} as const
 
 export const Route = createFileRoute("/_authenticated/coaches")({
   loader: ({ context }) => context.queryClient.query(getCoachesOptions()),
@@ -188,14 +207,32 @@ function CoachCard({
   onEditPrompt: () => void
   onDelete: () => void
 }) {
+  const backgroundColor = getCoachColor(
+    coach.BGColor,
+    DEFAULT_COACH_COLORS.background
+  )
+  const primaryTextColor = getCoachColor(
+    coach.PrimaryTxtColor,
+    DEFAULT_COACH_COLORS.primaryText
+  )
+  const secondaryTextColor = getCoachColor(
+    coach.SecondaryTxtColor,
+    DEFAULT_COACH_COLORS.secondaryText
+  )
+
   return (
-    <Card>
+    <Card style={{ backgroundColor }}>
       <CardHeader>
         <div className="flex min-w-0 items-center gap-3">
           <CoachAvatar coach={coach} className="size-11" />
           <div className="min-w-0">
-            <CardTitle className="truncate">{coach.CoachName}</CardTitle>
-            <CardDescription className="truncate">
+            <CardTitle className="truncate" style={{ color: primaryTextColor }}>
+              {coach.CoachName}
+            </CardTitle>
+            <CardDescription
+              className="truncate"
+              style={{ color: secondaryTextColor }}
+            >
               {coach.Title}
             </CardDescription>
           </div>
@@ -205,7 +242,11 @@ function CoachCard({
             <DropdownMenuTrigger
               aria-label={`Actions for ${coach.CoachName}`}
               render={
-                <Button variant="ghost" size="icon-sm">
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
+                  style={{ color: primaryTextColor }}
+                >
                   <EllipsisIcon />
                 </Button>
               }
@@ -227,14 +268,20 @@ function CoachCard({
       </CardHeader>
 
       <CardContent className="flex-1">
-        <p className="line-clamp-3 text-sm text-muted-foreground">
+        <p
+          className="line-clamp-3 text-sm"
+          style={{ color: secondaryTextColor }}
+        >
           {coach.Description}
         </p>
       </CardContent>
 
       <CardFooter className="mt-auto justify-between gap-3">
         <CoachStatusBadge isActive={coach.IsActive} />
-        <span className="truncate text-xs text-muted-foreground">
+        <span
+          className="truncate text-xs"
+          style={{ color: secondaryTextColor }}
+        >
           {formatCreatedDate(coach.CreatedDttm)}
         </span>
       </CardFooter>
@@ -290,6 +337,15 @@ function CoachEditorDialog({
       name: coach?.CoachName ?? "",
       title: coach?.Title ?? "",
       description: coach?.Description ?? "",
+      bgColor: getCoachColor(coach?.BGColor, DEFAULT_COACH_COLORS.background),
+      primaryTextColor: getCoachColor(
+        coach?.PrimaryTxtColor,
+        DEFAULT_COACH_COLORS.primaryText
+      ),
+      secondaryTextColor: getCoachColor(
+        coach?.SecondaryTxtColor,
+        DEFAULT_COACH_COLORS.secondaryText
+      ),
       avatarUrl: coach?.AvatarFileName ?? COACH_PRESET_AVATARS[0],
       isActive: coach?.IsActive ?? true,
     },
@@ -303,6 +359,9 @@ function CoachEditorDialog({
           name: value.name.trim(),
           title: value.title.trim(),
           description: value.description.trim(),
+          bg_color: value.bgColor.trim().toUpperCase(),
+          primary_txt_color: value.primaryTextColor.trim().toUpperCase(),
+          secondary_txt_color: value.secondaryTextColor.trim().toUpperCase(),
           prompt: coach?.Prompt ?? "",
           avatarUrl: value.avatarUrl,
           is_active: value.isActive,
@@ -327,7 +386,7 @@ function CoachEditorDialog({
         if (!saveCoachMutation.isPending) onOpenChange(nextOpen)
       }}
     >
-      <DialogContent className="sm:max-w-lg">
+      <DialogContent className="max-h-[calc(100dvh-2rem)] overflow-y-auto sm:max-w-xl">
         <form
           noValidate
           aria-busy={saveCoachMutation.isPending}
@@ -436,6 +495,80 @@ function CoachEditorDialog({
                 )
               }}
             />
+
+            <div className="grid gap-4 sm:grid-cols-2">
+              <form.Field
+                name="bgColor"
+                children={(field) => {
+                  const isInvalid =
+                    field.state.meta.isTouched && !field.state.meta.isValid
+
+                  return (
+                    <ColorPickerField
+                      id="coach-background-color"
+                      label="Background color"
+                      value={field.state.value}
+                      disabled={saveCoachMutation.isPending}
+                      onBlur={field.handleBlur}
+                      onChange={field.handleChange}
+                      error={
+                        isInvalid
+                          ? field.state.meta.errors[0]?.message
+                          : undefined
+                      }
+                    />
+                  )
+                }}
+              />
+
+              <form.Field
+                name="primaryTextColor"
+                children={(field) => {
+                  const isInvalid =
+                    field.state.meta.isTouched && !field.state.meta.isValid
+
+                  return (
+                    <ColorPickerField
+                      id="coach-primary-text-color"
+                      label="Primary text color"
+                      value={field.state.value}
+                      disabled={saveCoachMutation.isPending}
+                      onBlur={field.handleBlur}
+                      onChange={field.handleChange}
+                      error={
+                        isInvalid
+                          ? field.state.meta.errors[0]?.message
+                          : undefined
+                      }
+                    />
+                  )
+                }}
+              />
+
+              <form.Field
+                name="secondaryTextColor"
+                children={(field) => {
+                  const isInvalid =
+                    field.state.meta.isTouched && !field.state.meta.isValid
+
+                  return (
+                    <ColorPickerField
+                      id="coach-secondary-text-color"
+                      label="Secondary text color"
+                      value={field.state.value}
+                      disabled={saveCoachMutation.isPending}
+                      onBlur={field.handleBlur}
+                      onChange={field.handleChange}
+                      error={
+                        isInvalid
+                          ? field.state.meta.errors[0]?.message
+                          : undefined
+                      }
+                    />
+                  )
+                }}
+              />
+            </div>
 
             <form.Field
               name="avatarUrl"
@@ -554,6 +687,18 @@ function CoachPromptDialog({
           name: coach.CoachName,
           title: coach.Title,
           description: coach.Description,
+          bg_color: getCoachColor(
+            coach.BGColor,
+            DEFAULT_COACH_COLORS.background
+          ),
+          primary_txt_color: getCoachColor(
+            coach.PrimaryTxtColor,
+            DEFAULT_COACH_COLORS.primaryText
+          ),
+          secondary_txt_color: getCoachColor(
+            coach.SecondaryTxtColor,
+            DEFAULT_COACH_COLORS.secondaryText
+          ),
           prompt: value.prompt.trim(),
           avatarUrl: coach.AvatarFileName,
           is_active: coach.IsActive,
@@ -730,6 +875,10 @@ function formatCreatedDate(value: string) {
   if (Number.isNaN(date.getTime())) return "Created date unavailable"
 
   return `Created ${formatDistanceToNow(date, { addSuffix: true })}`
+}
+
+function getCoachColor(value: string | null | undefined, fallback: string) {
+  return value && isHexColor(value) ? value.toUpperCase() : fallback
 }
 
 function CoachesPending() {

@@ -14,6 +14,9 @@ export interface CoachItem {
   Title: string
   Description: string
   AvatarFileName: string
+  BGColor: string
+  PrimaryTxtColor: string
+  SecondaryTxtColor: string
   PromptFileName: string
   IsActive: boolean
   CreatedBy: number
@@ -44,6 +47,9 @@ export interface SaveCoachPayload {
   name: string
   title: string
   description: string
+  bg_color: string
+  primary_txt_color: string
+  secondary_txt_color: string
   prompt: string
   avatarUrl: string
   is_active: boolean
@@ -60,6 +66,9 @@ const saveCoach = async (
   formData.append("name", payload.name)
   formData.append("title", payload.title)
   formData.append("description", payload.description)
+  formData.append("bg_color", payload.bg_color)
+  formData.append("primary_txt_color", payload.primary_txt_color)
+  formData.append("secondary_txt_color", payload.secondary_txt_color)
   formData.append("prompt", payload.prompt)
   formData.append("is_active", String(payload.is_active))
 

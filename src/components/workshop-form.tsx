@@ -1,5 +1,6 @@
 import { Badge } from "@/components/ui/badge"
 import { Button, buttonVariants } from "@/components/ui/button"
+import { ColorPickerField, isHexColor } from "@/components/color-picker-field"
 import {
   Card,
   CardAction,
@@ -30,11 +31,6 @@ import {
 import { Textarea } from "@/components/ui/textarea"
 import { Switch } from "@/components/ui/switch"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { cn, getInitials } from "@/lib/utils"
 import type { CoachItem } from "@/services/coaches"
@@ -61,7 +57,6 @@ import {
 import { CSS } from "@dnd-kit/utilities"
 import { Link } from "@tanstack/react-router"
 import { REGEXP_ONLY_DIGITS } from "input-otp"
-import { HexColorPicker } from "react-colorful"
 import {
   ArrowLeftIcon,
   ArrowRightIcon,
@@ -976,10 +971,6 @@ function renderStep(
   )
 }
 
-function isHexColor(value: string) {
-  return /^#[0-9a-f]{6}$/i.test(value)
-}
-
 function isNonNegativeNumber(value: string) {
   const number = Number(value)
   return Number.isFinite(number) && number >= 0
@@ -1524,96 +1515,6 @@ function ThemeStep({
         </div>
       </TabsContent>
     </Tabs>
-  )
-}
-
-function ColorPickerField({
-  id,
-  errorKey,
-  label,
-  description,
-  value,
-  onChange,
-  error,
-  required = true,
-}: {
-  id: string
-  errorKey: string
-  label: string
-  description?: string
-  value: string
-  onChange: (value: string) => void
-  error?: string
-  required?: boolean
-}) {
-  const [open, setOpen] = useState(false)
-
-  const commitHex = (input: string) => {
-    const normalized = input.trim().startsWith("#")
-      ? input.trim()
-      : `#${input.trim()}`
-    onChange(isHexColor(normalized) ? normalized.toUpperCase() : input)
-  }
-
-  const handlePickerChange = (nextValue: string) => {
-    onChange(nextValue.toUpperCase())
-  }
-
-  const pickerColor = isHexColor(value) ? value : "#000000"
-  const describedBy = [
-    description ? `${id}-description` : null,
-    error ? `${id}-error` : null,
-  ]
-    .filter(Boolean)
-    .join(" ")
-
-  return (
-    <Popover open={open} onOpenChange={setOpen}>
-      <Field data-invalid={!!error} data-error-key={errorKey}>
-        <div className="space-y-1">
-          <FieldLabel htmlFor={`${id}-hex`}>{label}</FieldLabel>
-          {description && (
-            <FieldDescription id={`${id}-description`}>
-              {description}
-            </FieldDescription>
-          )}
-        </div>
-        <div className="grid h-11 grid-cols-[2.75rem_minmax(0,1fr)] border border-input focus-within:border-ring focus-within:ring-1 focus-within:ring-ring/50 sm:h-10">
-          <PopoverTrigger
-            aria-label={`Choose ${label.toLowerCase()}`}
-            className="border-r border-input outline-none focus-visible:z-10 focus-visible:ring-1 focus-visible:ring-ring"
-            style={{ backgroundColor: pickerColor }}
-          />
-          <Input
-            id={`${id}-hex`}
-            value={value}
-            onChange={(event) => onChange(event.target.value)}
-            onBlur={(event) => commitHex(event.target.value)}
-            onKeyDown={(event) => {
-              if (event.key === "Enter") {
-                event.preventDefault()
-                commitHex(event.currentTarget.value)
-              }
-            }}
-            aria-invalid={!!error}
-            aria-required={required || undefined}
-            aria-describedby={describedBy || undefined}
-            data-error-control
-            className="h-full border-0 px-3 text-base uppercase shadow-none focus-visible:ring-0 sm:text-sm md:text-sm"
-          />
-        </div>
-        {error && <FieldError id={`${id}-error`}>{error}</FieldError>}
-      </Field>
-      <PopoverContent
-        sideOffset={8}
-        aria-label={`${label} picker`}
-        className="w-fit border border-border bg-popover p-3 text-popover-foreground shadow-md"
-      >
-        <div className="color-picker-layout">
-          <HexColorPicker color={pickerColor} onChange={handlePickerChange} />
-        </div>
-      </PopoverContent>
-    </Popover>
   )
 }
 
