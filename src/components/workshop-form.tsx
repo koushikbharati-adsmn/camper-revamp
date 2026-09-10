@@ -90,6 +90,9 @@ type Coach = {
   name: string
   title: string
   description: string
+  backgroundColor: string
+  primaryTextColor: string
+  secondaryTextColor: string
   avatar: string
   enabled: boolean
 }
@@ -179,6 +182,12 @@ const workshopFieldSteps: Partial<Record<keyof WorkshopFormValue, number>> = {
   usePasscode: 3,
 }
 
+const DEFAULT_COACH_COLORS = {
+  background: "#FFFFFF",
+  primaryText: "#111111",
+  secondaryText: "#6B7280",
+} as const
+
 const initialWorkshop: WorkshopFormValue = {
   title: "",
   assignee: "",
@@ -263,6 +272,18 @@ export function createNewWorkshopFormValue(
         name: coach.CoachName,
         title: coach.Title,
         description: coach.Description,
+        backgroundColor: getCoachColor(
+          coach.BGColor,
+          DEFAULT_COACH_COLORS.background
+        ),
+        primaryTextColor: getCoachColor(
+          coach.PrimaryTxtColor,
+          DEFAULT_COACH_COLORS.primaryText
+        ),
+        secondaryTextColor: getCoachColor(
+          coach.SecondaryTxtColor,
+          DEFAULT_COACH_COLORS.secondaryText
+        ),
         avatar: coach.AvatarFileName,
         enabled: true,
       })),
@@ -338,6 +359,18 @@ export function createEditWorkshopFormValue(
       name: coach.CoachName,
       title: coach.Title,
       description: coach.Description,
+      backgroundColor: getCoachColor(
+        coach.BGColor,
+        DEFAULT_COACH_COLORS.background
+      ),
+      primaryTextColor: getCoachColor(
+        coach.PrimaryTxtColor,
+        DEFAULT_COACH_COLORS.primaryText
+      ),
+      secondaryTextColor: getCoachColor(
+        coach.SecondaryTxtColor,
+        DEFAULT_COACH_COLORS.secondaryText
+      ),
       avatar: coach.AvatarFileName,
       enabled: coach.IsActive,
     })),
@@ -474,6 +507,15 @@ function getStepErrors(step: number, workshop: WorkshopFormValue) {
       ] as const) {
         if (!coach[field].trim())
           nextErrors[`coach-${coach.id}-${field}`] = `${label} is required.`
+      }
+
+      for (const field of [
+        "backgroundColor",
+        "primaryTextColor",
+        "secondaryTextColor",
+      ] as const) {
+        if (!isHexColor(coach[field]))
+          nextErrors[`coach-${coach.id}-${field}`] = "Enter a valid hex color."
       }
     })
 
@@ -974,6 +1016,10 @@ function renderStep(
 function isNonNegativeNumber(value: string) {
   const number = Number(value)
   return Number.isFinite(number) && number >= 0
+}
+
+function getCoachColor(value: string | null | undefined, fallback: string) {
+  return value && isHexColor(value) ? value.toUpperCase() : fallback
 }
 
 function isImageUpload(file: Exclude<Upload, null>) {
@@ -2547,6 +2593,21 @@ function CoachesStep({
           const nameKey = `coach-${coach.id}-name`
           const titleKey = `coach-${coach.id}-title`
           const descriptionKey = `coach-${coach.id}-description`
+          const backgroundColorKey = `coach-${coach.id}-backgroundColor`
+          const primaryTextColorKey = `coach-${coach.id}-primaryTextColor`
+          const secondaryTextColorKey = `coach-${coach.id}-secondaryTextColor`
+          const previewBackgroundColor = getCoachColor(
+            coach.backgroundColor,
+            DEFAULT_COACH_COLORS.background
+          )
+          const previewPrimaryTextColor = getCoachColor(
+            coach.primaryTextColor,
+            DEFAULT_COACH_COLORS.primaryText
+          )
+          const previewSecondaryTextColor = getCoachColor(
+            coach.secondaryTextColor,
+            DEFAULT_COACH_COLORS.secondaryText
+          )
 
           return (
             <Card
@@ -2595,6 +2656,9 @@ function CoachesStep({
                         nameKey,
                         titleKey,
                         descriptionKey,
+                        backgroundColorKey,
+                        primaryTextColorKey,
+                        secondaryTextColorKey,
                       ])
                     }
                   />
@@ -2602,6 +2666,42 @@ function CoachesStep({
               </CardHeader>
 
               <CardContent className="grid gap-5 py-4">
+                <div
+                  aria-label={`Preview for ${coach.name || `coach ${index + 1}`}`}
+                  className="flex min-w-0 items-start gap-3 border border-black/10 p-3"
+                  style={{ backgroundColor: previewBackgroundColor }}
+                >
+                  <Avatar className="size-10 shrink-0">
+                    <AvatarImage
+                      src={coach.avatar}
+                      alt={coach.name || `Coach ${index + 1}`}
+                    />
+                    <AvatarFallback>
+                      {getInitials(coach.name || `Coach ${index + 1}`)}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="min-w-0">
+                    <p
+                      className="truncate text-sm font-medium"
+                      style={{ color: previewPrimaryTextColor }}
+                    >
+                      {coach.name || `Coach ${index + 1}`}
+                    </p>
+                    <p
+                      className="truncate text-xs"
+                      style={{ color: previewSecondaryTextColor }}
+                    >
+                      {coach.title || "Coach title"}
+                    </p>
+                    <p
+                      className="mt-1 line-clamp-2 text-xs"
+                      style={{ color: previewSecondaryTextColor }}
+                    >
+                      {coach.description || "Coach description"}
+                    </p>
+                  </div>
+                </div>
+
                 <Field
                   data-invalid={!!errors[nameKey]}
                   data-disabled={!coach.enabled}
@@ -2701,6 +2801,57 @@ function CoachesStep({
                     </FieldError>
                   )}
                 </Field>
+
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <ColorPickerField
+                    id={`${coach.id}-background-color`}
+                    errorKey={backgroundColorKey}
+                    label="Background color"
+                    value={coach.backgroundColor}
+                    disabled={!coach.enabled}
+                    required={coach.enabled}
+                    error={errors[backgroundColorKey]}
+                    onChange={(backgroundColor) =>
+                      changeCoach(
+                        coach.id,
+                        { backgroundColor },
+                        backgroundColorKey
+                      )
+                    }
+                  />
+                  <ColorPickerField
+                    id={`${coach.id}-primary-text-color`}
+                    errorKey={primaryTextColorKey}
+                    label="Primary text color"
+                    value={coach.primaryTextColor}
+                    disabled={!coach.enabled}
+                    required={coach.enabled}
+                    error={errors[primaryTextColorKey]}
+                    onChange={(primaryTextColor) =>
+                      changeCoach(
+                        coach.id,
+                        { primaryTextColor },
+                        primaryTextColorKey
+                      )
+                    }
+                  />
+                  <ColorPickerField
+                    id={`${coach.id}-secondary-text-color`}
+                    errorKey={secondaryTextColorKey}
+                    label="Secondary text color"
+                    value={coach.secondaryTextColor}
+                    disabled={!coach.enabled}
+                    required={coach.enabled}
+                    error={errors[secondaryTextColorKey]}
+                    onChange={(secondaryTextColor) =>
+                      changeCoach(
+                        coach.id,
+                        { secondaryTextColor },
+                        secondaryTextColorKey
+                      )
+                    }
+                  />
+                </div>
 
                 <fieldset disabled={!coach.enabled}>
                   <legend className="mb-2 text-xs font-medium">

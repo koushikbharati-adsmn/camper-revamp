@@ -201,6 +201,9 @@ export interface WorkshopById {
     Description: string
     CoachName: string
     CoachKey: string
+    BGColor: string
+    PrimaryTxtColor: string
+    SecondaryTxtColor: string
     AvatarFileName: string // coach avatar url
     PromptFileName: string
     IsActive: boolean
