@@ -78,7 +78,7 @@ import { useEffect, useRef, useState } from "react"
 import { COACH_PRESET_AVATARS } from "@/lib/constants"
 
 type Upload = File | string | null
-type ThemeTab = "colors" | "assets" | "fonts"
+type ThemeTab = "colors" | "assets"
 
 type Pillar = { id: string; title: string; context: string }
 type WalkthroughMessage = { id: string; title: string; description: string }
@@ -106,13 +106,32 @@ export type WorkshopFormValue = {
   subtitle: string
   context: string
   guidelines: string
-  primaryColor: string
-  secondaryColor: string
+  headerBackgroundColor: string
+  headerTextColor: string
+  pageBackgroundColor: string
+  primaryTextColor: string
+  secondaryTextColor: string
+  primaryButtonBackgroundColor: string
+  primaryButtonTextColor: string
+  secondaryButtonBackgroundColor: string
+  secondaryButtonActiveBackgroundColor: string
+  secondaryButtonTextColor: string
+  secondaryButtonBorderColor: string
+  primaryCardBackgroundColor: string
+  primaryCardBorderColor: string
+  primaryCardBorderRadius: string
+  primaryCardBorderWidth: string
+  secondaryCardBackgroundColor: string
+  secondaryCardBorderRadius: string
+  secondaryCardTextColor: string
+  tickerLiveBackgroundColor: string
+  tickerLiveTextColor: string
+  tickerBackgroundColor: string
+  tickerTextColor: string
   logo: Upload
-  portrait: Upload
-  landscape: Upload
-  headingFont: Upload
-  bodyFont: Upload
+  pageBackgroundImage: Upload
+  primaryFont: Upload
+  secondaryFont: Upload
   pillars: Pillar[]
   teams: Team[]
   walkthroughMessages: WalkthroughMessage[]
@@ -136,13 +155,32 @@ const workshopFieldSteps: Partial<Record<keyof WorkshopFormValue, number>> = {
   subtitle: 0,
   context: 0,
   guidelines: 0,
-  primaryColor: 1,
-  secondaryColor: 1,
+  headerBackgroundColor: 1,
+  headerTextColor: 1,
+  pageBackgroundColor: 1,
+  primaryTextColor: 1,
+  secondaryTextColor: 1,
+  primaryButtonBackgroundColor: 1,
+  primaryButtonTextColor: 1,
+  secondaryButtonBackgroundColor: 1,
+  secondaryButtonActiveBackgroundColor: 1,
+  secondaryButtonTextColor: 1,
+  secondaryButtonBorderColor: 1,
+  primaryCardBackgroundColor: 1,
+  primaryCardBorderColor: 1,
+  primaryCardBorderRadius: 1,
+  primaryCardBorderWidth: 1,
+  secondaryCardBackgroundColor: 1,
+  secondaryCardBorderRadius: 1,
+  secondaryCardTextColor: 1,
+  tickerLiveBackgroundColor: 1,
+  tickerLiveTextColor: 1,
+  tickerBackgroundColor: 1,
+  tickerTextColor: 1,
   logo: 1,
-  portrait: 1,
-  landscape: 1,
-  headingFont: 1,
-  bodyFont: 1,
+  pageBackgroundImage: 1,
+  primaryFont: 1,
+  secondaryFont: 1,
   usePasscode: 3,
 }
 
@@ -153,13 +191,32 @@ const initialWorkshop: WorkshopFormValue = {
   subtitle: "",
   context: "",
   guidelines: "",
-  primaryColor: "#111111",
-  secondaryColor: "#D9FF00",
+  headerBackgroundColor: "#111111",
+  headerTextColor: "#FFFFFF",
+  pageBackgroundColor: "#FFFFFF",
+  primaryTextColor: "#111111",
+  secondaryTextColor: "#6B7280",
+  primaryButtonBackgroundColor: "#111111",
+  primaryButtonTextColor: "#FFFFFF",
+  secondaryButtonBackgroundColor: "#FFFFFF",
+  secondaryButtonActiveBackgroundColor: "#D9FF00",
+  secondaryButtonTextColor: "#111111",
+  secondaryButtonBorderColor: "#111111",
+  primaryCardBackgroundColor: "#FFFFFF",
+  primaryCardBorderColor: "#E5E7EB",
+  primaryCardBorderRadius: "8",
+  primaryCardBorderWidth: "1",
+  secondaryCardBackgroundColor: "#F3F4F6",
+  secondaryCardBorderRadius: "8",
+  secondaryCardTextColor: "#111111",
+  tickerLiveBackgroundColor: "#DC2626",
+  tickerLiveTextColor: "#FFFFFF",
+  tickerBackgroundColor: "#111111",
+  tickerTextColor: "#FFFFFF",
   logo: null,
-  portrait: null,
-  landscape: null,
-  headingFont: null,
-  bodyFont: null,
+  pageBackgroundImage: null,
+  primaryFont: null,
+  secondaryFont: null,
   pillars: [{ id: "pillar-initial", title: "", context: "" }],
   teams: [
     {
@@ -227,13 +284,35 @@ export function createEditWorkshopFormValue(
     subtitle: workshop.Desc,
     context: workshop.WorkshopContext,
     guidelines: workshop.GuidelineFileName,
-    primaryColor: workshop.PrimaryColor,
-    secondaryColor: workshop.SecondaryColor,
+    headerBackgroundColor: initialWorkshop.headerBackgroundColor,
+    headerTextColor: initialWorkshop.headerTextColor,
+    pageBackgroundColor: initialWorkshop.pageBackgroundColor,
+    primaryTextColor: initialWorkshop.primaryTextColor,
+    secondaryTextColor: initialWorkshop.secondaryTextColor,
+    primaryButtonBackgroundColor: initialWorkshop.primaryButtonBackgroundColor,
+    primaryButtonTextColor: initialWorkshop.primaryButtonTextColor,
+    secondaryButtonBackgroundColor:
+      initialWorkshop.secondaryButtonBackgroundColor,
+    secondaryButtonActiveBackgroundColor:
+      initialWorkshop.secondaryButtonActiveBackgroundColor,
+    secondaryButtonTextColor: initialWorkshop.secondaryButtonTextColor,
+    secondaryButtonBorderColor: initialWorkshop.secondaryButtonBorderColor,
+    primaryCardBackgroundColor: initialWorkshop.primaryCardBackgroundColor,
+    primaryCardBorderColor: initialWorkshop.primaryCardBorderColor,
+    primaryCardBorderRadius: initialWorkshop.primaryCardBorderRadius,
+    primaryCardBorderWidth: initialWorkshop.primaryCardBorderWidth,
+    secondaryCardBackgroundColor: initialWorkshop.secondaryCardBackgroundColor,
+    secondaryCardBorderRadius: initialWorkshop.secondaryCardBorderRadius,
+    secondaryCardTextColor: initialWorkshop.secondaryCardTextColor,
+    tickerLiveBackgroundColor: initialWorkshop.tickerLiveBackgroundColor,
+    tickerLiveTextColor: initialWorkshop.tickerLiveTextColor,
+    tickerBackgroundColor: initialWorkshop.tickerBackgroundColor,
+    tickerTextColor: initialWorkshop.tickerTextColor,
     logo: workshop.logoFileName || null,
-    portrait: workshop.PortraitFileName || null,
-    landscape: workshop.LandscapeFileName || null,
-    headingFont: workshop.HeadingFontFileName || null,
-    bodyFont: workshop.BodyFontFileName || null,
+    pageBackgroundImage:
+      workshop.LandscapeFileName || workshop.PortraitFileName || null,
+    primaryFont: workshop.HeadingFontFileName || null,
+    secondaryFont: workshop.BodyFontFileName || null,
     pillars: workshop.categories.map((category) => ({
       id: category.ID,
       title: category.Name,
@@ -287,25 +366,50 @@ function getStepErrors(step: number, workshop: WorkshopFormValue) {
   }
 
   if (step === 1) {
-    if (!isHexColor(workshop.primaryColor))
-      nextErrors.primaryColor = "Enter a valid hex color."
-    if (!isHexColor(workshop.secondaryColor))
-      nextErrors.secondaryColor = "Enter a valid hex color."
+    for (const field of [
+      "headerBackgroundColor",
+      "headerTextColor",
+      "pageBackgroundColor",
+      "primaryTextColor",
+      "secondaryTextColor",
+      "primaryButtonBackgroundColor",
+      "primaryButtonTextColor",
+      "secondaryButtonBackgroundColor",
+      "secondaryButtonActiveBackgroundColor",
+      "secondaryButtonTextColor",
+      "secondaryButtonBorderColor",
+      "primaryCardBackgroundColor",
+      "primaryCardBorderColor",
+      "secondaryCardBackgroundColor",
+      "secondaryCardTextColor",
+      "tickerLiveBackgroundColor",
+      "tickerLiveTextColor",
+      "tickerBackgroundColor",
+      "tickerTextColor",
+    ] as const) {
+      if (workshop[field] && !isHexColor(workshop[field]))
+        nextErrors[field] = "Enter a valid hex color."
+    }
+    for (const field of [
+      "primaryCardBorderRadius",
+      "primaryCardBorderWidth",
+      "secondaryCardBorderRadius",
+    ] as const) {
+      if (workshop[field] && !isNonNegativeNumber(workshop[field]))
+        nextErrors[field] = "Enter a non-negative number."
+    }
     for (const [field, label] of [
       ["logo", "Logo"],
-      ["portrait", "Background portrait"],
-      ["landscape", "Background landscape"],
+      ["pageBackgroundImage", "Page background image"],
     ] as const) {
-      if (!workshop[field]) nextErrors[field] = `${label} is required.`
-      else if (!isImageUpload(workshop[field]))
+      if (workshop[field] && !isImageUpload(workshop[field]))
         nextErrors[field] = `${label} must be an image file.`
     }
     for (const [field, label] of [
-      ["headingFont", "Heading font"],
-      ["bodyFont", "Body font"],
+      ["primaryFont", "Primary font"],
+      ["secondaryFont", "Secondary font"],
     ] as const) {
-      if (!workshop[field]) nextErrors[field] = `${label} is required.`
-      else if (!isFontUpload(workshop[field]))
+      if (workshop[field] && !isFontUpload(workshop[field]))
         nextErrors[field] = `${label} must be a WOFF, WOFF2, TTF, or OTF file.`
     }
   }
@@ -382,9 +486,14 @@ function getStepErrors(step: number, workshop: WorkshopFormValue) {
 }
 
 function getThemeTabForErrors(errors: Record<string, string>): ThemeTab {
-  if (errors.primaryColor || errors.secondaryColor) return "colors"
-  if (errors.logo || errors.portrait || errors.landscape) return "assets"
-  return "fonts"
+  if (
+    errors.logo ||
+    errors.pageBackgroundImage ||
+    errors.primaryFont ||
+    errors.secondaryFont
+  )
+    return "assets"
+  return "colors"
 }
 
 export function WorkshopForm({
@@ -871,6 +980,11 @@ function isHexColor(value: string) {
   return /^#[0-9a-f]{6}$/i.test(value)
 }
 
+function isNonNegativeNumber(value: string) {
+  const number = Number(value)
+  return Number.isFinite(number) && number >= 0
+}
+
 function isImageUpload(file: Exclude<Upload, null>) {
   if (typeof file === "string") return true
 
@@ -1095,6 +1209,178 @@ function IdentityStep({
   )
 }
 
+const themeColorSections = [
+  {
+    id: "header",
+    title: "Header",
+    description: "Style the header shown across workshop screens.",
+    fields: [
+      {
+        field: "headerBackgroundColor",
+        label: "Background color",
+        description: "Used behind the workshop header and its navigation.",
+      },
+      {
+        field: "headerTextColor",
+        label: "Text color",
+        description: "Used for titles and controls displayed in the header.",
+      },
+    ],
+  },
+  {
+    id: "background",
+    title: "Background",
+    description: "Set the base color behind workshop content.",
+    fields: [
+      {
+        field: "pageBackgroundColor",
+        label: "Page background color",
+        description: "Used as the main page background and image fallback.",
+      },
+    ],
+  },
+  {
+    id: "text",
+    title: "Text",
+    description: "Define the main text hierarchy throughout the workshop.",
+    fields: [
+      {
+        field: "primaryTextColor",
+        label: "Primary text color",
+        description: "Used for headings and high-emphasis body content.",
+      },
+      {
+        field: "secondaryTextColor",
+        label: "Secondary text color",
+        description: "Used for supporting copy, captions, and metadata.",
+      },
+    ],
+  },
+  {
+    id: "primary-button",
+    title: "Primary Button",
+    description: "Style the main calls to action.",
+    fields: [
+      {
+        field: "primaryButtonBackgroundColor",
+        label: "Background color",
+        description: "Used behind primary action labels.",
+      },
+      {
+        field: "primaryButtonTextColor",
+        label: "Text color",
+        description: "Used for text and icons on primary actions.",
+      },
+    ],
+  },
+  {
+    id: "secondary-button",
+    title: "Secondary Button",
+    description: "Style secondary actions, dropdowns, and tabs.",
+    fields: [
+      {
+        field: "secondaryButtonBackgroundColor",
+        label: "Background color",
+        description: "Used for the default secondary control background.",
+      },
+      {
+        field: "secondaryButtonActiveBackgroundColor",
+        label: "Active background color",
+        description: "Used when a secondary control or tab is selected.",
+      },
+      {
+        field: "secondaryButtonTextColor",
+        label: "Text color",
+        description: "Used for labels and icons in secondary controls.",
+      },
+      {
+        field: "secondaryButtonBorderColor",
+        label: "Border color",
+        description: "Used around secondary controls, dropdowns, and tabs.",
+      },
+    ],
+  },
+  {
+    id: "primary-card",
+    title: "Primary Card",
+    description: "Style the cards used for primary workshop content.",
+    fields: [
+      {
+        field: "primaryCardBackgroundColor",
+        label: "Background color",
+        description: "Used behind content in primary cards.",
+      },
+      {
+        field: "primaryCardBorderColor",
+        label: "Border color",
+        description: "Used for outlines around primary cards.",
+      },
+      {
+        field: "primaryCardBorderRadius",
+        label: "Border radius",
+        description: "Controls primary card corner rounding in pixels.",
+        kind: "number",
+      },
+      {
+        field: "primaryCardBorderWidth",
+        label: "Border width",
+        description: "Controls primary card outline thickness in pixels.",
+        kind: "number",
+      },
+    ],
+  },
+  {
+    id: "secondary-card",
+    title: "Secondary Card",
+    description: "Style cards used on Bigscreen and Newsroom views.",
+    fields: [
+      {
+        field: "secondaryCardBackgroundColor",
+        label: "Background color",
+        description: "Used behind content in secondary cards.",
+      },
+      {
+        field: "secondaryCardBorderRadius",
+        label: "Border radius",
+        description: "Controls secondary card corner rounding in pixels.",
+        kind: "number",
+      },
+      {
+        field: "secondaryCardTextColor",
+        label: "Text color",
+        description: "Used for text displayed inside secondary cards.",
+      },
+    ],
+  },
+  {
+    id: "ticker",
+    title: "Ticker",
+    description: "Style live labels and scrolling ticker content.",
+    fields: [
+      {
+        field: "tickerLiveBackgroundColor",
+        label: "LIVE background color",
+        description: "Used behind the LIVE status label.",
+      },
+      {
+        field: "tickerLiveTextColor",
+        label: "LIVE text color",
+        description: "Used for text inside the LIVE status label.",
+      },
+      {
+        field: "tickerBackgroundColor",
+        label: "Ticker background color",
+        description: "Used behind the scrolling ticker content.",
+      },
+      {
+        field: "tickerTextColor",
+        label: "Ticker text color",
+        description: "Used for scrolling ticker text.",
+      },
+    ],
+  },
+] as const
+
 function ThemeStep({
   workshop,
   update,
@@ -1119,112 +1405,123 @@ function ThemeStep({
       <TabsList
         variant="line"
         aria-label="Theme sections"
-        className="mb-6 grid w-full grid-cols-3 border-b border-border group-data-horizontal/tabs:h-10!"
+        className="mb-6 grid w-full grid-cols-2 border-b border-border group-data-horizontal/tabs:h-10!"
       >
         <TabsTrigger value="colors">Colors</TabsTrigger>
         <TabsTrigger value="assets">Assets</TabsTrigger>
-        <TabsTrigger value="fonts">fonts</TabsTrigger>
       </TabsList>
 
       <TabsContent value="colors">
-        <section aria-labelledby="theme-colors-heading">
-          <FormSectionHeader
-            id="theme-colors-heading"
-            title="Brand colors"
-            description="Set the core palette used throughout the workshop."
-          />
-          <div className="grid gap-5 sm:grid-cols-2">
-            <ColorPickerField
-              id="workshop-primary-color"
-              errorKey="primaryColor"
-              label="Primary color"
-              value={workshop.primaryColor}
-              onChange={(value) => update("primaryColor", value)}
-              error={errors.primaryColor}
-            />
-            <ColorPickerField
-              id="workshop-secondary-color"
-              errorKey="secondaryColor"
-              label="Secondary color"
-              value={workshop.secondaryColor}
-              onChange={(value) => update("secondaryColor", value)}
-              error={errors.secondaryColor}
-            />
-          </div>
-        </section>
+        <div className="space-y-8">
+          {themeColorSections.map((section) => (
+            <section
+              key={section.id}
+              aria-labelledby={`theme-${section.id}-heading`}
+            >
+              <FormSectionHeader
+                id={`theme-${section.id}-heading`}
+                title={section.title}
+                description={section.description}
+              />
+              <div className="grid gap-5 sm:grid-cols-2">
+                {section.fields.map((item) =>
+                  "kind" in item && item.kind === "number" ? (
+                    <DimensionField
+                      key={item.field}
+                      id={`workshop-${item.field}`}
+                      errorKey={item.field}
+                      label={item.label}
+                      description={item.description}
+                      value={workshop[item.field]}
+                      onChange={(value) => update(item.field, value)}
+                      error={errors[item.field]}
+                    />
+                  ) : (
+                    <ColorPickerField
+                      key={item.field}
+                      id={`workshop-${item.field}`}
+                      errorKey={item.field}
+                      label={item.label}
+                      description={item.description}
+                      value={workshop[item.field]}
+                      onChange={(value) => update(item.field, value)}
+                      error={errors[item.field]}
+                      required={false}
+                    />
+                  )
+                )}
+              </div>
+            </section>
+          ))}
+        </div>
       </TabsContent>
 
       <TabsContent value="assets">
-        <section aria-labelledby="theme-assets-heading">
-          <FormSectionHeader
-            id="theme-assets-heading"
-            title="Workshop artwork"
-            description="Upload the logo and background treatments participants will see."
-          />
-          <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,18rem),1fr))] gap-5">
-            <FileField
-              id="workshop-logo"
-              errorKey="logo"
-              label="Logo"
-              description="Image file; transparent artwork works best."
-              value={workshop.logo}
-              onChange={(file) => update("logo", file)}
-              error={errors.logo}
+        <div className="space-y-8">
+          <section aria-labelledby="theme-fonts-heading">
+            <FormSectionHeader
+              id="theme-fonts-heading"
+              title="Fonts"
+              description="Upload the typefaces used for display and supporting content."
             />
-            <FileField
-              id="workshop-portrait"
-              errorKey="portrait"
-              label="Background portrait"
-              description="Image file for portrait-oriented screens."
-              value={workshop.portrait}
-              onChange={(file) => update("portrait", file)}
-              error={errors.portrait}
-            />
-            <FileField
-              id="workshop-landscape"
-              errorKey="landscape"
-              label="Background landscape"
-              description="Image file for landscape-oriented screens."
-              value={workshop.landscape}
-              onChange={(file) => update("landscape", file)}
-              error={errors.landscape}
-            />
-          </div>
-        </section>
-      </TabsContent>
+            <div className="grid gap-5 sm:grid-cols-2">
+              <FileField
+                id="workshop-primary-font"
+                errorKey="primaryFont"
+                label="Primary font"
+                description="Used for headings and prominent interface text. WOFF, WOFF2, TTF, or OTF."
+                value={workshop.primaryFont}
+                onChange={(file) => update("primaryFont", file)}
+                error={errors.primaryFont}
+                accept=".woff,.woff2,.ttf,.otf"
+                preview="file"
+                required={false}
+              />
+              <FileField
+                id="workshop-secondary-font"
+                errorKey="secondaryFont"
+                label="Secondary font"
+                description="Used for body copy and supporting interface text. WOFF, WOFF2, TTF, or OTF."
+                value={workshop.secondaryFont}
+                onChange={(file) => update("secondaryFont", file)}
+                error={errors.secondaryFont}
+                accept=".woff,.woff2,.ttf,.otf"
+                preview="file"
+                required={false}
+              />
+            </div>
+          </section>
 
-      <TabsContent value="fonts">
-        <section aria-labelledby="theme-fonts-heading">
-          <FormSectionHeader
-            id="theme-fonts-heading"
-            title="Workshop type"
-            description="Provide separate display and reading fonts for the workshop interface."
-          />
-          <div className="grid gap-5 sm:grid-cols-2">
-            <FileField
-              id="workshop-heading-font"
-              errorKey="headingFont"
-              label="Heading font"
-              description="WOFF, WOFF2, TTF, or OTF."
-              value={workshop.headingFont}
-              onChange={(file) => update("headingFont", file)}
-              error={errors.headingFont}
-              accept=".woff,.woff2,.ttf,.otf"
-              preview="file"
+          <section aria-labelledby="theme-artwork-heading">
+            <FormSectionHeader
+              id="theme-artwork-heading"
+              title="Artwork"
+              description="Upload the brand and background imagery participants will see."
             />
-            <FileField
-              id="workshop-body-font"
-              errorKey="bodyFont"
-              label="Body font"
-              description="WOFF, WOFF2, TTF, or OTF."
-              value={workshop.bodyFont}
-              onChange={(file) => update("bodyFont", file)}
-              error={errors.bodyFont}
-              accept=".woff,.woff2,.ttf,.otf"
-              preview="file"
-            />
-          </div>
-        </section>
+            <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,18rem),1fr))] gap-5">
+              <FileField
+                id="workshop-logo"
+                errorKey="logo"
+                label="Logo"
+                description="Shown in branded workshop areas; transparent artwork works best."
+                value={workshop.logo}
+                onChange={(file) => update("logo", file)}
+                error={errors.logo}
+                required={false}
+              />
+              <FileField
+                id="workshop-page-background-image"
+                errorKey="pageBackgroundImage"
+                label="Page background image"
+                description="Displayed behind workshop page content when provided."
+                value={workshop.pageBackgroundImage}
+                onChange={(file) => update("pageBackgroundImage", file)}
+                error={errors.pageBackgroundImage}
+                required={false}
+              />
+            </div>
+          </section>
+        </div>
       </TabsContent>
     </Tabs>
   )
@@ -1234,16 +1531,20 @@ function ColorPickerField({
   id,
   errorKey,
   label,
+  description,
   value,
   onChange,
   error,
+  required = true,
 }: {
   id: string
   errorKey: string
   label: string
+  description?: string
   value: string
   onChange: (value: string) => void
   error?: string
+  required?: boolean
 }) {
   const [open, setOpen] = useState(false)
 
@@ -1259,11 +1560,24 @@ function ColorPickerField({
   }
 
   const pickerColor = isHexColor(value) ? value : "#000000"
+  const describedBy = [
+    description ? `${id}-description` : null,
+    error ? `${id}-error` : null,
+  ]
+    .filter(Boolean)
+    .join(" ")
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <Field data-invalid={!!error} data-error-key={errorKey}>
-        <FieldLabel htmlFor={`${id}-hex`}>{label}</FieldLabel>
+        <div className="space-y-1">
+          <FieldLabel htmlFor={`${id}-hex`}>{label}</FieldLabel>
+          {description && (
+            <FieldDescription id={`${id}-description`}>
+              {description}
+            </FieldDescription>
+          )}
+        </div>
         <div className="grid h-11 grid-cols-[2.75rem_minmax(0,1fr)] border border-input focus-within:border-ring focus-within:ring-1 focus-within:ring-ring/50 sm:h-10">
           <PopoverTrigger
             aria-label={`Choose ${label.toLowerCase()}`}
@@ -1282,8 +1596,8 @@ function ColorPickerField({
               }
             }}
             aria-invalid={!!error}
-            aria-required="true"
-            aria-describedby={error ? `${id}-error` : undefined}
+            aria-required={required || undefined}
+            aria-describedby={describedBy || undefined}
             data-error-control
             className="h-full border-0 px-3 text-base uppercase shadow-none focus-visible:ring-0 sm:text-sm md:text-sm"
           />
@@ -1303,6 +1617,56 @@ function ColorPickerField({
   )
 }
 
+function DimensionField({
+  id,
+  errorKey,
+  label,
+  description,
+  value,
+  onChange,
+  error,
+}: {
+  id: string
+  errorKey: string
+  label: string
+  description: string
+  value: string
+  onChange: (value: string) => void
+  error?: string
+}) {
+  const describedBy = `${id}-description${error ? ` ${id}-error` : ""}`
+
+  return (
+    <Field data-invalid={!!error} data-error-key={errorKey}>
+      <div className="space-y-1">
+        <FieldLabel htmlFor={id}>{label}</FieldLabel>
+        <FieldDescription id={`${id}-description`}>
+          {description}
+        </FieldDescription>
+      </div>
+      <div className="relative">
+        <Input
+          id={id}
+          type="number"
+          min="0"
+          step="1"
+          inputMode="decimal"
+          value={value}
+          onChange={(event) => onChange(event.target.value)}
+          aria-invalid={!!error}
+          aria-describedby={describedBy}
+          data-error-control
+          className="pr-10"
+        />
+        <span className="pointer-events-none absolute top-1/2 right-3 -translate-y-1/2 text-xs text-muted-foreground">
+          px
+        </span>
+      </div>
+      {error && <FieldError id={`${id}-error`}>{error}</FieldError>}
+    </Field>
+  )
+}
+
 function FileField({
   id,
   errorKey,
@@ -1313,6 +1677,7 @@ function FileField({
   error,
   accept = "image/*",
   preview = "image",
+  required = true,
 }: {
   id: string
   errorKey: string
@@ -1323,6 +1688,7 @@ function FileField({
   error?: string
   accept?: string
   preview?: "image" | "file"
+  required?: boolean
 }) {
   const inputRef = useRef<HTMLInputElement>(null)
 
@@ -1355,7 +1721,7 @@ function FileField({
         tabIndex={-1}
         accept={accept}
         aria-invalid={!!error}
-        aria-required="true"
+        aria-required={required || undefined}
         aria-describedby={describedBy}
         onChange={(event) => onChange(event.target.files?.[0] ?? null)}
       />
