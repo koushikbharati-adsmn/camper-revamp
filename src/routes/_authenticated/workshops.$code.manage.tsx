@@ -247,7 +247,7 @@ function RouteComponent() {
     <div className="space-y-6">
       <WorkshopHeader code={code} status={workshopStatus} />
 
-      <div className="grid gap-4 xl:grid-cols-[minmax(0,1.5fr)_minmax(18rem,0.75fr)]">
+      <div className="grid gap-4 xl:grid-cols-[minmax(0,1.3fr)_minmax(28rem,0.9fr)]">
         <LifecycleCard
           status={workshopStatus}
           onStart={() => setWorkshopStatus("ideate")}
@@ -537,7 +537,7 @@ function TimerCard({
             onChange={(value) => updateDurationPart("hours", value)}
           />
           <span
-            className="pt-1 font-mono text-4xl font-semibold text-muted-foreground sm:text-5xl"
+            className="pt-2 font-mono text-5xl font-semibold text-muted-foreground sm:text-6xl lg:text-7xl"
             aria-hidden="true"
           >
             :
@@ -549,11 +549,12 @@ function TimerCard({
             onChange={(value) => updateDurationPart("minutes", value)}
           />
           <span
-            className="pt-1 font-mono text-4xl font-semibold text-muted-foreground sm:text-5xl"
+            className="pt-2 font-mono text-5xl font-semibold text-muted-foreground sm:text-6xl lg:text-7xl"
             aria-hidden="true"
           >
             :
           </span>
+
           <TimerDurationInput
             label="Seconds"
             value={duration.seconds}
@@ -613,22 +614,21 @@ function TimerDurationInput({
   onChange: (value: string) => void
 }) {
   return (
-    <label className="grid min-w-0 gap-1 text-center">
+    <label className="grid min-w-0 gap-1.5 text-center">
       <Input
-        type="text"
+        type="number"
         inputMode="numeric"
         pattern="[0-9]*"
         maxLength={2}
         value={String(value).padStart(2, "0")}
         disabled={disabled}
         aria-label={label}
-        className="h-auto w-14 border-0 border-b bg-transparent px-0 py-1 text-center font-mono text-4xl font-semibold tracking-tight tabular-nums focus-visible:ring-0 disabled:bg-transparent disabled:opacity-100 sm:w-16 sm:text-5xl"
+        className="h-auto w-20 [appearance:textfield] border-0 border-b bg-transparent px-0 py-2 text-center font-mono text-5xl font-semibold tracking-tight tabular-nums focus-visible:ring-0 disabled:bg-transparent disabled:opacity-100 sm:w-24 sm:text-6xl lg:w-28 lg:text-7xl [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
         onFocus={(event) => event.currentTarget.select()}
         onChange={(event) => onChange(event.target.value)}
       />
-      <span className="text-[0.65rem] font-medium tracking-wide text-muted-foreground uppercase">
-        {label === "Hours" ? "HH" : label === "Minutes" ? "MM" : "SS"}
-      </span>
+
+      <span className="text-xs font-medium text-muted-foreground">{label}</span>
     </label>
   )
 }
