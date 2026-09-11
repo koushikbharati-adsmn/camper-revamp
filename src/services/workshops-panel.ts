@@ -268,6 +268,7 @@ export function getWorkshopByIdOptions(id: string) {
 }
 
 export type WorkshopAction = "add" | "update" | "delete"
+export type VotingScope = "workshop" | "pillar"
 
 export interface AddUpdateWorkshopPayload {
   id?: string
@@ -311,7 +312,7 @@ export interface AddUpdateWorkshopPayload {
 
   is_changed: boolean
   winning_idea_count: number
-  voting_scope: "workshop" | "pillar"
+  voting_scope: VotingScope
   voting_limit: number | null
 
   teams: {

@@ -37,7 +37,7 @@ import { cn, getInitials } from "@/lib/utils"
 import type { CoachItem } from "@/services/coaches"
 import type { User } from "@/services/users"
 import type { Walkthrough } from "@/services/walkthroughs"
-import type { WorkshopById } from "@/services/workshops-panel"
+import type { VotingScope, WorkshopById } from "@/services/workshops-panel"
 import {
   closestCenter,
   DndContext,
@@ -75,7 +75,6 @@ import { COACH_PRESET_AVATARS } from "@/lib/constants"
 
 type Upload = File | string | null
 type ThemeTab = "colors" | "assets"
-type VotingScope = "workshop" | "pillar"
 
 type Pillar = { id: string; title: string; context: string }
 type WalkthroughMessage = { id: string; title: string; description: string }
