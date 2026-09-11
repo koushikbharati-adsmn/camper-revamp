@@ -78,6 +78,11 @@ function buildBasePayload(workshop: WorkshopFormValue): WorkshopBasePayload {
     voting_scope: workshop.votingScope,
     voting_limit:
       workshop.votingLimit === null ? null : Number(workshop.votingLimit),
+    team_select: workshop.teamSelect.trim() || null,
+    ideation_page: workshop.ideationPage.trim() || null,
+    shortlisted_idea_page: workshop.shortlistedIdeaPage.trim() || null,
+    stats_board: workshop.statsBoard.trim() || null,
+    voting_page: workshop.votingPage.trim() || null,
   }
 }
 

@@ -140,6 +140,11 @@ export type WorkshopFormValue = {
   winningIdeaCount: string
   votingScope: VotingScope
   votingLimit: string | null
+  teamSelect: string
+  ideationPage: string
+  shortlistedIdeaPage: string
+  statsBoard: string
+  votingPage: string
 }
 
 const steps = [
@@ -189,6 +194,11 @@ const workshopFieldSteps: Partial<Record<keyof WorkshopFormValue, number>> = {
   winningIdeaCount: 6,
   votingScope: 6,
   votingLimit: 6,
+  teamSelect: 6,
+  ideationPage: 6,
+  shortlistedIdeaPage: 6,
+  statsBoard: 6,
+  votingPage: 6,
 }
 
 const DEFAULT_COACH_COLORS = {
@@ -247,6 +257,11 @@ const initialWorkshop: WorkshopFormValue = {
   winningIdeaCount: "1",
   votingScope: "workshop",
   votingLimit: null,
+  teamSelect: "Home",
+  ideationPage: "The board",
+  shortlistedIdeaPage: "The stage",
+  statsBoard: "The newsroom",
+  votingPage: "The ballot",
 }
 
 function getInitialWalkthroughMessages(
@@ -420,6 +435,12 @@ export function createEditWorkshopFormValue(
     votingScope: workshop.VotingScope === "pillar" ? "pillar" : "workshop",
     votingLimit:
       workshop.VotingLimit == null ? null : String(workshop.VotingLimit),
+    teamSelect: workshop.TeamSelect ?? initialWorkshop.teamSelect,
+    ideationPage: workshop.IdeationPage ?? initialWorkshop.ideationPage,
+    shortlistedIdeaPage:
+      workshop.ShortlistedIdeaPage ?? initialWorkshop.shortlistedIdeaPage,
+    statsBoard: workshop.StatsBoard ?? initialWorkshop.statsBoard,
+    votingPage: workshop.VotingPage ?? initialWorkshop.votingPage,
   }
 }
 
@@ -3129,6 +3150,65 @@ function SettingsStep({
               </FieldError>
             )}
           </Field>
+        </div>
+      </section>
+
+      <section aria-labelledby="settings-custom-labels-heading">
+        <FormSectionHeader
+          id="settings-custom-labels-heading"
+          title="Custom labels"
+          description="Customize the navigation labels participants see throughout the workshop."
+        />
+        <div className="grid gap-5 sm:grid-cols-2">
+          {(
+            [
+              {
+                field: "teamSelect",
+                label: "Team select",
+                description: "The label for the team selection page.",
+              },
+              {
+                field: "ideationPage",
+                label: "Ideation page",
+                description: "The label for the ideation board.",
+              },
+              {
+                field: "shortlistedIdeaPage",
+                label: "Shortlisted idea page",
+                description: "The label for shortlisted ideas.",
+              },
+              {
+                field: "statsBoard",
+                label: "Stats board",
+                description: "The label for workshop statistics.",
+              },
+              {
+                field: "votingPage",
+                label: "Voting page",
+                description: "The label for the voting page.",
+              },
+            ] as const
+          ).map(({ field, label, description }) => {
+            const inputId = `workshop-${field}`
+            const descriptionId = `${inputId}-description`
+
+            return (
+              <Field key={field}>
+                <div className="space-y-1">
+                  <FieldLabel htmlFor={inputId}>{label}</FieldLabel>
+                  <FieldDescription id={descriptionId}>
+                    {description}
+                  </FieldDescription>
+                </div>
+                <Input
+                  id={inputId}
+                  value={workshop[field]}
+                  onChange={(event) => update(field, event.target.value)}
+                  aria-describedby={descriptionId}
+                />
+              </Field>
+            )
+          })}
         </div>
       </section>
     </div>

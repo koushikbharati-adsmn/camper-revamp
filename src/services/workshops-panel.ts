@@ -201,6 +201,11 @@ export interface WorkshopById {
   WinningIdeaCount: number
   VotingScope: "workshop" | "pillar"
   VotingLimit: number | null
+  TeamSelect: string | null
+  IdeationPage: string | null
+  ShortlistedIdeaPage: string | null
+  StatsBoard: string | null
+  VotingPage: string | null
   teams: {
     ID: string
     WorkshopID: string
@@ -315,6 +320,12 @@ export interface AddUpdateWorkshopPayload {
   voting_scope: VotingScope
   voting_limit: number | null
 
+  team_select: string | null
+  ideation_page: string | null
+  shortlisted_idea_page: string | null
+  stats_board: string | null
+  voting_page: string | null
+
   teams: {
     id: string | null
     teamName: string
@@ -419,6 +430,14 @@ const addUpdateWorkshop = async (payload: AddUpdateWorkshopPayload) => {
     "voting_limit",
     payload.voting_limit === null ? "null" : String(payload.voting_limit)
   )
+  formData.append("team_select", payload.team_select ?? "null")
+  formData.append("ideation_page", payload.ideation_page ?? "null")
+  formData.append(
+    "shortlisted_idea_page",
+    payload.shortlisted_idea_page ?? "null"
+  )
+  formData.append("stats_board", payload.stats_board ?? "null")
+  formData.append("voting_page", payload.voting_page ?? "null")
 
   if (payload.page_bg_image)
     formData.append("page_bg_image", payload.page_bg_image)
