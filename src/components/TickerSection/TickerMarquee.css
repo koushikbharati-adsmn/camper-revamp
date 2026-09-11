@@ -1,0 +1,60 @@
+@reference "../../index.css";
+
+@layer components {
+  .ticker-marquee {
+    @apply z-999 fixed bottom-0 flex  py-2 w-full items-center overflow-hidden border-y border-theme7 bg-theme5 font-ogilvy-r text-xs text-theme1;
+  }
+
+  .ticker-marquee__live {
+    @apply z-10 flex absolute top-0 left-0  h-full shrink-0 items-center gap-1.5 bg-theme1 px-2 font-ogilvy-r text-base font-semibold text-theme2;
+  }
+
+  .ticker-marquee__indicator {
+    @apply size-1.5 rounded-full bg-theme2;
+    animation: ticker-indicator 1.2s ease-in-out infinite;
+  }
+
+  .ticker-marquee__track {
+    @apply flex w-max shrink-0 items-center;
+    animation: ticker-scroll 80s linear infinite;
+  }
+  .ticker-marquee__group {
+    @apply flex min-w-max shrink-0 items-center;
+  }
+
+
+  /* .ticker-marquee:hover .ticker-marquee__track {
+    animation-play-state: paused;
+  } */
+
+  .ticker-marquee__item {
+    @apply flex items-center gap-2 whitespace-nowrap px-8 text-sm font-semibold;
+  }
+
+  .ticker-marquee__icon {
+    @apply shrink-0;
+  }
+
+  @keyframes ticker-scroll {
+    from {
+      transform: translateX(0);
+    }
+
+    to {
+      transform: translateX(-50%);
+    }
+  }
+
+  @keyframes ticker-indicator {
+    0%,
+    100% {
+      opacity: 0.45;
+      transform: scale(0.8);
+    }
+
+    50% {
+      opacity: 1;
+      transform: scale(1.15);
+    }
+  }
+}

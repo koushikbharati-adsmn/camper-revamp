@@ -3,9 +3,100 @@
 @import "shadcn/tailwind.css";
 @import "@fontsource-variable/geist";
 
+/* =========================================================
+   WEBSITE FONT FACES (workshop / big-screen / stage pages)
+========================================================= */
+@font-face {
+  font-family: "PhuduLight";
+  src: url("/fonts/phudu-light.eot");
+  src:
+    url("/fonts/phudu-light.eot?#iefix") format("embedded-opentype"),
+    url("/fonts/phudu-light.woff2") format("woff2"),
+    url("/fonts/phudu-light.woff") format("woff"),
+    url("/fonts/phudu-light.ttf") format("truetype"),
+    url("/fonts/phudu-light.svg#PhuduLight") format("svg");
+  font-weight: 300;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "PhuduRegular";
+  src: url("/fonts/phudu-regular.eot");
+  src:
+    url("/fonts/phudu-regular.eot?#iefix") format("embedded-opentype"),
+    url("/fonts/phudu-regular.woff2") format("woff2"),
+    url("/fonts/phudu-regular.woff") format("woff"),
+    url("/fonts/phudu-regular.ttf") format("truetype"),
+    url("/fonts/phudu-regular.svg#PhuduRegular") format("svg");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "PhuduMedium";
+  src: url("/fonts/phudu-medium.eot");
+  src:
+    url("/fonts/phudu-medium.eot?#iefix") format("embedded-opentype"),
+    url("/fonts/phudu-medium.woff2") format("woff2"),
+    url("/fonts/phudu-medium.woff") format("woff"),
+    url("/fonts/phudu-medium.ttf") format("truetype"),
+    url("/fonts/phudu-medium.svg#PhuduMedium") format("svg");
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "PhuduBold";
+  src: url("/fonts/phudu-bold.eot");
+  src:
+    url("/fonts/phudu-bold.eot?#iefix") format("embedded-opentype"),
+    url("/fonts/phudu-bold.woff2") format("woff2"),
+    url("/fonts/phudu-bold.woff") format("woff"),
+    url("/fonts/phudu-bold.ttf") format("truetype"),
+    url("/fonts/phudu-bold.svg#PhuduBold") format("svg");
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "PhuduBlack";
+  src: url("/fonts/phudu-black.eot");
+  src:
+    url("/fonts/phudu-black.eot?#iefix") format("embedded-opentype"),
+    url("/fonts/phudu-black.woff2") format("woff2"),
+    url("/fonts/phudu-black.woff") format("woff"),
+    url("/fonts/phudu-black.ttf") format("truetype"),
+    url("/fonts/phudu-black.svg#PhuduBlack") format("svg");
+  font-weight: 900;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "OgilvySansRegular";
+  src: url("/fonts/ogilvysans-regular.eot");
+  src:
+    url("/fonts/ogilvysans-regular.eot?#iefix") format("embedded-opentype"),
+    url("/fonts/ogilvysans-regular.woff2") format("woff2"),
+    url("/fonts/ogilvysans-regular.woff") format("woff"),
+    url("/fonts/ogilvysans-regular.ttf") format("truetype"),
+    url("/fonts/ogilvysans-regular.svg#OgilvySans") format("svg");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
 @custom-variant dark (&:is(.dark *));
 
+/* =========================================================
+   TAILWIND CSS V4 THEME
+========================================================= */
 @theme inline {
+  /* admin panel (shadcn) tokens */
   --font-heading: var(--font-sans);
   --font-sans: "Geist Variable", sans-serif;
   --color-sidebar-ring: var(--sidebar-ring);
@@ -46,9 +137,39 @@
   --radius-2xl: calc(var(--radius) * 1.8);
   --radius-3xl: calc(var(--radius) * 2.2);
   --radius-4xl: calc(var(--radius) * 2.6);
+
+  /* website brand colors (workshop / big-screen / stage pages) */
+  --color-theme1: var(--color1);
+  --color-theme2: var(--color2);
+  --color-theme3: var(--color3);
+  --color-theme4: var(--color4);
+  --color-theme5: var(--color5);
+  --color-theme6: var(--color6);
+  --color-theme7: var(--color7);
+  --color-theme8: var(--color8);
+  --color-theme9: var(--color9);
+  --color-theme10: var(--color10);
+  --color-theme11: var(--color11);
+  --color-theme12: var(--color12);
+
+  /* website brand font families */
+  --font-phudu-l: var(--ffPhuduL);
+  --font-phudu-r: var(--ffPhuduR);
+  --font-phudu-m: var(--ffPhuduM);
+  --font-phudu-b: var(--ffPhuduB);
+  --font-phudu-black: var(--ffPhuduBlack);
+  --font-ogilvy-r: var(--ffOgilvyR);
+
+  /*
+   * Extra breakpoint above Tailwind's default 2xl (1536px), for
+   * the kiosk/TV-sized displays the big-screen page targets.
+   * Usable as the `3xl:` variant, same as any built-in breakpoint.
+   */
+  --breakpoint-3xl: 187.5rem;
 }
 
 :root {
+  /* admin panel (shadcn) tokens */
   --background: oklch(1 0 0);
   --foreground: oklch(0.145 0 0);
   --card: oklch(1 0 0);
@@ -81,6 +202,28 @@
   --sidebar-accent-foreground: oklch(0.205 0 0);
   --sidebar-border: oklch(0.922 0 0);
   --sidebar-ring: oklch(0.708 0 0);
+
+  /* website brand colors (workshop / big-screen / stage pages) */
+  --color1: #000000;
+  --color2: #ffffff;
+  --color3: #62748e;
+  --color4: #e2e8f0;
+  --color5: #f0f0f0;
+  --color6: #b3b3b3;
+  --color7: #dee2e6;
+  --color8: #fb2c36;
+  --color9: #787878;
+  --color10: #f1f5f9;
+  --color11: #fafafa;
+  --color12: #e5e5e5;
+
+  /* website brand font families */
+  --ffPhuduL: "PhuduLight";
+  --ffPhuduR: "PhuduRegular";
+  --ffPhuduM: "PhuduMedium";
+  --ffPhuduB: "PhuduBold";
+  --ffPhuduBlack: "PhuduBlack";
+  --ffOgilvyR: "OgilvySansRegular";
 }
 
 .dark {
@@ -142,6 +285,58 @@
   html {
     @apply font-sans;
   }
+}
+
+/* =========================================================
+   WEBSITE BASE LAYOUT (workshop / big-screen / stage pages)
+========================================================= */
+html,
+body,
+#root {
+  height: 100%;
+  min-height: 100%;
+}
+
+.container {
+  max-width: 100%;
+  margin-inline: auto;
+  padding-inline: 8%;
+  display: flex;
+  flex: 1;
+
+  @media (max-width: 991px) {
+    padding-inline: 1rem;
+  }
+}
+
+/* =========================================================
+   CUSTOM VERTICAL SCROLLBAR
+========================================================= */
+.custom-vertical-scrollbar {
+  overflow-y: auto;
+  overflow-x: hidden;
+  /* Firefox */
+  scrollbar-width: thin;
+  scrollbar-color: var(--color1) var(--color8);
+}
+
+/* Chrome / Edge / Safari */
+.custom-vertical-scrollbar::-webkit-scrollbar {
+  width: 6px;
+}
+
+.custom-vertical-scrollbar::-webkit-scrollbar-track {
+  background: var(--color8);
+  border-radius: 999px;
+}
+
+.custom-vertical-scrollbar::-webkit-scrollbar-thumb {
+  background: var(--color1);
+  border-radius: 999px;
+}
+
+.custom-vertical-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: var(--color1);
 }
 
 .color-picker-layout .react-colorful__saturation {

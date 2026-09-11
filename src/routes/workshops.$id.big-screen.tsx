@@ -1,9 +1,12 @@
-import { createFileRoute } from '@tanstack/react-router'
+import { createFileRoute } from "@tanstack/react-router"
 
-export const Route = createFileRoute('/workshops/$id/big-screen')({
+import BigScreen from "../pages/BigScreen/BigScreen" // adjust path to match your project structure
+
+export const Route = createFileRoute("/workshops/$id/big-screen")({
   component: RouteComponent,
 })
 
 function RouteComponent() {
-  return <div>Hello "/workshops/$id/big-screen"!</div>
+  const { id } = Route.useParams()
+  return <BigScreen workshopId={id} />
 }

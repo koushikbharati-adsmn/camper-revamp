@@ -1,0 +1,15 @@
+@reference "../../index.css";
+
+@layer components {
+  .text-area {
+    @apply border-theme7 bg-theme2 font-ogilvy-r text-base text-theme1 m-0 min-h-24 w-full resize-none rounded border px-3 py-2 transition-colors duration-200 outline-none;
+  }
+
+  .text-area:focus {
+    @apply border-theme1;
+  }
+
+  .text-area:disabled {
+    @apply cursor-not-allowed opacity-50;
+  }
+}

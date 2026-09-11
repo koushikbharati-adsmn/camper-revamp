@@ -1,0 +1,209 @@
+@reference "../../index.css";
+
+/*
+ * Mobile-first, using Tailwind's default breakpoints
+ * (sm/md/lg/xl/2xl) plus the project's `3xl` (3000px) for
+ * kiosk/TV-sized displays — see the `--breakpoint-3xl` token
+ * in src/index.css. No custom font-size scale, no manual
+ * `@media` blocks: every size change here is a responsive
+ * Tailwind variant.
+ */
+@layer components {
+  /*
+   * Scopes the website's brand typography to this page (and its
+   * modals, rendered as siblings of `.big-screen-page` below) —
+   * `display: contents` keeps it out of the layout entirely, it
+   * only exists to carry the inherited font-family/size without
+   * touching the shadcn admin panel's `body` (Geist/font-sans).
+   */
+  .big-screen-root {
+    display: contents;
+    @apply font-ogilvy-r text-base tracking-wide;
+  }
+
+  /* =========================================================
+     PAGE
+  ========================================================= */
+
+  .big-screen-page {
+    @apply flex w-full flex-1 flex-col overflow-y-auto bg-theme6/25 py-3 pb-14;
+  }
+
+  .big-screen-page__inner {
+    @apply m-auto flex h-full min-h-0 w-full flex-1 rounded-2xl bg-theme2 p-3 shadow-lg md:p-4 lg:p-5;
+  }
+
+  .big-screen_slider {
+    @apply flex w-full min-w-0 flex-col gap-3 md:gap-4;
+  }
+
+  /* =========================================================
+     HEADER
+     Stacked on phones/tablets; fixed-height two-column layout
+     once there's room (xl and up).
+  ========================================================= */
+
+  .big-screen__header {
+    @apply grid h-auto w-full grid-cols-1 items-stretch gap-3 md:gap-4 xl:h-[25dvh] xl:grid-cols-[30%_minmax(0,1fr)] xl:gap-8;
+  }
+
+  .big-screen__intro {
+    @apply grid min-w-0 content-between gap-3;
+  }
+
+  .big-screen__intro .headTitle {
+    @apply m-0 font-phudu-black text-2xl leading-normal md:text-4xl;
+  }
+
+  .big-screen__intro .description {
+    @apply m-0 font-ogilvy-r text-sm font-medium tracking-wide text-theme3 uppercase leading-[1.4];
+  }
+
+  .big-screen__filters {
+    @apply flex w-full flex-wrap items-start gap-2;
+  }
+
+  /* =========================================================
+     MAIN SECTION
+  ========================================================= */
+
+  .section-slider {
+    @apply flex w-full min-w-0 flex-col;
+  }
+
+  .section-slider__page {
+    @apply relative w-full min-w-0;
+  }
+
+  /*
+   * This navigation is OUTSIDE sectionOne / sectionTwo,
+   * so Next and Previous always use the same position.
+   */
+  .section-slider__navigation {
+    @apply mb-3 flex w-full items-center justify-end md:mb-4;
+  }
+
+  .section-slider__nav-button {
+    @apply inline-flex cursor-pointer items-center justify-center gap-2 rounded-lg border border-theme7 bg-theme1 px-3 py-2 font-ogilvy-r text-base text-theme2 shadow-sm transition-all duration-200 hover:shadow-md md:px-6 md:py-3;
+  }
+
+  .section-slider__nav-button:hover {
+    @apply scale-105;
+  }
+
+  .section-slider__nav-button:active {
+    @apply scale-95;
+  }
+
+  .section-slider__arrow {
+    @apply inline-flex items-center justify-center;
+  }
+
+  /* =========================================================
+     SECTION FADE
+  ========================================================= */
+
+  .sectionOne,
+  .sectionTwo {
+    @apply relative w-full min-w-0 animate-[big-screen-section-fade_0.4s_ease-out_both] motion-reduce:animate-none;
+  }
+
+  @keyframes big-screen-section-fade {
+    from {
+      opacity: 0;
+      transform: translateY(10px);
+    }
+
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  /* =========================================================
+     SECTION ONE — IDEA BOARD
+     1 column on phones, up to 5 on kiosk-sized displays.
+  ========================================================= */
+
+  .sectionOne {
+    @apply flex w-full flex-col;
+  }
+
+  .big-screen__board {
+    @apply w-full max-w-full min-w-0;
+  }
+
+  .big-screen__board-container {
+    @apply grid w-full min-w-0 grid-cols-1 gap-5 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 3xl:grid-cols-5;
+  }
+
+  .big-screen__card {
+    @apply min-w-0 overflow-hidden rounded-2xl border border-theme7 bg-theme2 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-lg;
+  }
+
+  .big-screen__card .idea-vote-card {
+    @apply h-full rounded-none border-0 shadow-none transition-none hover:translate-y-0 hover:shadow-none;
+  }
+
+  /* =========================================================
+     SECTION TWO
+     Stacked on phones/tablets; QR + activity beside team
+     stats once there's room (lg and up).
+  ========================================================= */
+
+  .sectionTwo {
+    @apply grid w-full min-w-0 grid-cols-1 items-start gap-4 lg:grid-cols-[25%_minmax(0,1fr)] lg:gap-x-8;
+  }
+
+  .sectionTwo__left {
+    @apply flex min-w-0 flex-col items-center gap-4;
+  }
+
+  .sectionTwo__right {
+    @apply flex min-w-0 items-start;
+  }
+
+  .sectionTwo__timer {
+    @apply w-full rounded-2xl bg-theme1 p-4 text-center font-phudu-b text-2xl leading-none tracking-widest text-theme2 shadow-sm md:text-5xl;
+  }
+
+  .sectionTwo__qr {
+    @apply relative flex w-full items-center justify-center gap-2 rounded-2xl bg-theme2 p-4 shadow-lg;
+  }
+
+  .sectionTwo__qrImage {
+    @apply h-auto w-full max-w-full object-contain;
+  }
+
+  .sectionTwo__activity {
+    @apply cursor-pointer rounded-full bg-theme1 px-3 py-2 font-ogilvy-r text-base whitespace-nowrap text-theme2 shadow-sm transition-all duration-200 hover:shadow-md;
+  }
+
+  .sectionTwo__activity:hover {
+    @apply scale-105;
+  }
+
+  .sectionTwo__activity:active {
+    @apply scale-95;
+  }
+
+  .sectionTwo__activity-content {
+    @apply relative flex w-full min-w-0 flex-col;
+  }
+
+  /* =========================================================
+     PRESENT MODAL
+  ========================================================= */
+
+  .modal-overlay__dialog.big-screen__view-modal {
+    @apply w-full max-w-5xl rounded-2xl;
+  }
+
+  .big-screen__view-modal .modal-overlay__header {
+    @apply absolute top-4 right-4 z-10;
+  }
+
+  .big-screen__view-modal .modal-overlay__close {
+    @apply rounded-full bg-theme10;
+  }
+}

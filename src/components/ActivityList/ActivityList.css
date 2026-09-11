@@ -1,0 +1,54 @@
+@reference "../../index.css";
+
+@layer components {
+  .activity-list {
+    @apply grid w-full gap-5 lg:gap-8;
+  }
+
+  .activity-list h2 {
+    @apply font-phudu-b text-3xl text-theme1 m-0 leading-normal whitespace-nowrap;
+  }
+
+  .activity-list .activity-list__header {
+    @apply flex flex-col items-start justify-between lg:flex-row lg:items-center;
+  }
+
+  .activity-list > div {
+    @apply grid gap-2;
+  }
+
+  .activity-list__item {
+    @apply border-theme4 bg-theme2 hover:bg-theme5 flex items-start gap-6 rounded-2xl border px-3 py-3 shadow-[0_2px_8px_rgb(0_0_0/5%)] transition-colors duration-200 lg:px-5;
+  }
+
+  .activity-list__icon,
+  .activity-list__tooltip-trigger {
+    @apply relative inline-flex h-5 w-5 shrink-0 cursor-pointer;
+  }
+
+  .activity-list__icon > img,
+  .activity-list__tooltip-trigger > img {
+    @apply h-5 w-5 object-contain;
+  }
+
+  .activity-list__tooltip {
+    @apply bg-theme1 text-base text-theme2 pointer-events-none absolute top-1/2 left-full z-10 ml-2 w-max max-w-64 -translate-y-1/2 rounded px-3 py-2 opacity-0 shadow-lg transition-opacity;
+  }
+
+  .activity-list__tooltip-trigger:hover .activity-list__tooltip,
+  .activity-list__tooltip-trigger:focus .activity-list__tooltip {
+    @apply opacity-100;
+  }
+
+  .activity-list__item span {
+    @apply grid gap-2;
+  }
+
+  .activity-list__item strong {
+    @apply text-base text-theme1 leading-tight;
+  }
+
+  .activity-list__item small {
+    @apply text-base text-theme1 leading-tight;
+  }
+}

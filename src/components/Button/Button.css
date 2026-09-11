@@ -1,0 +1,38 @@
+@reference "../../index.css";
+
+@layer components {
+  .btn {
+    @apply font-ogilvy-r text-base my-2 inline-flex cursor-pointer items-center justify-center rounded-lg px-6 py-3 shadow-sm transition-all duration-200 hover:shadow-md active:scale-95;
+  }
+
+  .btn-primary {
+    @apply bg-theme1 text-theme2;
+  }
+
+  .btn-secondary {
+    @apply border-theme1 bg-theme2 text-theme1 border;
+  }
+
+  .btn-secondary:hover {
+    @apply bg-theme1 text-theme2;
+  }
+
+  .btn:disabled {
+    @apply cursor-not-allowed opacity-50 shadow-none;
+  }
+
+  .btn__loading {
+    @apply inline-flex items-center justify-center;
+  }
+
+  .btn__spinner {
+    @apply size-5 rounded-full border-2 border-current border-t-transparent;
+    animation: btn-spin 0.7s linear infinite;
+  }
+
+  @keyframes btn-spin {
+    to {
+      transform: rotate(360deg);
+    }
+  }
+}

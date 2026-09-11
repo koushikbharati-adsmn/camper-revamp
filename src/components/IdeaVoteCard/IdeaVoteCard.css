@@ -1,0 +1,103 @@
+@reference "../../index.css";
+
+@layer components {
+  .idea-vote-card {
+    @apply border-theme4 bg-theme2 text-theme1 flex h-full w-full flex-col overflow-hidden rounded-2xl border shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-lg;
+  }
+
+  .idea-vote-card__votes {
+    @apply bg-theme5 relative grid aspect-4/3 h-auto justify-items-end overflow-hidden px-3 py-2;
+  }
+
+  .idea-vote-card__votes-image {
+    @apply absolute inset-0 aspect-4/3 h-full w-full object-cover;
+  }
+
+  .idea-vote-card__votes-overlay {
+    @apply from-theme1/85 via-theme1/15 absolute inset-0 z-999 bg-linear-to-t to-transparent;
+  }
+
+  .idea-vote-card__votes > :not(.idea-vote-card__votes-overlay) {
+    @apply z-999;
+  }
+
+  .idea-vote-card__votes .caption {
+    @apply text-center;
+  }
+
+  .idea-vote-card__votes .headTitle {
+    @apply font-phudu-b text-4xl text-theme2 m-0 leading-normal;
+  }
+
+  .idea-vote-card__votes .textVote {
+    @apply text-xs text-theme2 leading-normal tracking-widest uppercase;
+  }
+
+  .idea-vote-card__votes strong {
+    @apply font-phudu-b text-xl text-theme2 leading-normal;
+  }
+
+  .idea-vote-card__votes span {
+    @apply text-base text-theme2 leading-normal;
+  }
+
+  .idea-vote-card__votes i {
+    @apply bg-theme2 block h-[2px] w-9;
+  }
+
+  .idea-vote-card__body {
+    @apply flex flex-1 flex-col gap-2 p-3;
+  }
+
+  .idea-vote-card__actions {
+    @apply text-theme1 flex justify-between gap-3;
+  }
+
+  .idea-vote-card__actions button {
+    @apply text-theme1 cursor-pointer border-0 bg-transparent p-0;
+  }
+
+  .idea-vote-card__action {
+    @apply hover:bg-theme5 relative -m-1.5 flex size-8 items-center justify-center rounded-full transition-colors duration-200;
+  }
+
+  .idea-vote-card__favorite {
+    @apply transition-transform duration-200;
+  }
+
+  .idea-vote-card__favorite--active {
+    @apply scale-110 text-red-500;
+  }
+
+  .idea-vote-card__confetti {
+    @apply pointer-events-none absolute -top-3 left-1/2 text-[18px] text-yellow-500;
+    animation: vote-card-confetti 700ms ease-out forwards;
+  }
+
+  @keyframes vote-card-confetti {
+    0% {
+      opacity: 1;
+      transform: translate(-50%, 0) scale(0.5);
+    }
+    100% {
+      opacity: 0;
+      transform: translate(-50%, -22px) scale(1.4) rotate(25deg);
+    }
+  }
+
+  .idea-vote-card__body h2 {
+    @apply font-phudu-b text-2xl text-theme1 m-0 line-clamp-1 overflow-hidden leading-[1.1] text-ellipsis whitespace-nowrap;
+  }
+
+  .idea-vote-card__body small {
+    @apply text-sm text-theme9 min-h-5 tracking-wider;
+  }
+
+  .idea-vote-card__body p {
+    @apply text-base font-ogilvy-r text-theme3 m-0 line-clamp-3 flex-1 overflow-hidden leading-normal text-ellipsis;
+  }
+
+  .idea-vote-card__view {
+    @apply w-fit;
+  }
+}

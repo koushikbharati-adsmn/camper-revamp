@@ -1,0 +1,33 @@
+@reference "../../index.css";
+
+@layer components {
+  .select-wrapper {
+    @apply relative inline-flex w-fit;
+  }
+
+  .select {
+    @apply border-theme7 bg-theme2 font-ogilvy-r text-base text-theme1 w-full min-w-36 cursor-pointer appearance-none rounded-lg border py-2 pr-10 pl-4 shadow-sm transition-all duration-200 outline-none hover:border-theme1 hover:shadow-md;
+  }
+
+  /* Native <select> pseudo-elements for the default arrow, per browser */
+  .select::-ms-expand {
+    display: none;
+  }
+
+  .select:focus-visible {
+    @apply outline-theme1 outline-2 outline-offset-2;
+  }
+
+  .select:disabled {
+    @apply cursor-not-allowed opacity-50;
+  }
+
+  .select__chevron {
+    @apply text-theme9 pointer-events-none absolute top-1/2 right-3 -translate-y-1/2 transition-colors duration-200;
+  }
+
+  .select:hover ~ .select__chevron,
+  .select:focus ~ .select__chevron {
+    @apply text-theme1;
+  }
+}

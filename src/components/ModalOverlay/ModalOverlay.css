@@ -1,0 +1,53 @@
+@reference "../../index.css";
+
+@layer components {
+  .modal-overlay {
+    @apply border-theme1 bg-theme1/40 fixed inset-0 z-999 flex h-full w-full items-center justify-center border-2 p-4 animate-[modal-overlay-fade_0.2s_ease-out] motion-reduce:animate-none;
+  }
+
+  .modal-overlay__dialog {
+    @apply bg-theme2 text-theme1 relative m-0 grid max-h-[90vh] w-full max-w-lg gap-3 overflow-y-auto rounded-2xl p-5 shadow-xl animate-[modal-dialog-in_0.25s_ease-out_both] motion-reduce:animate-none;
+  }
+
+  @keyframes modal-overlay-fade {
+    from {
+      opacity: 0;
+    }
+
+    to {
+      opacity: 1;
+    }
+  }
+
+  @keyframes modal-dialog-in {
+    from {
+      opacity: 0;
+      transform: scale(0.96) translateY(12px);
+    }
+
+    to {
+      opacity: 1;
+      transform: scale(1) translateY(0);
+    }
+  }
+
+  .modal-overlay__header {
+    @apply flex w-full items-center justify-between gap-4;
+  }
+
+  .modal-overlay__header h2 {
+    @apply font-phudu-b text-2xl text-theme1 m-0;
+  }
+
+  .modal-overlay__close {
+    @apply bg-theme4 text-theme1 absolute top-4 right-4 flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-full border-0 p-1 transition-colors duration-200;
+  }
+
+  .modal-overlay__close:hover {
+    @apply bg-theme5;
+  }
+
+  .modal-overlay__content {
+    @apply font-ogilvy-r text-base text-theme1 grid w-full gap-5;
+  }
+}

@@ -1,0 +1,62 @@
+@reference "../../index.css";
+
+@layer components {
+  .newsroom-stats {
+    @apply grid w-full gap-5;
+  }
+
+  .newsroom-stats__summary {
+    @apply grid grid-cols-2 gap-5 lg:grid-cols-4;
+  }
+
+  .newsroom-stats__summary-card {
+    @apply bg-theme1 text-theme2 grid min-h-[18vh] place-content-center gap-5 rounded-2xl p-2 text-center shadow-sm transition-shadow duration-300 lg:p-3;
+  }
+
+  .newsroom-stats__summary-card:hover {
+    @apply bg-theme1 shadow-md;
+  }
+
+  .newsroom-stats__summary-card strong {
+    @apply text-4xl font-phudu-b leading-none;
+  }
+
+  .newsroom-stats__summary-card span,
+  .newsroom-stats__summary-card .headTitle {
+    @apply text-lg leading-tight;
+  }
+
+  .newsroom-stats__summary-card small {
+    @apply font-ogilvy-r text-theme2 font-normal;
+  }
+
+  .newsroom-stats__rows {
+    @apply grid gap-8;
+  }
+
+  .newsroom-stats__row {
+    @apply grid grid-cols-2 gap-8 lg:grid-cols-[1.35fr_repeat(4,1fr)];
+  }
+
+  .newsroom-stats__team,
+  .newsroom-stats__metric {
+    @apply border-theme1 min-w-0 border-b-2 px-2 py-3;
+  }
+
+  .newsroom-stats__team {
+    @apply col-span-2 lg:col-span-1;
+  }
+
+  .newsroom-stats__team strong {
+    @apply font-phudu-b text-2xl text-theme8 leading-none;
+  }
+
+  .newsroom-stats__team small,
+  .newsroom-stats__metric small {
+    @apply font-ogilvy-r text-base text-theme1 mt-2 block leading-tight uppercase;
+  }
+
+  .newsroom-stats__metric strong {
+    @apply font-phudu-m text-2xl text-theme1 leading-none;
+  }
+}

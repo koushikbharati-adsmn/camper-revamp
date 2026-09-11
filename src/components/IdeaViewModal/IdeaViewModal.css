@@ -1,0 +1,32 @@
+@reference "../../index.css";
+
+@layer components {
+  .idea-view-modal__content {
+    @apply grid items-center gap-8 md:grid-cols-2;
+  }
+  .idea-view-modal__image-wrapper {
+    aspect-ratio: 4 / 3;
+    @apply w-full overflow-hidden rounded-2xl;
+  }
+  .idea-view-modal__image {
+    @apply h-full w-full object-cover;
+  }
+  .idea-view-modal__details {
+    @apply flex h-full flex-col gap-4;
+  }
+  .idea-view-modal__meta {
+    @apply font-phudu-b text-base flex gap-6 uppercase;
+  }
+  .idea-view-modal__details .caption {
+    @apply overflow-y-auto pe-5;
+  }
+  .idea-view-modal__details h2 {
+    @apply font-phudu-b text-2xl m-0 uppercase;
+  }
+  .idea-view-modal__details p {
+    @apply text-base text-theme3 m-0 max-h-[20vh] max-w-[48ch] leading-[1.5];
+  }
+  .idea-view-modal__details > button {
+    @apply text-base mt-auto ml-auto w-fit px-8;
+  }
+}

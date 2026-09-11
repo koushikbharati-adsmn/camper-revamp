@@ -1,0 +1,23 @@
+@reference "../../index.css";
+
+@layer components {
+  .field-input {
+    @apply border-theme1 bg-theme2 font-ogilvy-r text-base text-theme1 my-2 w-full rounded-lg border px-4 py-3 transition-all duration-200 outline-none;
+  }
+
+  .field-input::placeholder {
+    @apply font-ogilvy-r text-theme1 opacity-50;
+  }
+
+  .field-input:hover {
+    @apply border-theme1;
+  }
+
+  .field-input:focus {
+    @apply border-theme1;
+  }
+
+  .field-input:disabled {
+    @apply cursor-not-allowed opacity-50;
+  }
+}
