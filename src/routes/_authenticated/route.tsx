@@ -42,11 +42,13 @@ function RouteComponent() {
     <SidebarProvider className="h-svh overflow-hidden">
       <AppSidebar user={user} />
       <SidebarInset className="min-h-0 overflow-hidden">
-        <header className="flex h-12 shrink-0 items-center gap-2 border-b border-border px-4 md:hidden">
+        <header className="flex h-15 shrink-0 items-center gap-2 border-b border-border px-4 py-3.5">
           <SidebarTrigger className="-ml-1" />
-          <span className="text-xs font-semibold tracking-wide uppercase">
-            Basecamp
-          </span>
+          <img
+            className="h-full w-full"
+            src="/logo-ogilvy-b.svg"
+            alt="ogilvy logo"
+          />
         </header>
         <div
           id="app-scroll-container"
