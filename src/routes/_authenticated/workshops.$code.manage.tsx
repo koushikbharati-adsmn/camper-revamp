@@ -166,16 +166,19 @@ const WORKSHOP_PHASES: Array<{
   description: string
 }> = [
   {
-    status: "not_started",
-    label: "Not Started",
-    description: "Ready to begin",
+    status: "ideate",
+    label: "Ideate",
+    description: "Participants submit ideas",
   },
-  { status: "ideate", label: "Ideate", description: "Ideas are open" },
-  { status: "vote", label: "Vote", description: "Voting is open" },
+  {
+    status: "vote",
+    label: "Vote",
+    description: "Participants vote on ideas",
+  },
   {
     status: "completed",
     label: "Completed",
-    description: "Workshop ended",
+    description: "Workshop has ended",
   },
 ]
 
@@ -211,12 +214,6 @@ function RouteComponent() {
       (teamFilter === "all" || idea.teamId === teamFilter) &&
       (pillarFilter === "all" || idea.pillarId === pillarFilter)
   )
-  const hasActiveFilters = teamFilter !== "all" || pillarFilter !== "all"
-
-  const clearFilters = () => {
-    setTeamFilter("all")
-    setPillarFilter("all")
-  }
 
   const resetTimer = () => {
     setTimerStatus("idle")
@@ -247,10 +244,8 @@ function RouteComponent() {
         ideas={filteredIdeas}
         teamFilter={teamFilter}
         pillarFilter={pillarFilter}
-        hasActiveFilters={hasActiveFilters}
         onTeamFilterChange={setTeamFilter}
         onPillarFilterChange={setPillarFilter}
-        onClearFilters={clearFilters}
         onPreview={setPreviewIdea}
       />
 
@@ -337,10 +332,7 @@ function LifecycleCard({
         </CardDescription>
       </CardHeader>
       <CardContent className="flex flex-1 flex-col gap-4">
-        <ol
-          aria-label="Workshop phases"
-          className="grid grid-cols-2 gap-px border border-border bg-border sm:grid-cols-4"
-        >
+        <ol aria-label="Workshop phases">
           {WORKSHOP_PHASES.map((phase, index) => {
             const phaseState =
               index < currentPhaseIndex
@@ -353,18 +345,25 @@ function LifecycleCard({
               <li
                 key={phase.status}
                 aria-current={phaseState === "current" ? "step" : undefined}
-                className={cn(
-                  "min-w-0 bg-card p-3",
-                  phaseState === "current" && "bg-primary/5"
-                )}
+                className="relative flex min-w-0 gap-3 pb-3 last:pb-0"
               >
-                <div className="mb-2 flex items-center justify-between gap-2">
+                <div className="relative flex w-6 shrink-0 justify-center">
+                  {index < WORKSHOP_PHASES.length - 1 && (
+                    <span
+                      className={cn(
+                        "absolute top-6 bottom-0 w-px bg-border",
+                        phaseState === "completed" && "bg-primary/40"
+                      )}
+                      aria-hidden="true"
+                    />
+                  )}
                   <span
                     className={cn(
-                      "flex size-6 shrink-0 items-center justify-center border",
+                      "relative z-10 flex size-6 shrink-0 items-center justify-center border bg-card",
                       phaseState === "completed" &&
+                        "border-primary/40 bg-primary/10 text-primary",
+                      phaseState === "current" &&
                         "border-primary bg-primary text-primary-foreground",
-                      phaseState === "current" && "border-primary text-primary",
                       phaseState === "upcoming" &&
                         "border-border text-muted-foreground"
                     )}
@@ -375,14 +374,33 @@ function LifecycleCard({
                       <CircleIcon className="size-2.5 fill-current" />
                     )}
                   </span>
-                  <span className="text-[0.65rem] font-medium tracking-wide text-muted-foreground uppercase">
-                    {phaseState}
-                  </span>
                 </div>
-                <p className="font-medium">{phase.label}</p>
-                <p className="mt-0.5 text-xs text-muted-foreground">
-                  {phase.description}
-                </p>
+                <div
+                  className={cn(
+                    "min-w-0 flex-1 border border-border px-3 py-2.5",
+                    phaseState === "current" &&
+                      "border-primary/40 bg-primary/5 shadow-xs",
+                    phaseState === "completed" && "bg-muted/40"
+                  )}
+                >
+                  <div className="flex items-center justify-between gap-3">
+                    <p
+                      className={cn(
+                        "font-medium",
+                        phaseState === "current" && "font-semibold",
+                        phaseState === "upcoming" && "text-muted-foreground"
+                      )}
+                    >
+                      {phase.label}
+                    </p>
+                    <span className="text-[0.65rem] font-medium tracking-wide text-muted-foreground uppercase">
+                      {phaseState}
+                    </span>
+                  </div>
+                  <p className="mt-0.5 text-xs text-muted-foreground">
+                    {phase.description}
+                  </p>
+                </div>
               </li>
             )
           })}
@@ -525,19 +543,15 @@ function IdeaTracker({
   ideas,
   teamFilter,
   pillarFilter,
-  hasActiveFilters,
   onTeamFilterChange,
   onPillarFilterChange,
-  onClearFilters,
   onPreview,
 }: {
   ideas: Idea[]
   teamFilter: string
   pillarFilter: string
-  hasActiveFilters: boolean
   onTeamFilterChange: (value: string) => void
   onPillarFilterChange: (value: string) => void
-  onClearFilters: () => void
   onPreview: (idea: Idea) => void
 }) {
   const teamItems = [
@@ -622,23 +636,13 @@ function IdeaTracker({
               </SelectContent>
             </Select>
           </label>
-          {hasActiveFilters && (
-            <Button
-              variant="ghost"
-              className="w-full sm:col-span-2 lg:w-auto"
-              onClick={onClearFilters}
-            >
-              <RotateCcwIcon />
-              Clear Filters
-            </Button>
-          )}
         </div>
       </div>
 
       {MOCK_IDEAS.length === 0 ? (
         <IdeasEmpty />
       ) : ideas.length === 0 ? (
-        <IdeasEmpty filtered onClearFilters={onClearFilters} />
+        <IdeasEmpty filtered />
       ) : (
         <div className="grid gap-3">
           {ideas.map((idea) => (
@@ -659,7 +663,7 @@ function IdeaCard({
 }) {
   return (
     <article className="grid min-w-0 overflow-hidden border border-border bg-card sm:grid-cols-[12rem_minmax(0,1fr)] lg:grid-cols-[15rem_minmax(0,1fr)]">
-      <div className="aspect-[4/3] min-w-0 border-b border-border bg-muted/50 sm:border-r sm:border-b-0">
+      <div className="aspect-4/3 min-w-0 border-b border-border bg-muted/50 sm:border-r sm:border-b-0">
         <IdeaThumbnail idea={idea} />
       </div>
       <div className="flex min-w-0 flex-col p-4">
@@ -693,13 +697,7 @@ function IdeaCard({
   )
 }
 
-function IdeasEmpty({
-  filtered = false,
-  onClearFilters,
-}: {
-  filtered?: boolean
-  onClearFilters?: () => void
-}) {
+function IdeasEmpty({ filtered = false }: { filtered?: boolean }) {
   return (
     <div className="flex min-h-64 flex-col items-center justify-center border border-dashed border-border px-6 text-center">
       <div className="mb-3 flex size-10 items-center justify-center bg-muted">
@@ -712,14 +710,9 @@ function IdeasEmpty({
       </h3>
       <p className="mt-1 max-w-sm text-xs text-muted-foreground">
         {filtered
-          ? "Try another team or pillar, or clear the current filters."
+          ? "Try choosing a different team or pillar."
           : "Ideas will appear here once participants start submitting them."}
       </p>
-      {filtered && onClearFilters && (
-        <Button className="mt-4" variant="outline" onClick={onClearFilters}>
-          Clear Filters
-        </Button>
-      )}
     </div>
   )
 }
@@ -744,7 +737,7 @@ function IdeaPreviewDialog({
         </DialogHeader>
 
         <div className="grid gap-4 md:grid-cols-[minmax(0,1.15fr)_minmax(15rem,0.85fr)]">
-          <div className="aspect-[4/3] overflow-hidden border border-border bg-muted/50">
+          <div className="aspect-4/3 overflow-hidden border border-border bg-muted/50">
             <IdeaThumbnail idea={idea} />
           </div>
           <div className="min-w-0 space-y-4">
