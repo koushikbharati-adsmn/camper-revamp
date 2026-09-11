@@ -41,6 +41,7 @@ import {
   CheckIcon,
   CircleIcon,
   Clock3Icon,
+  DownloadIcon,
   EyeIcon,
   FlagIcon,
   FolderKanbanIcon,
@@ -471,6 +472,12 @@ function LifecycleCard({
             >
               <FlagIcon />
               End Workshop
+            </Button>
+          )}
+          {status === "completed" && (
+            <Button variant="outline" className="w-full sm:w-auto">
+              <DownloadIcon />
+              Download Report
             </Button>
           )}
         </div>
