@@ -195,7 +195,11 @@ function LoginForm({ className, ...props }: React.ComponentProps<"div">) {
       >
         <FieldGroup>
           <div className="flex flex-col items-center gap-2 text-center">
-            <img className="h-12" src="/logo-ogilvy-b.svg" alt="ogilvy logo" />
+            <img
+              className="h-12 dark:invert"
+              src="/logo-ogilvy-b.svg"
+              alt="ogilvy logo"
+            />
 
             <FieldDescription>
               Please sign in to your account to continue

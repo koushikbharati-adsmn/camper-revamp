@@ -42,7 +42,7 @@ subscribeAuthSession(() => {
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
-    <ThemeProvider>
+    <ThemeProvider defaultTheme="light">
       <TooltipProvider>
         <QueryClientProvider client={queryClient}>
           <RouterProvider router={router} />

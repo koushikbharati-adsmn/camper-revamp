@@ -28,7 +28,7 @@ export function NavMain({ items }: { items: NavItem[] }) {
           return (
             <SidebarMenuItem key={item.title}>
               <SidebarMenuButton
-                className="data-active:bg-primary/5 data-active:text-primary hover:data-active:bg-primary/5 hover:data-active:text-primary"
+                className="data-active:bg-primary/5 data-active:text-primary hover:data-active:bg-primary/5 hover:data-active:text-primary dark:data-active:bg-primary dark:data-active:text-primary-foreground dark:hover:data-active:bg-primary dark:hover:data-active:text-primary-foreground"
                 tooltip={item.title}
                 isActive={isActive}
                 render={

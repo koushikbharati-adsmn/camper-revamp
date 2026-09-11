@@ -1,4 +1,5 @@
 import { AppSidebar } from "@/components/app-sidebar"
+import { ModeToggle } from "@/components/mode-toggle"
 import {
   SidebarInset,
   SidebarProvider,
@@ -45,10 +46,11 @@ function RouteComponent() {
         <header className="flex h-15 shrink-0 items-center gap-2 border-b border-border px-4 py-3.5">
           <SidebarTrigger className="-ml-1" />
           <img
-            className="h-full w-full"
+            className="h-full w-full dark:invert"
             src="/logo-ogilvy-b.svg"
             alt="ogilvy logo"
           />
+          <ModeToggle />
         </header>
         <div
           id="app-scroll-container"
