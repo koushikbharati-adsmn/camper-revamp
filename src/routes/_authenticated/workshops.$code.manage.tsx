@@ -25,6 +25,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
+import { Input } from "@/components/ui/input"
 import {
   Select,
   SelectContent,
@@ -56,6 +57,11 @@ import { useEffect, useState } from "react"
 
 type WorkshopStatus = "not_started" | "ideate" | "vote" | "completed"
 type TimerStatus = "idle" | "running" | "paused"
+type TimerState = {
+  status: TimerStatus
+  durationSeconds: number
+  remainingSeconds: number
+}
 
 type Team = {
   id: string
@@ -193,21 +199,35 @@ function RouteComponent() {
   )
   const [pendingTransition, setPendingTransition] =
     useState<WorkshopStatus | null>(null)
-  const [timerStatus, setTimerStatus] = useState<TimerStatus>("idle")
-  const [elapsedSeconds, setElapsedSeconds] = useState(0)
+  const [timer, setTimer] = useState<TimerState>({
+    status: "idle",
+    durationSeconds: 0,
+    remainingSeconds: 0,
+  })
   const [teamFilter, setTeamFilter] = useState("all")
   const [pillarFilter, setPillarFilter] = useState("all")
   const [previewIdea, setPreviewIdea] = useState<Idea | null>(null)
 
   useEffect(() => {
-    if (timerStatus !== "running") return
+    if (timer.status !== "running") return
 
     const intervalId = window.setInterval(() => {
-      setElapsedSeconds((seconds) => seconds + 1)
+      setTimer((current) => {
+        if (current.status !== "running") return current
+
+        if (current.remainingSeconds <= 1) {
+          return { ...current, status: "idle", remainingSeconds: 0 }
+        }
+
+        return {
+          ...current,
+          remainingSeconds: current.remainingSeconds - 1,
+        }
+      })
     }, 1000)
 
     return () => window.clearInterval(intervalId)
-  }, [timerStatus])
+  }, [timer.status])
 
   const filteredIdeas = MOCK_IDEAS.filter(
     (idea) =>
@@ -216,8 +236,11 @@ function RouteComponent() {
   )
 
   const resetTimer = () => {
-    setTimerStatus("idle")
-    setElapsedSeconds(0)
+    setTimer((current) => ({
+      ...current,
+      status: "idle",
+      remainingSeconds: current.durationSeconds,
+    }))
   }
 
   return (
@@ -231,9 +254,21 @@ function RouteComponent() {
           onRequestTransition={setPendingTransition}
         />
         <TimerCard
-          status={timerStatus}
-          elapsedSeconds={elapsedSeconds}
-          onStatusChange={setTimerStatus}
+          timer={timer}
+          onStatusChange={(status) =>
+            setTimer((current) => ({ ...current, status }))
+          }
+          onDurationChange={(durationSeconds) =>
+            setTimer((current) =>
+              current.status === "running"
+                ? current
+                : {
+                    ...current,
+                    durationSeconds,
+                    remainingSeconds: durationSeconds,
+                  }
+            )
+          }
           onReset={resetTimer}
         />
       </div>
@@ -445,16 +480,41 @@ function LifecycleCard({
 }
 
 function TimerCard({
-  status,
-  elapsedSeconds,
+  timer,
   onStatusChange,
+  onDurationChange,
   onReset,
 }: {
-  status: TimerStatus
-  elapsedSeconds: number
+  timer: TimerState
   onStatusChange: (status: TimerStatus) => void
+  onDurationChange: (durationSeconds: number) => void
   onReset: () => void
 }) {
+  const duration = getDurationParts(timer.remainingSeconds)
+  const isEditable = timer.status !== "running"
+  const canReset =
+    timer.status !== "idle" ||
+    (timer.durationSeconds > 0 &&
+      timer.remainingSeconds !== timer.durationSeconds)
+
+  const updateDurationPart = (
+    part: keyof ReturnType<typeof getDurationParts>,
+    rawValue: string
+  ) => {
+    const max = part === "hours" ? 99 : 59
+    const parsedValue = Number(rawValue.replace(/\D/g, "").slice(0, 2)) || 0
+    const nextDuration = {
+      ...duration,
+      [part]: Math.min(parsedValue, max),
+    }
+
+    onDurationChange(
+      nextDuration.hours * 3600 +
+        nextDuration.minutes * 60 +
+        nextDuration.seconds
+    )
+  }
+
   return (
     <Card>
       <CardHeader>
@@ -464,33 +524,72 @@ function TimerCard({
         </CardDescription>
       </CardHeader>
       <CardContent className="flex flex-1 flex-col items-center justify-center py-5 text-center">
-        <TimerStatusBadge status={status} />
-        <time
-          className="mt-3 font-mono text-5xl font-semibold tracking-tight tabular-nums sm:text-6xl"
-          dateTime={`PT${elapsedSeconds}S`}
+        <TimerStatusBadge status={timer.status} />
+        <div
+          role="group"
+          aria-label="Workshop timer duration"
+          className="mt-3 flex max-w-full items-start justify-center gap-1"
         >
-          {formatElapsedTime(elapsedSeconds)}
-        </time>
+          <TimerDurationInput
+            label="Hours"
+            value={duration.hours}
+            disabled={!isEditable}
+            onChange={(value) => updateDurationPart("hours", value)}
+          />
+          <span
+            className="pt-1 font-mono text-4xl font-semibold text-muted-foreground sm:text-5xl"
+            aria-hidden="true"
+          >
+            :
+          </span>
+          <TimerDurationInput
+            label="Minutes"
+            value={duration.minutes}
+            disabled={!isEditable}
+            onChange={(value) => updateDurationPart("minutes", value)}
+          />
+          <span
+            className="pt-1 font-mono text-4xl font-semibold text-muted-foreground sm:text-5xl"
+            aria-hidden="true"
+          >
+            :
+          </span>
+          <TimerDurationInput
+            label="Seconds"
+            value={duration.seconds}
+            disabled={!isEditable}
+            onChange={(value) => updateDurationPart("seconds", value)}
+          />
+        </div>
+        <span className="sr-only" aria-live="polite">
+          {formatDuration(timer.remainingSeconds)} remaining
+        </span>
         <div className="mt-5 flex w-full flex-wrap justify-center gap-2">
-          {status === "idle" && (
-            <Button onClick={() => onStatusChange("running")}>
+          {timer.status === "idle" && (
+            <Button
+              disabled={timer.remainingSeconds === 0}
+              onClick={() => onStatusChange("running")}
+            >
               <PlayIcon />
               Start
             </Button>
           )}
-          {status === "running" && (
+          {timer.status === "running" && (
             <Button onClick={() => onStatusChange("paused")}>
               <PauseIcon />
               Pause
             </Button>
           )}
-          {status === "paused" && (
-            <Button onClick={() => onStatusChange("running")}>
+          {timer.status === "paused" && (
+            <Button
+              disabled={timer.remainingSeconds === 0}
+              onClick={() => onStatusChange("running")}
+            >
               <PlayIcon />
               Resume
             </Button>
           )}
-          {status !== "idle" && (
+          {canReset && (
             <Button variant="outline" onClick={onReset}>
               <RotateCcwIcon />
               Reset
@@ -499,6 +598,38 @@ function TimerCard({
         </div>
       </CardContent>
     </Card>
+  )
+}
+
+function TimerDurationInput({
+  label,
+  value,
+  disabled,
+  onChange,
+}: {
+  label: string
+  value: number
+  disabled: boolean
+  onChange: (value: string) => void
+}) {
+  return (
+    <label className="grid min-w-0 gap-1 text-center">
+      <Input
+        type="text"
+        inputMode="numeric"
+        pattern="[0-9]*"
+        maxLength={2}
+        value={String(value).padStart(2, "0")}
+        disabled={disabled}
+        aria-label={label}
+        className="h-auto w-14 border-0 border-b bg-transparent px-0 py-1 text-center font-mono text-4xl font-semibold tracking-tight tabular-nums focus-visible:ring-0 disabled:bg-transparent disabled:opacity-100 sm:w-16 sm:text-5xl"
+        onFocus={(event) => event.currentTarget.select()}
+        onChange={(event) => onChange(event.target.value)}
+      />
+      <span className="text-[0.65rem] font-medium tracking-wide text-muted-foreground uppercase">
+        {label === "Hours" ? "HH" : label === "Minutes" ? "MM" : "SS"}
+      </span>
+    </label>
   )
 }
 
@@ -897,11 +1028,20 @@ function getLifecycleMessage(status: WorkshopStatus) {
   return messages[status]
 }
 
-function formatElapsedTime(totalSeconds: number) {
-  const minutes = Math.floor(totalSeconds / 60)
-  const seconds = totalSeconds % 60
+function getDurationParts(totalSeconds: number) {
+  return {
+    hours: Math.floor(totalSeconds / 3600),
+    minutes: Math.floor((totalSeconds % 3600) / 60),
+    seconds: totalSeconds % 60,
+  }
+}
 
-  return `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`
+function formatDuration(totalSeconds: number) {
+  const duration = getDurationParts(totalSeconds)
+
+  return [duration.hours, duration.minutes, duration.seconds]
+    .map((value) => String(value).padStart(2, "0"))
+    .join(":")
 }
 
 function formatSubmittedAt(value: string) {
