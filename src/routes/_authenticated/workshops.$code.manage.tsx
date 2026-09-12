@@ -630,7 +630,7 @@ function TimerDurationInput({
         value={String(value).padStart(2, "0")}
         disabled={disabled}
         aria-label={label}
-        className="h-auto w-20 [appearance:textfield] border-0 border-b bg-transparent px-0 py-2 text-center font-mono text-5xl font-semibold tracking-tight tabular-nums focus-visible:ring-0 disabled:bg-transparent disabled:opacity-100 sm:w-24 sm:text-6xl lg:w-28 lg:text-7xl [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+        className="h-auto w-20 [appearance:textfield] border-0 border-b bg-transparent px-0 py-2 text-center font-mono text-5xl font-semibold tracking-tight tabular-nums focus-visible:ring-0 disabled:bg-transparent disabled:opacity-100 sm:w-24 sm:text-6xl md:text-6xl lg:w-28 lg:text-7xl [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
         onFocus={(event) => event.currentTarget.select()}
         onChange={(event) => onChange(event.target.value)}
       />
@@ -705,8 +705,8 @@ function IdeaTracker({
   ]
 
   return (
-    <section aria-labelledby="idea-tracker-heading" className="space-y-4">
-      <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+    <section aria-labelledby="idea-tracker-heading">
+      <div className="sticky -top-4 flex flex-col gap-3 bg-background/90 py-4 backdrop-blur-md lg:flex-row lg:items-end lg:justify-between">
         <div>
           <div className="flex items-center gap-2">
             <h2 id="idea-tracker-heading" className="text-lg font-semibold">

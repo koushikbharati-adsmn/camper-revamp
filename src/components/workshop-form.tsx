@@ -432,7 +432,7 @@ export function createEditWorkshopFormValue(
       enabled: coach.IsActive,
     })),
     winningIdeaCount: String(workshop.WinningIdeaCount ?? 1),
-    votingScope: workshop.VotingScope === "pillar" ? "pillar" : "workshop",
+    votingScope: workshop.VotingScope ?? initialWorkshop.votingScope,
     votingLimit:
       workshop.VotingLimit == null ? null : String(workshop.VotingLimit),
     teamSelect: workshop.TeamSelect ?? initialWorkshop.teamSelect,

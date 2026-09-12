@@ -81,7 +81,7 @@ export function ColorPickerField({
             </FieldDescription>
           )}
         </div>
-        <div className="grid h-11 grid-cols-[2.75rem_minmax(0,1fr)] border border-input focus-within:border-ring focus-within:ring-1 focus-within:ring-ring/50 sm:h-10">
+        <div className="grid h-8 grid-cols-[2.5rem_minmax(0,1fr)] border border-input focus-within:border-ring focus-within:ring-1 focus-within:ring-ring/50">
           <PopoverTrigger
             disabled={disabled}
             aria-label={`Choose ${label.toLowerCase()}`}
