@@ -33,6 +33,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
+import {
+  type WorkshopLifecycleStatus,
+  type WorkshopStatus,
+  WORKSHOP_PHASES,
+  canTransitionWorkshop,
+  getWorkshopPhase,
+  getWorkshopPhaseIndex,
+} from "@/lib/workshop-lifecycle"
 import { cn } from "@/lib/utils"
 import { createFileRoute, Link } from "@tanstack/react-router"
 import { format } from "date-fns"
@@ -56,7 +64,6 @@ import {
 } from "lucide-react"
 import { useEffect, useState } from "react"
 
-type WorkshopStatus = "not_started" | "ideate" | "vote" | "completed"
 type TimerStatus = "idle" | "running" | "paused"
 type TimerState = {
   status: TimerStatus
@@ -89,7 +96,7 @@ const MOCK_WORKSHOP = {
   name: "Future-Ready Customer Experience",
   description:
     "Guide teams from opportunity discovery through voting on the strongest customer experience concepts.",
-  initialStatus: "not_started" as WorkshopStatus,
+  initialStatus: null as WorkshopLifecycleStatus,
 }
 
 const MOCK_TEAMS: Team[] = [
@@ -174,35 +181,13 @@ const MOCK_IDEAS: Idea[] = [
   },
 ]
 
-const WORKSHOP_PHASES: Array<{
-  status: WorkshopStatus
-  label: string
-  description: string
-}> = [
-  {
-    status: "ideate",
-    label: "Ideate",
-    description: "Participants submit ideas",
-  },
-  {
-    status: "vote",
-    label: "Vote",
-    description: "Participants vote on ideas",
-  },
-  {
-    status: "completed",
-    label: "Completed",
-    description: "Workshop has ended",
-  },
-]
-
 export const Route = createFileRoute("/_authenticated/workshops/$code/manage")({
   component: RouteComponent,
 })
 
 function RouteComponent() {
   const { code } = Route.useParams()
-  const [workshopStatus, setWorkshopStatus] = useState<WorkshopStatus>(
+  const [workshopStatus, setWorkshopStatus] = useState<WorkshopLifecycleStatus>(
     MOCK_WORKSHOP.initialStatus
   )
   const [pendingTransition, setPendingTransition] =
@@ -251,6 +236,14 @@ function RouteComponent() {
     }))
   }
 
+  const transitionWorkshop = (targetStatus: WorkshopStatus) => {
+    setWorkshopStatus((currentStatus) =>
+      canTransitionWorkshop(currentStatus, targetStatus)
+        ? targetStatus
+        : currentStatus
+    )
+  }
+
   return (
     <div className="space-y-6">
       <WorkshopHeader code={code} status={workshopStatus} />
@@ -258,7 +251,7 @@ function RouteComponent() {
       <div className="grid gap-4 xl:grid-cols-[minmax(0,1.3fr)_minmax(28rem,0.9fr)]">
         <LifecycleCard
           status={workshopStatus}
-          onStart={() => setWorkshopStatus("ideate")}
+          onStart={() => transitionWorkshop("Ideate")}
           onRequestTransition={setPendingTransition}
         />
         <TimerCard
@@ -298,7 +291,7 @@ function RouteComponent() {
           if (!open) setPendingTransition(null)
         }}
         onConfirm={() => {
-          if (pendingTransition) setWorkshopStatus(pendingTransition)
+          if (pendingTransition) transitionWorkshop(pendingTransition)
           setPendingTransition(null)
         }}
       />
@@ -321,7 +314,7 @@ function WorkshopHeader({
   status,
 }: {
   code: string
-  status: WorkshopStatus
+  status: WorkshopLifecycleStatus
 }) {
   return (
     <header className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
@@ -358,13 +351,11 @@ function LifecycleCard({
   onStart,
   onRequestTransition,
 }: {
-  status: WorkshopStatus
+  status: WorkshopLifecycleStatus
   onStart: () => void
   onRequestTransition: (status: WorkshopStatus) => void
 }) {
-  const currentPhaseIndex = WORKSHOP_PHASES.findIndex(
-    (phase) => phase.status === status
-  )
+  const currentPhaseIndex = getWorkshopPhaseIndex(status)
 
   return (
     <Card>
@@ -374,7 +365,7 @@ function LifecycleCard({
           Progress the workshop through each phase in order.
         </CardDescription>
       </CardHeader>
-      <CardContent className="flex flex-1 flex-col gap-4">
+      <CardContent className="flex flex-1 flex-col gap-6">
         <ol aria-label="Workshop phases">
           {WORKSHOP_PHASES.map((phase, index) => {
             const phaseState =
@@ -386,15 +377,16 @@ function LifecycleCard({
 
             return (
               <li
-                key={phase.status}
+                key={phase.label}
                 aria-current={phaseState === "current" ? "step" : undefined}
-                className="relative flex min-w-0 gap-3 pb-3 last:pb-0"
+                aria-label={`${phase.label}, ${phaseState}`}
+                className="relative flex min-w-0 gap-4 pb-7 last:pb-0"
               >
-                <div className="relative flex w-6 shrink-0 justify-center">
+                <div className="relative flex w-8 shrink-0 justify-center">
                   {index < WORKSHOP_PHASES.length - 1 && (
                     <span
                       className={cn(
-                        "absolute top-6 bottom-0 w-px bg-border",
+                        "absolute top-8 bottom-0 w-px bg-border",
                         phaseState === "completed" && "bg-primary/40"
                       )}
                       aria-hidden="true"
@@ -402,45 +394,43 @@ function LifecycleCard({
                   )}
                   <span
                     className={cn(
-                      "relative z-10 flex size-6 shrink-0 items-center justify-center border bg-card",
+                      "relative z-10 flex size-8 shrink-0 items-center justify-center border bg-card",
                       phaseState === "completed" &&
                         "border-primary/40 bg-primary/10 text-primary",
                       phaseState === "current" &&
-                        "border-primary bg-primary text-primary-foreground",
+                        "border-primary bg-primary text-primary-foreground ring-2 ring-primary/15 ring-offset-2 ring-offset-card",
                       phaseState === "upcoming" &&
                         "border-border text-muted-foreground"
                     )}
                   >
                     {phaseState === "completed" ? (
-                      <CheckIcon className="size-3.5" />
+                      <CheckIcon className="size-4" />
                     ) : (
                       <CircleIcon className="size-2.5 fill-current" />
                     )}
                   </span>
                 </div>
-                <div
-                  className={cn(
-                    "min-w-0 flex-1 border border-border px-3 py-2.5",
-                    phaseState === "current" &&
-                      "border-primary/40 bg-primary/5 shadow-xs",
-                    phaseState === "completed" && "bg-muted/40"
-                  )}
-                >
+                <div className="min-w-0 flex-1 pt-0.5">
                   <div className="flex items-center justify-between gap-3">
                     <p
                       className={cn(
-                        "font-medium",
+                        "text-sm font-medium",
                         phaseState === "current" && "font-semibold",
                         phaseState === "upcoming" && "text-muted-foreground"
                       )}
                     >
                       {phase.label}
                     </p>
-                    <span className="text-[0.65rem] font-medium tracking-wide text-muted-foreground uppercase">
-                      {phaseState}
-                    </span>
+                    {phaseState === "current" && (
+                      <Badge
+                        variant="outline"
+                        className="text-[0.65rem] uppercase"
+                      >
+                        Current
+                      </Badge>
+                    )}
                   </div>
-                  <p className="mt-0.5 text-xs text-muted-foreground">
+                  <p className="mt-1 text-sm leading-relaxed text-muted-foreground">
                     {phase.description}
                   </p>
                 </div>
@@ -449,40 +439,40 @@ function LifecycleCard({
           })}
         </ol>
 
-        <div className="mt-auto flex flex-col gap-3 border-t border-border pt-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="mt-auto flex flex-col gap-4 border-t border-border pt-5 sm:flex-row sm:items-center sm:justify-between">
           <div aria-live="polite">
             <p className="text-sm font-medium">{getLifecycleMessage(status)}</p>
             <p className="text-xs text-muted-foreground">
               Lifecycle changes do not affect the workshop timer.
             </p>
           </div>
-          {status === "not_started" && (
+          {status === null && (
             <Button className="w-full sm:w-auto" onClick={onStart}>
               <PlayIcon />
               Start Workshop
             </Button>
           )}
-          {status === "ideate" && (
+          {status === "Ideate" && (
             <Button
               className="w-full sm:w-auto"
-              onClick={() => onRequestTransition("vote")}
+              onClick={() => onRequestTransition("Vote")}
             >
               <TagsIcon />
               Start Voting
             </Button>
           )}
-          {status === "vote" && (
+          {status === "Vote" && (
             <Button
               variant="destructive"
               className="w-full sm:w-auto"
-              onClick={() => onRequestTransition("completed")}
+              onClick={() => onRequestTransition("Completed")}
             >
               <FlagIcon />
               End Workshop
             </Button>
           )}
-          {status === "completed" && (
-            <Button variant="outline" className="w-full sm:w-auto">
+          {status === "Completed" && (
+            <Button variant="outline" className="w-full sm:w-auto" disabled>
               <DownloadIcon />
               Download Report
             </Button>
@@ -954,7 +944,7 @@ function LifecycleDialog({
   onOpenChange: (open: boolean) => void
   onConfirm: () => void
 }) {
-  const isEnding = targetStatus === "completed"
+  const isEnding = targetStatus === "Completed"
 
   return (
     <AlertDialog open={Boolean(targetStatus)} onOpenChange={onOpenChange}>
@@ -970,8 +960,8 @@ function LifecycleDialog({
           </AlertDialogTitle>
           <AlertDialogDescription>
             {isEnding
-              ? "This completes the workshop and closes the lifecycle. You cannot move it back to an earlier phase."
-              : "This moves the workshop from Ideate to Vote. You cannot return to the Ideate phase."}
+              ? "This completes the workshop. Returning to an earlier phase requires resetting the workshop, which may clear workshop activity."
+              : "This starts voting. Returning to ideation requires resetting the workshop, which may clear workshop activity."}
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
@@ -988,37 +978,13 @@ function LifecycleDialog({
   )
 }
 
-function WorkshopStatusBadge({ status }: { status: WorkshopStatus }) {
-  const statusStyles: Record<
-    WorkshopStatus,
-    { label: string; className: string }
-  > = {
-    not_started: {
-      label: "Not Started",
-      className:
-        "bg-zinc-100 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-200",
-    },
-    ideate: {
-      label: "Ideate",
-      className:
-        "bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300",
-    },
-    vote: {
-      label: "Vote",
-      className:
-        "bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-300",
-    },
-    completed: {
-      label: "Completed",
-      className:
-        "bg-green-100 text-green-700 dark:bg-green-950 dark:text-green-300",
-    },
-  }
-
-  const currentStatus = statusStyles[status]
+function WorkshopStatusBadge({ status }: { status: WorkshopLifecycleStatus }) {
+  const currentStatus = getWorkshopPhase(status)
 
   return (
-    <Badge className={currentStatus.className}>{currentStatus.label}</Badge>
+    <Badge className={currentStatus.badgeClassName}>
+      {currentStatus.label}
+    </Badge>
   )
 }
 
@@ -1043,15 +1009,8 @@ function TimerStatusBadge({ status }: { status: TimerStatus }) {
   )
 }
 
-function getLifecycleMessage(status: WorkshopStatus) {
-  const messages: Record<WorkshopStatus, string> = {
-    not_started: "The workshop is ready to start.",
-    ideate: "Participants can submit ideas.",
-    vote: "Participants can vote on submitted ideas.",
-    completed: "The workshop is completed.",
-  }
-
-  return messages[status]
+function getLifecycleMessage(status: WorkshopLifecycleStatus) {
+  return getWorkshopPhase(status).message
 }
 
 function getDurationParts(totalSeconds: number) {

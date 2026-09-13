@@ -44,8 +44,11 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import {
+  type WorkshopLifecycleStatus,
+  getWorkshopPhase,
+} from "@/lib/workshop-lifecycle"
+import {
   type WorkshopList,
-  type WorkshopStatus,
   getWorkshopsOptions,
   useDeleteWorkshop,
   useDuplicateWorkshop,
@@ -369,8 +372,8 @@ function WorkshopActionDialog({
         description: response.message,
       })
       onOpenChange(false)
-    } finally {
-      onOpenChange(false)
+    } catch {
+      // Mutation hooks surface API errors while the dialog remains open to retry.
     }
   }
 
@@ -478,33 +481,20 @@ function WorkshopLogo({
 }
 
 function getDisplayStatus(
-  status: WorkshopStatus | null,
+  status: WorkshopLifecycleStatus,
   isPromptReady: boolean
 ) {
   if (!isPromptReady) {
     return {
       label: "Generating Prompt",
-      className: "bg-blue-100 text-blue-700",
-    }
-  }
-  if (status === "Completed") {
-    return {
-      label: "Completed",
-      className: "bg-green-100 text-green-700",
+      className:
+        "bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300",
     }
   }
 
-  if (status === "Ideate" || status === "Vote") {
-    return {
-      label: "In Progress",
-      className: "bg-amber-100 text-amber-700",
-    }
-  }
+  const phase = getWorkshopPhase(status)
 
-  return {
-    label: "Not Started",
-    className: "bg-zinc-100 text-zinc-700",
-  }
+  return { label: phase.label, className: phase.badgeClassName }
 }
 
 function formatCreatedDate(value: string) {

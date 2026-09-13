@@ -1,5 +1,6 @@
 import { toast } from "@/components/ui/toast"
 import apiClient from "@/lib/api-client"
+import type { WorkshopLifecycleStatus } from "@/lib/workshop-lifecycle"
 import {
   queryOptions,
   useMutation,
@@ -8,7 +9,6 @@ import {
 
 export type WorkshopFilterStatus =
   "in-progress" | "not-started" | "completed" | "all"
-export type WorkshopStatus = "Ideate" | "Vote" | "Completed"
 
 export interface WorkshopList {
   ID: string
@@ -18,7 +18,7 @@ export interface WorkshopList {
   Desc: string
   TotalIdea: number | null
   logoFileName: string | null
-  status: WorkshopStatus | null
+  status: WorkshopLifecycleStatus
   AdminName: string | null
   CreatedDttm: string
   CreatedBy: string
@@ -67,9 +67,12 @@ export const useResetWorkshop = () => {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: (payload: ResetWorkshopPayload) => resetWorkshop(payload),
-    onSuccess: () => {
+    onSuccess: (_response, payload) => {
       queryClient.invalidateQueries({
         queryKey: ["WORKSHOPS"],
+      })
+      queryClient.invalidateQueries({
+        queryKey: ["WORKSHOP_ID", payload.id],
       })
     },
     onError: (error) => {
@@ -195,7 +198,7 @@ export interface WorkshopById {
   CreateDate: string
   ModifiedBy: null | string
   ModifiedDttm: string
-  status: WorkshopStatus | null
+  status: WorkshopLifecycleStatus
   ReportFileName: null | string
   IsProtected: boolean // is teams protected with passcode
   WinningIdeaCount: number
