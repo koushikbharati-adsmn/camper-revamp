@@ -697,7 +697,7 @@ function IdeaTracker({
 
   return (
     <section aria-labelledby="idea-tracker-heading">
-      <div className="sticky -top-4 flex flex-col gap-3 bg-background/90 py-4 backdrop-blur-md lg:flex-row lg:items-end lg:justify-between">
+      <div className="flex flex-col gap-3 bg-background/90 py-4 backdrop-blur-md lg:flex-row lg:items-end lg:justify-between">
         <div>
           <div className="flex items-center gap-2">
             <h2 id="idea-tracker-heading" className="text-lg font-semibold">
