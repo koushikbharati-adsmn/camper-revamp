@@ -80,6 +80,7 @@ type Idea = {
   description: string
   teamId: Team["id"]
   pillarId: Pillar["id"]
+  shortlisted: boolean
   submittedAt: string
   thumbnailUrl: string
 }
@@ -112,6 +113,7 @@ const MOCK_IDEAS: Idea[] = [
       "A network of smart refill points that recognizes returning customers, tracks packaging avoided, and turns every refill into loyalty credit. The experience combines practical waste reduction with a visible, motivating record of collective impact.",
     teamId: "alpha",
     pillarId: "sustainability",
+    shortlisted: true,
     submittedAt: "2026-09-11T09:18:00Z",
     thumbnailUrl: "https://picsum.photos/seed/refill-station/800/600",
   },
@@ -122,6 +124,7 @@ const MOCK_IDEAS: Idea[] = [
       "An accessibility setting that simplifies navigation, reduces visual noise, and offers step-by-step guidance across digital and physical touchpoints. Customers can save their preferences once and use them throughout the whole journey.",
     teamId: "bravo",
     pillarId: "accessibility",
+    shortlisted: false,
     submittedAt: "2026-09-11T09:31:00Z",
     thumbnailUrl: "https://picsum.photos/seed/calm-shopping/800/600",
   },
@@ -132,6 +135,7 @@ const MOCK_IDEAS: Idea[] = [
       "A weekly planning assistant that learns household routines and prepares a flexible collection of essentials before customers need to search. Suggestions explain why they were made and remain fully editable.",
     teamId: "charlie",
     pillarId: "personalization",
+    shortlisted: true,
     submittedAt: "2026-09-11T09:44:00Z",
     thumbnailUrl: "https://picsum.photos/seed/weekly-planner/800/600",
   },
@@ -142,6 +146,7 @@ const MOCK_IDEAS: Idea[] = [
       "A redesigned receipt that translates purchases into simple local impact measures, including lower-carbon choices and support for nearby producers. It also recommends one realistic improvement for the next visit.",
     teamId: "alpha",
     pillarId: "sustainability",
+    shortlisted: false,
     submittedAt: "2026-09-11T10:02:00Z",
     thumbnailUrl: "https://picsum.photos/seed/impact-receipt/800/600",
   },
@@ -152,6 +157,7 @@ const MOCK_IDEAS: Idea[] = [
       "A multimodal help point where customers can type, speak, sign, or select visual prompts to ask for assistance. Requests reach the best-placed colleague without requiring customers to explain their access needs repeatedly.",
     teamId: "delta",
     pillarId: "accessibility",
+    shortlisted: true,
     submittedAt: "2026-09-11T10:16:00Z",
     thumbnailUrl: "https://picsum.photos/seed/accessible-help/800/600",
   },
@@ -162,6 +168,7 @@ const MOCK_IDEAS: Idea[] = [
       "A store and app journey that adapts to the customer's available time and desired level of discovery, from a direct five-minute mission to a more exploratory visit built around new products and inspiration.",
     teamId: "bravo",
     pillarId: "personalization",
+    shortlisted: false,
     submittedAt: "2026-09-11T10:28:00Z",
     thumbnailUrl: "https://picsum.photos/seed/discovery-path/800/600",
   },
@@ -782,7 +789,7 @@ function IdeaTracker({
       ) : ideas.length === 0 ? (
         <IdeasEmpty filtered />
       ) : (
-        <div className="grid gap-3">
+        <div className="grid grid-cols-[repeat(auto-fill,minmax(min(320px,100%),1fr))] gap-4">
           {ideas.map((idea) => (
             <IdeaCard key={idea.id} idea={idea} onPreview={onPreview} />
           ))}
@@ -800,38 +807,44 @@ function IdeaCard({
   onPreview: (idea: Idea) => void
 }) {
   return (
-    <article className="grid min-w-0 overflow-hidden border border-border bg-card sm:grid-cols-[12rem_minmax(0,1fr)] lg:grid-cols-[15rem_minmax(0,1fr)]">
-      <div className="aspect-4/3 min-w-0 border-b border-border bg-muted/50 sm:border-r sm:border-b-0">
+    <Card className="h-full gap-0 py-0">
+      <div className="aspect-4/3 min-w-0 border-b border-border bg-muted/50">
         <IdeaThumbnail idea={idea} />
       </div>
-      <div className="flex min-w-0 flex-col p-4">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-          <div className="min-w-0">
-            <h3 className="text-sm font-semibold">{idea.title}</h3>
-            <div className="mt-2 flex flex-wrap items-center gap-2">
-              <Badge variant="secondary">{getTeamName(idea.teamId)}</Badge>
-              <Badge variant="outline">{getPillarName(idea.pillarId)}</Badge>
-              <span className="flex items-center gap-1 text-xs text-muted-foreground">
-                <Clock3Icon className="size-3" />
-                {formatSubmittedAt(idea.submittedAt)}
-              </span>
-            </div>
-          </div>
-          <Button
-            variant="outline"
-            size="sm"
-            className="w-full sm:w-auto"
-            onClick={() => onPreview(idea)}
-          >
-            <EyeIcon />
-            Preview
-          </Button>
+      <CardHeader className="gap-3 py-4">
+        <div className="flex min-w-0 items-start justify-between gap-3">
+          <CardTitle>{idea.title}</CardTitle>
+          {idea.shortlisted && (
+            <Badge className="shrink-0">
+              <FlagIcon />
+              Shortlisted
+            </Badge>
+          )}
         </div>
-        <p className="mt-3 line-clamp-3 text-sm text-muted-foreground">
+        <div className="flex flex-wrap items-center gap-2">
+          <Badge variant="secondary">{getTeamName(idea.teamId)}</Badge>
+          <Badge variant="outline">{getPillarName(idea.pillarId)}</Badge>
+          <span className="flex items-center gap-1 text-xs text-muted-foreground">
+            <Clock3Icon className="size-3" />
+            {formatSubmittedAt(idea.submittedAt)}
+          </span>
+        </div>
+      </CardHeader>
+      <CardContent className="flex flex-1 flex-col pb-4">
+        <p className="line-clamp-3 text-sm text-muted-foreground">
           {idea.description}
         </p>
-      </div>
-    </article>
+        <Button
+          variant="outline"
+          size="sm"
+          className="mt-4 w-full"
+          onClick={() => onPreview(idea)}
+        >
+          <EyeIcon />
+          Preview
+        </Button>
+      </CardContent>
+    </Card>
   )
 }
 
@@ -882,6 +895,12 @@ function IdeaPreviewDialog({
             <div className="flex flex-wrap gap-2">
               <Badge variant="secondary">{getTeamName(idea.teamId)}</Badge>
               <Badge variant="outline">{getPillarName(idea.pillarId)}</Badge>
+              {idea.shortlisted && (
+                <Badge>
+                  <FlagIcon />
+                  Shortlisted
+                </Badge>
+              )}
             </div>
             <div>
               <p className="text-xs font-medium">Submitted</p>
