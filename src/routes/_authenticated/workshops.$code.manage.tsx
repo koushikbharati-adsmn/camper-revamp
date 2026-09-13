@@ -366,7 +366,10 @@ function LifecycleCard({
         </CardDescription>
       </CardHeader>
       <CardContent className="flex flex-1 flex-col gap-6">
-        <ol aria-label="Workshop phases">
+        <ol
+          aria-label="Workshop phases"
+          className="relative before:absolute before:top-4 before:bottom-4 before:left-4 before:w-px before:bg-border"
+        >
           {WORKSHOP_PHASES.map((phase, index) => {
             const phaseState =
               index < currentPhaseIndex
@@ -383,20 +386,11 @@ function LifecycleCard({
                 className="relative flex min-w-0 gap-4 pb-7 last:pb-0"
               >
                 <div className="relative flex w-8 shrink-0 justify-center">
-                  {index < WORKSHOP_PHASES.length - 1 && (
-                    <span
-                      className={cn(
-                        "absolute top-8 bottom-0 w-px bg-border",
-                        phaseState === "completed" && "bg-primary/40"
-                      )}
-                      aria-hidden="true"
-                    />
-                  )}
                   <span
                     className={cn(
                       "relative z-10 flex size-8 shrink-0 items-center justify-center border bg-card",
                       phaseState === "completed" &&
-                        "border-primary/40 bg-primary/10 text-primary",
+                        "border-primary/40 text-primary",
                       phaseState === "current" &&
                         "border-primary bg-primary text-primary-foreground ring-2 ring-primary/15 ring-offset-2 ring-offset-card",
                       phaseState === "upcoming" &&
