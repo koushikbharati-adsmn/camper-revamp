@@ -29,12 +29,7 @@ export const getRolesLabel = (role: UserRole) => {
   }
 }
 
-export async function urlToFile(
-  url: string | null,
-  fileName?: string
-): Promise<File | null> {
-  if (!url) return null
-
+export async function urlToFile(url: string, fileName?: string): Promise<File> {
   const response = await fetch(url)
 
   if (!response.ok) {

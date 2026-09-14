@@ -10,6 +10,7 @@ import { getWalkthroughOptions } from "@/services/walkthroughs"
 import { useAddUpdateWorkshop } from "@/services/workshops-panel"
 import { useSuspenseQuery } from "@tanstack/react-query"
 import { createFileRoute } from "@tanstack/react-router"
+import { useState } from "react"
 
 const activeAdminOptions = getUsersOptions({
   is_active: true,
@@ -28,6 +29,8 @@ export const Route = createFileRoute("/_authenticated/workshops/new")({
 })
 
 function RouteComponent() {
+  const [isPreparingPayload, setIsPreparingPayload] = useState(false)
+
   const navigate = Route.useNavigate()
   const addUpdateWorkshopMutation = useAddUpdateWorkshop()
   const { data: users } = useSuspenseQuery({
@@ -48,20 +51,26 @@ function RouteComponent() {
       mode="create"
       initialValue={createNewWorkshopFormValue(coaches, walkthroughs)}
       users={users}
-      isSubmitting={addUpdateWorkshopMutation.isPending}
+      isSubmitting={isPreparingPayload || addUpdateWorkshopMutation.isPending}
       onSubmit={async (workshop) => {
         try {
-          const response = await addUpdateWorkshopMutation.mutateAsync(
-            createWorkshopPayload(workshop)
-          )
+          setIsPreparingPayload(true)
+
+          const payload = await createWorkshopPayload(workshop)
+
+          const response = await addUpdateWorkshopMutation.mutateAsync(payload)
+
           toast.add({
             type: "success",
             title: "Workshop created",
             description: response.message,
           })
+
           await navigate({ to: "/workshops" })
         } catch {
           return
+        } finally {
+          setIsPreparingPayload(false)
         }
       }}
     />

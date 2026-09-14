@@ -3,6 +3,7 @@ import type {
   AddUpdateWorkshopPayload,
   WorkshopById,
 } from "@/services/workshops-panel"
+import { urlToFile } from "./utils"
 
 type WorkshopBasePayload = Omit<
   AddUpdateWorkshopPayload,
@@ -74,6 +75,7 @@ function buildBasePayload(workshop: WorkshopFormValue): WorkshopBasePayload {
     font_primary: uploadFile(workshop.primaryFont),
     font_secondary: uploadFile(workshop.secondaryFont),
     is_changed: true,
+    is_protected: workshop.usePasscode,
     winning_idea_count: Number(workshop.winningIdeaCount),
     voting_scope: workshop.votingScope,
     voting_limit:
@@ -86,40 +88,94 @@ function buildBasePayload(workshop: WorkshopFormValue): WorkshopBasePayload {
   }
 }
 
-function mapCoaches(
+async function mapCoaches(
   workshop: WorkshopFormValue,
-  action: "add" | "update"
-): AddUpdateWorkshopPayload["coach"] {
-  return workshop.coaches.map((coach) => ({
-    coachID: coach.id,
-    coachName: coach.name.trim(),
-    coachKey: coach.key,
-    title: coach.title.trim(),
-    description: coach.description.trim(),
-    bGColor: coach.backgroundColor.trim().toUpperCase(),
-    primaryTxtColor: coach.primaryTextColor.trim().toUpperCase(),
-    secondaryTxtColor: coach.secondaryTextColor.trim().toUpperCase(),
-    avatarFileName: coach.avatar || null,
-    avatarFileIndex: null,
-    isActive: coach.enabled,
-    action,
-  }))
+  avatarFiles: File[],
+  action: "add" | "update",
+  original?: WorkshopById
+): Promise<AddUpdateWorkshopPayload["coach"]> {
+  return Promise.all(
+    workshop.coaches.map(async (coach) => {
+      let avatarFileIndex: number | null = null
+      let avatarFileName: string | null = null
+
+      if (action === "add") {
+        if (coach.avatar) {
+          const avatarFile = await urlToFile(coach.avatar)
+
+          avatarFileIndex = avatarFiles.push(avatarFile) - 1
+        }
+      } else {
+        const originalCoach = original?.coaches.find(
+          (item) => String(item.CoachID) === String(coach.id)
+        )
+
+        const avatarChanged =
+          !!coach.avatar && coach.avatar !== originalCoach?.AvatarFileName
+
+        if (avatarChanged) {
+          const avatarFile = await urlToFile(coach.avatar)
+
+          avatarFileIndex = avatarFiles.push(avatarFile) - 1
+        } else {
+          avatarFileName = originalCoach?.AvatarFileName || null
+        }
+      }
+
+      return {
+        coachID: coach.id,
+        coachName: coach.name.trim(),
+        coachKey: coach.key,
+        title: coach.title.trim(),
+        description: coach.description.trim(),
+        bGColor: coach.backgroundColor.trim().toUpperCase(),
+        primaryTxtColor: coach.primaryTextColor.trim().toUpperCase(),
+        secondaryTxtColor: coach.secondaryTextColor.trim().toUpperCase(),
+
+        avatarFileName,
+        avatarFileIndex,
+
+        isActive: coach.enabled,
+        action,
+      }
+    })
+  )
 }
 
-export function createWorkshopPayload(
+function mapTeamThumbnail(
+  thumbnail: File | string | null,
+  teamThumbnails: File[]
+) {
+  if (thumbnail instanceof File) {
+    return {
+      thumbnailFileName: null,
+      thumbnailFileIndex: teamThumbnails.push(thumbnail) - 1,
+    }
+  }
+
+  return {
+    thumbnailFileName: typeof thumbnail === "string" ? thumbnail : null,
+    thumbnailFileIndex: null,
+  }
+}
+
+export async function createWorkshopPayload(
   workshop: WorkshopFormValue
-): AddUpdateWorkshopPayload {
+): Promise<AddUpdateWorkshopPayload> {
+  const avatarFiles: File[] = []
   const teamThumbnails: File[] = []
+
+  const coaches = await mapCoaches(workshop, avatarFiles, "add")
 
   return {
     ...buildBasePayload(workshop),
-    avatar_files: [],
+    avatar_files: avatarFiles,
     team_thumbnails: teamThumbnails,
     teams: workshop.teams.map((team) => {
-      const thumbnailFileIndex =
-        team.thumbnail instanceof File
-          ? teamThumbnails.push(team.thumbnail) - 1
-          : null
+      const { thumbnailFileName, thumbnailFileIndex } = mapTeamThumbnail(
+        team.thumbnail,
+        teamThumbnails
+      )
 
       return {
         id: null,
@@ -127,8 +183,7 @@ export function createWorkshopPayload(
         description: team.description.trim(),
         teamCode: workshop.usePasscode ? team.passcode.trim() : null,
         teamColorCode: team.color.trim().toUpperCase(),
-        thumbnailFileName:
-          typeof team.thumbnail === "string" ? team.thumbnail : null,
+        thumbnailFileName,
         thumbnailFileIndex,
         action: "add",
       }
@@ -146,15 +201,19 @@ export function createWorkshopPayload(
       displayOrder: index + 1,
       action: "add",
     })),
-    coach: mapCoaches(workshop, "add"),
+    coach: coaches,
   }
 }
 
-export function updateWorkshopPayload(
+export async function updateWorkshopPayload(
   workshop: WorkshopFormValue,
   original: WorkshopById
-): AddUpdateWorkshopPayload {
+): Promise<AddUpdateWorkshopPayload> {
+  const avatarFiles: File[] = []
   const teamThumbnails: File[] = []
+
+  const coaches = await mapCoaches(workshop, avatarFiles, "update", original)
+
   const originalTeams = new Map(original.teams.map((team) => [team.ID, team]))
   const originalCategories = new Map(
     original.categories.map((category) => [category.ID, category])
@@ -166,10 +225,11 @@ export function updateWorkshopPayload(
   const teams: AddUpdateWorkshopPayload["teams"] = workshop.teams.map(
     (team) => {
       const isExisting = originalTeams.has(team.id)
-      const thumbnailFileIndex =
-        team.thumbnail instanceof File
-          ? teamThumbnails.push(team.thumbnail) - 1
-          : null
+
+      const { thumbnailFileName, thumbnailFileIndex } = mapTeamThumbnail(
+        team.thumbnail,
+        teamThumbnails
+      )
 
       if (isExisting) originalTeams.delete(team.id)
 
@@ -179,8 +239,7 @@ export function updateWorkshopPayload(
         description: team.description.trim(),
         teamCode: workshop.usePasscode ? team.passcode.trim() : null,
         teamColorCode: team.color.trim().toUpperCase(),
-        thumbnailFileName:
-          typeof team.thumbnail === "string" ? team.thumbnail : null,
+        thumbnailFileName,
         thumbnailFileIndex,
         action: isExisting ? "update" : "add",
       }
@@ -249,11 +308,11 @@ export function updateWorkshopPayload(
   return {
     ...buildBasePayload(workshop),
     id: original.ID,
-    avatar_files: [],
+    avatar_files: avatarFiles,
     team_thumbnails: teamThumbnails,
     teams,
     categories,
     walkThrough,
-    coach: mapCoaches(workshop, "update"),
+    coach: coaches,
   }
 }

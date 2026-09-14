@@ -329,62 +329,69 @@ export function createEditWorkshopFormValue(
     context: workshop.WorkshopContext,
     guidelines: workshop.GuidelineFileName,
     headerBackgroundColor:
-      workshop.HeaderBGColor ?? initialWorkshop.headerBackgroundColor,
-    headerTextColor: workshop.HeaderTxtColor ?? initialWorkshop.headerTextColor,
+      workshop.header_bg_color ?? initialWorkshop.headerBackgroundColor,
+    headerTextColor:
+      workshop.header_txt_color ?? initialWorkshop.headerTextColor,
     pageBackgroundColor:
-      workshop.PageBGColor ?? initialWorkshop.pageBackgroundColor,
+      workshop.page_bg_color ?? initialWorkshop.pageBackgroundColor,
     primaryTextColor:
-      workshop.TxtPrimaryColor ?? initialWorkshop.primaryTextColor,
+      workshop.txt_primary_color ?? initialWorkshop.primaryTextColor,
     secondaryTextColor:
-      workshop.TxtSecondaryColor ?? initialWorkshop.secondaryTextColor,
+      workshop.txt_secondary_color ?? initialWorkshop.secondaryTextColor,
     primaryButtonBackgroundColor:
-      workshop.BtnPrimaryBGColor ??
+      workshop.btn_primary_bg_color ??
       initialWorkshop.primaryButtonBackgroundColor,
     primaryButtonTextColor:
-      workshop.BtnPrimaryTxtColor ?? initialWorkshop.primaryButtonTextColor,
+      workshop.btn_primary_txt_color ?? initialWorkshop.primaryButtonTextColor,
     secondaryButtonBackgroundColor:
-      workshop.BtnSecondaryBGColor ??
+      workshop.btn_secondary_bg_color ??
       initialWorkshop.secondaryButtonBackgroundColor,
     secondaryButtonActiveBackgroundColor:
-      workshop.BtnSecondaryActiveBGColor ??
+      workshop.btn_secondary_active_bg_color ??
       initialWorkshop.secondaryButtonActiveBackgroundColor,
     secondaryButtonTextColor:
-      workshop.BtnSecondaryTxtColor ?? initialWorkshop.secondaryButtonTextColor,
+      workshop.btn_secondary_txt_color ??
+      initialWorkshop.secondaryButtonTextColor,
     secondaryButtonBorderColor:
-      workshop.BtnSecondaryBorderColor ??
+      workshop.btn_secondary_border_color ??
       initialWorkshop.secondaryButtonBorderColor,
     primaryCardBackgroundColor:
-      workshop.CardPrimaryBGColor ?? initialWorkshop.primaryCardBackgroundColor,
+      workshop.card_primary_bg_color ??
+      initialWorkshop.primaryCardBackgroundColor,
     primaryCardBorderColor:
-      workshop.CardPrimaryBorderColor ?? initialWorkshop.primaryCardBorderColor,
+      workshop.card_primary_border_color ??
+      initialWorkshop.primaryCardBorderColor,
     primaryCardBorderRadius: String(
-      workshop.CardPrimaryBorderRadius ??
+      workshop.card_primary_border_radius ??
         initialWorkshop.primaryCardBorderRadius
     ),
     primaryCardBorderWidth: String(
-      workshop.CardPrimaryBorderWidth ?? initialWorkshop.primaryCardBorderWidth
+      workshop.card_primary_border_width ??
+        initialWorkshop.primaryCardBorderWidth
     ),
     secondaryCardBackgroundColor:
-      workshop.CardSecondaryBGColor ??
+      workshop.card_secondary_bg_color ??
       initialWorkshop.secondaryCardBackgroundColor,
     secondaryCardBorderRadius: String(
-      workshop.CardSecondaryBorderRadius ??
+      workshop.card_secondary_border_radius ??
         initialWorkshop.secondaryCardBorderRadius
     ),
     secondaryCardTextColor:
-      workshop.CardSecondaryTxtColor ?? initialWorkshop.secondaryCardTextColor,
+      workshop.card_secondary_txt_color ??
+      initialWorkshop.secondaryCardTextColor,
     tickerLiveBackgroundColor:
-      workshop.TickerLiveBGColor ?? initialWorkshop.tickerLiveBackgroundColor,
+      workshop.ticker_live_bg_color ??
+      initialWorkshop.tickerLiveBackgroundColor,
     tickerLiveTextColor:
-      workshop.TickerLiveTxtColor ?? initialWorkshop.tickerLiveTextColor,
+      workshop.ticker_live_txt_color ?? initialWorkshop.tickerLiveTextColor,
     tickerBackgroundColor:
-      workshop.TickerBGColor ?? initialWorkshop.tickerBackgroundColor,
-    tickerTextColor: workshop.TickerTxtColor ?? initialWorkshop.tickerTextColor,
+      workshop.ticker_bg_color ?? initialWorkshop.tickerBackgroundColor,
+    tickerTextColor:
+      workshop.ticker_txt_color ?? initialWorkshop.tickerTextColor,
     logo: workshop.logoFileName || null,
-    pageBackgroundImage:
-      workshop.LandscapeFileName || workshop.PortraitFileName || null,
-    primaryFont: workshop.HeadingFontFileName || null,
-    secondaryFont: workshop.BodyFontFileName || null,
+    pageBackgroundImage: workshop.page_bg_image || null,
+    primaryFont: workshop.font_primary_name || null,
+    secondaryFont: workshop.font_secondary_name || null,
     pillars: workshop.categories.map((category) => ({
       id: category.ID,
       title: category.Name,
@@ -393,9 +400,9 @@ export function createEditWorkshopFormValue(
     teams: workshop.teams.map((team) => ({
       id: team.ID,
       name: team.TeamName,
-      color: team.TeamColorCode,
+      color: team.TeamColorCode || "#D9FF00",
       thumbnail: team.ThumbnailFileName || null,
-      description: team.Description,
+      description: team.Description ?? "",
       passcode: team.TeamCode ?? "",
     })),
     walkthroughMessages: [...workshop.walkThrough]
@@ -414,8 +421,8 @@ export function createEditWorkshopFormValue(
       id: String(coach.CoachID),
       key: coach.CoachKey,
       name: coach.CoachName,
-      title: coach.Title,
-      description: coach.Description,
+      title: coach.Title ?? "",
+      description: coach.Description ?? "",
       backgroundColor: getCoachColor(
         coach.BGColor,
         DEFAULT_COACH_COLORS.background
@@ -431,10 +438,10 @@ export function createEditWorkshopFormValue(
       avatar: coach.AvatarFileName,
       enabled: coach.IsActive,
     })),
-    winningIdeaCount: String(workshop.WinningIdeaCount ?? 1),
-    votingScope: workshop.VotingScope ?? initialWorkshop.votingScope,
+    winningIdeaCount: String(workshop.winningIdeaCount ?? 1),
+    votingScope: workshop.votingScope ?? initialWorkshop.votingScope,
     votingLimit:
-      workshop.VotingLimit == null ? null : String(workshop.VotingLimit),
+      workshop.votingLimit == null ? null : String(workshop.votingLimit),
     teamSelect: workshop.TeamSelect ?? initialWorkshop.teamSelect,
     ideationPage: workshop.IdeationPage ?? initialWorkshop.ideationPage,
     shortlistedIdeaPage:
@@ -450,7 +457,6 @@ function getStepErrors(step: number, workshop: WorkshopFormValue) {
   if (step === 0) {
     for (const [field, label] of [
       ["title", "Title"],
-      ["assignee", "Assignee"],
       ["brand", "Brand"],
       ["subtitle", "Subtitle"],
       ["context", "Workshop context"],
@@ -598,6 +604,18 @@ function getStepErrors(step: number, workshop: WorkshopFormValue) {
       !isPositiveInteger(workshop.votingLimit)
     )
       nextErrors.votingLimit = "Enter a whole number of at least one."
+
+    for (const [field, label] of [
+      ["teamSelect", "Team select"],
+      ["ideationPage", "Ideation page"],
+      ["shortlistedIdeaPage", "Shortlisted idea page"],
+      ["statsBoard", "Stats board"],
+      ["votingPage", "Voting page"],
+    ] as const) {
+      if (!workshop[field].trim()) {
+        nextErrors[field] = `${label} is required.`
+      }
+    }
   }
 
   return nextErrors
@@ -1219,28 +1237,29 @@ function IdentityStep({
             )}
           </Field>
 
-          <Field data-invalid={!!errors.assignee} data-error-key="assignee">
-            <FieldLabel htmlFor="workshop-assignee">Assignee</FieldLabel>
+          <Field>
+            <FieldLabel htmlFor="workshop-assignee">
+              Assignee
+              <span className="font-normal text-muted-foreground">
+                (Optional)
+              </span>
+            </FieldLabel>
             <Select
-              value={workshop.assignee}
+              value={workshop.assignee || null}
               onValueChange={(value) => update("assignee", value ?? "")}
-              items={users.map((user) => ({
-                value: String(user.UserID),
-                label: user.Name,
-              }))}
+              items={[
+                { value: null, label: "Unassigned" },
+                ...users.map((user) => ({
+                  value: String(user.UserID),
+                  label: user.Name,
+                })),
+              ]}
             >
-              <SelectTrigger
-                id="workshop-assignee"
-                aria-invalid={!!errors.assignee}
-                aria-required="true"
-                aria-describedby={
-                  errors.assignee ? "workshop-assignee-error" : undefined
-                }
-                data-error-control
-              >
+              <SelectTrigger id="workshop-assignee" data-error-control>
                 <SelectValue placeholder="Select an assignee" />
               </SelectTrigger>
               <SelectContent>
+                <SelectItem value={null}>Unassigned</SelectItem>
                 {users.map((user) => (
                   <SelectItem key={user.UserID} value={String(user.UserID)}>
                     {user.Name}
@@ -1248,11 +1267,6 @@ function IdentityStep({
                 ))}
               </SelectContent>
             </Select>
-            {errors.assignee && (
-              <FieldError id="workshop-assignee-error">
-                {errors.assignee}
-              </FieldError>
-            )}
           </Field>
 
           <Field data-invalid={!!errors.brand} data-error-key="brand">
@@ -3193,7 +3207,11 @@ function SettingsStep({
             const descriptionId = `${inputId}-description`
 
             return (
-              <Field key={field}>
+              <Field
+                key={field}
+                data-invalid={!!errors[field]}
+                data-error-key={field}
+              >
                 <div className="space-y-1">
                   <FieldLabel htmlFor={inputId}>{label}</FieldLabel>
                   <FieldDescription id={descriptionId}>
@@ -3204,8 +3222,18 @@ function SettingsStep({
                   id={inputId}
                   value={workshop[field]}
                   onChange={(event) => update(field, event.target.value)}
-                  aria-describedby={descriptionId}
+                  aria-invalid={!!errors[field]}
+                  aria-required="true"
+                  aria-describedby={`${descriptionId}${
+                    errors[field] ? ` ${inputId}-error` : ""
+                  }`}
+                  data-error-control
                 />
+                {errors[field] && (
+                  <FieldError id={`${inputId}-error`}>
+                    {errors[field]}
+                  </FieldError>
+                )}
               </Field>
             )
           })}

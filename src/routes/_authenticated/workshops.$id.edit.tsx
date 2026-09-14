@@ -11,6 +11,7 @@ import {
 } from "@/services/workshops-panel"
 import { useSuspenseQuery } from "@tanstack/react-query"
 import { createFileRoute } from "@tanstack/react-router"
+import { useState } from "react"
 
 const activeAdminOptions = getUsersOptions({
   is_active: true,
@@ -27,6 +28,8 @@ export const Route = createFileRoute("/_authenticated/workshops/$id/edit")({
 })
 
 function RouteComponent() {
+  const [isPreparingPayload, setIsPreparingPayload] = useState(false)
+
   const { id } = Route.useParams()
   const navigate = Route.useNavigate()
   const addUpdateWorkshopMutation = useAddUpdateWorkshop()
@@ -44,20 +47,26 @@ function RouteComponent() {
       mode="edit"
       initialValue={createEditWorkshopFormValue(workshop)}
       users={users}
-      isSubmitting={addUpdateWorkshopMutation.isPending}
+      isSubmitting={isPreparingPayload || addUpdateWorkshopMutation.isPending}
       onSubmit={async (updatedWorkshop) => {
         try {
-          const response = await addUpdateWorkshopMutation.mutateAsync(
-            updateWorkshopPayload(updatedWorkshop, workshop)
-          )
+          setIsPreparingPayload(true)
+
+          const payload = await updateWorkshopPayload(updatedWorkshop, workshop)
+
+          const response = await addUpdateWorkshopMutation.mutateAsync(payload)
+
           toast.add({
             type: "success",
             title: "Workshop updated",
             description: response.message,
           })
+
           await navigate({ to: "/workshops" })
         } catch {
           return
+        } finally {
+          setIsPreparingPayload(false)
         }
       }}
     />
