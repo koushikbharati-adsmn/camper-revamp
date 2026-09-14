@@ -147,6 +147,7 @@ export type WorkshopFormValue = {
   shortlistedIdeaPage: string
   statsBoard: string
   votingPage: string
+  placeholderImages: File[]
 }
 
 const steps = [
@@ -201,6 +202,7 @@ const workshopFieldSteps: Partial<Record<keyof WorkshopFormValue, number>> = {
   shortlistedIdeaPage: 6,
   statsBoard: 6,
   votingPage: 6,
+  placeholderImages: 6,
 }
 
 const DEFAULT_COACH_COLORS = {
@@ -264,6 +266,7 @@ const initialWorkshop: WorkshopFormValue = {
   shortlistedIdeaPage: "The stage",
   statsBoard: "The newsroom",
   votingPage: "The ballot",
+  placeholderImages: [],
 }
 
 function getInitialWalkthroughMessages(
@@ -450,6 +453,7 @@ export function createEditWorkshopFormValue(
       workshop.ShortlistedIdeaPage ?? initialWorkshop.shortlistedIdeaPage,
     statsBoard: workshop.StatsBoard ?? initialWorkshop.statsBoard,
     votingPage: workshop.VotingPage ?? initialWorkshop.votingPage,
+    placeholderImages: [],
   }
 }
 
@@ -618,6 +622,9 @@ function getStepErrors(step: number, workshop: WorkshopFormValue) {
         nextErrors[field] = `${label} is required.`
       }
     }
+
+    if (workshop.placeholderImages.some((file) => !isImageUpload(file)))
+      nextErrors.placeholderImages = "Every placeholder must be an image file."
   }
 
   return nextErrors
@@ -1857,6 +1864,105 @@ function FileField({
           <span>Choose {label.toLowerCase()}</span>
         </Button>
       )}
+      {error && <FieldError id={`${id}-error`}>{error}</FieldError>}
+    </Field>
+  )
+}
+
+function MultipleImageField({
+  id,
+  errorKey,
+  label,
+  description,
+  value,
+  onChange,
+  error,
+}: {
+  id: string
+  errorKey: string
+  label: string
+  description: string
+  value: File[]
+  onChange: (files: File[]) => void
+  error?: string
+}) {
+  const inputRef = useRef<HTMLInputElement>(null)
+  const describedBy = `${id}-description${error ? ` ${id}-error` : ""}`
+
+  const selectFiles = () => {
+    if (!inputRef.current) return
+    inputRef.current.value = ""
+    inputRef.current.click()
+  }
+
+  return (
+    <Field data-invalid={!!error} data-error-key={errorKey}>
+      <div className="space-y-1">
+        <FieldLabel htmlFor={id}>{label}</FieldLabel>
+        <FieldDescription id={`${id}-description`}>
+          {description}
+        </FieldDescription>
+      </div>
+      <input
+        id={id}
+        ref={inputRef}
+        type="file"
+        multiple
+        accept="image/*"
+        className="sr-only"
+        tabIndex={-1}
+        aria-invalid={!!error}
+        aria-describedby={describedBy}
+        onChange={(event) => {
+          const files = Array.from(event.target.files ?? [])
+          if (files.length) onChange([...value, ...files])
+          event.target.value = ""
+        }}
+      />
+      <div className="grid grid-cols-[repeat(auto-fill,minmax(min(14rem,100%),1fr))] gap-3">
+        {value.map((file, index) => (
+          <div
+            key={`${file.name}-${file.lastModified}-${file.size}-${index}`}
+            className="relative flex min-h-24 items-center gap-3 border border-input p-3 pr-11"
+          >
+            <div className="flex size-16 shrink-0 items-center justify-center bg-muted p-1">
+              <FilePreview file={file} />
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-xs font-medium" title={file.name}>
+                {file.name}
+              </p>
+              <p className="mt-1 text-[11px] text-muted-foreground">
+                {(file.size / 1024).toFixed(0)} KB
+              </p>
+            </div>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon-sm"
+              className="absolute top-2 right-2"
+              aria-label={`Remove ${file.name}`}
+              onClick={() =>
+                onChange(value.filter((_, itemIndex) => itemIndex !== index))
+              }
+            >
+              <XIcon />
+            </Button>
+          </div>
+        ))}
+        <Button
+          type="button"
+          variant="outline"
+          data-error-control
+          aria-invalid={!!error}
+          aria-describedby={describedBy}
+          className="h-24 w-full flex-col gap-2 border-dashed text-muted-foreground hover:text-foreground"
+          onClick={selectFiles}
+        >
+          <UploadIcon />
+          <span>{value.length ? "Add more images" : "Choose images"}</span>
+        </Button>
+      </div>
       {error && <FieldError id={`${id}-error`}>{error}</FieldError>}
     </Field>
   )
@@ -3246,6 +3352,23 @@ function SettingsStep({
             )
           })}
         </div>
+      </section>
+
+      <section aria-labelledby="settings-placeholder-images-heading">
+        <FormSectionHeader
+          id="settings-placeholder-images-heading"
+          title="Placeholder images"
+          description="Add reusable placeholder artwork for workshop content."
+        />
+        <MultipleImageField
+          id="workshop-placeholder-images"
+          errorKey="placeholderImages"
+          label="Images"
+          description="Select one or more image files. Additional selections are added to the existing list."
+          value={workshop.placeholderImages}
+          onChange={(files) => update("placeholderImages", files)}
+          error={errors.placeholderImages}
+        />
       </section>
     </div>
   )
