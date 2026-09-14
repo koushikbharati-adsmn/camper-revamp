@@ -65,6 +65,8 @@ import {
   CheckIcon,
   FileIcon,
   GripVerticalIcon,
+  ImageIcon,
+  PaletteIcon,
   PlusIcon,
   Trash2Icon,
   UploadIcon,
@@ -1567,8 +1569,14 @@ function ThemeStep({
         aria-label="Theme sections"
         className="mb-6 grid w-full grid-cols-2 border-b border-border group-data-horizontal/tabs:h-10!"
       >
-        <TabsTrigger value="colors">Colors</TabsTrigger>
-        <TabsTrigger value="assets">Assets</TabsTrigger>
+        <TabsTrigger value="colors">
+          <PaletteIcon />
+          Colors
+        </TabsTrigger>
+        <TabsTrigger value="assets">
+          <ImageIcon />
+          Assets
+        </TabsTrigger>
       </TabsList>
 
       <TabsContent value="colors">
