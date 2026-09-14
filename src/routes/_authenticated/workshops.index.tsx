@@ -80,9 +80,10 @@ import * as z from "zod"
 
 const workshopFilterStatusSchema = z.enum([
   "all",
-  "completed",
   "not-started",
-  "in-progress",
+  "ideate",
+  "vote",
+  "completed",
 ])
 
 export const Route = createFileRoute("/_authenticated/workshops/")({
@@ -100,10 +101,11 @@ export const Route = createFileRoute("/_authenticated/workshops/")({
 })
 
 const items = [
-  { label: "Select a status", value: "all" },
-  { label: "Completed", value: "completed" },
+  { label: "All Workshops", value: "all" },
   { label: "Not Started", value: "not-started" },
-  { label: "In Progress", value: "in-progress" },
+  { label: "Ideate", value: "ideate" },
+  { label: "Vote", value: "vote" },
+  { label: "Completed", value: "completed" },
 ]
 
 function RouteComponent() {

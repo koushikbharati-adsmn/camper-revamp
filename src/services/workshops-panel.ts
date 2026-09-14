@@ -8,7 +8,7 @@ import {
 } from "@tanstack/react-query"
 
 export type WorkshopFilterStatus =
-  "in-progress" | "not-started" | "completed" | "all"
+  "not-started" | "ideate" | "vote" | "completed" | "all"
 
 export interface WorkshopList {
   ID: string
