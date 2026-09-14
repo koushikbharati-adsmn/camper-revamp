@@ -276,12 +276,9 @@ function CoachCard({
         </p>
       </CardContent>
 
-      <CardFooter className="mt-auto justify-between gap-3">
+      <CardFooter className="mt-auto justify-between gap-3 bg-card">
         <CoachStatusBadge isActive={coach.IsActive} />
-        <span
-          className="truncate text-xs"
-          style={{ color: secondaryTextColor }}
-        >
+        <span className="truncate text-xs">
           {formatCreatedDate(coach.CreatedDttm)}
         </span>
       </CardFooter>
