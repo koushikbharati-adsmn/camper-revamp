@@ -933,7 +933,7 @@ function IdeaPreviewDialog({
 }) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[calc(100dvh-2rem)] overflow-y-auto sm:max-w-3xl">
+      <DialogContent className="sm:max-w-3xl">
         <DialogHeader>
           <DialogTitle>{idea.Title}</DialogTitle>
           <DialogDescription>
@@ -941,7 +941,7 @@ function IdeaPreviewDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="grid gap-4 md:grid-cols-[minmax(0,1.15fr)_minmax(15rem,0.85fr)]">
+        <div className="no-scrollbar grid max-h-[70vh] gap-4 overflow-y-auto md:grid-cols-[minmax(0,1.15fr)_minmax(15rem,0.85fr)]">
           <div className="aspect-4/3 overflow-hidden border border-border bg-muted/50">
             <IdeaThumbnail idea={idea} />
           </div>

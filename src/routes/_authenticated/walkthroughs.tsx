@@ -491,7 +491,7 @@ function WalkthroughEditorDialog({
             </DialogDescription>
           </DialogHeader>
 
-          <FieldGroup>
+          <FieldGroup className="no-scrollbar max-h-[70vh] overflow-y-auto">
             <form.Field
               name="title"
               children={(field) => {

@@ -383,7 +383,7 @@ function CoachEditorDialog({
         if (!saveCoachMutation.isPending) onOpenChange(nextOpen)
       }}
     >
-      <DialogContent className="max-h-[calc(100dvh-2rem)] overflow-y-auto sm:max-w-xl">
+      <DialogContent className="sm:max-w-xl">
         <form
           noValidate
           aria-busy={saveCoachMutation.isPending}
@@ -402,7 +402,7 @@ function CoachEditorDialog({
             </DialogDescription>
           </DialogHeader>
 
-          <FieldGroup>
+          <FieldGroup className="no-scrollbar max-h-[70vh] overflow-y-auto">
             <form.Field
               name="name"
               children={(field) => {
@@ -738,7 +738,7 @@ function CoachPromptDialog({
             </DialogDescription>
           </DialogHeader>
 
-          <FieldGroup>
+          <FieldGroup className="no-scrollbar max-h-[70vh] overflow-y-auto">
             <form.Field
               name="prompt"
               children={(field) => {

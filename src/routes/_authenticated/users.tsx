@@ -584,7 +584,7 @@ function UserEditorDialog({
             </DialogDescription>
           </DialogHeader>
 
-          <FieldGroup className="min-h-0 flex-1 overflow-y-auto">
+          <FieldGroup className="no-scrollbar max-h-[70vh] overflow-y-auto">
             <form.Field
               name="name"
               children={(field) => {
