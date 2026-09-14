@@ -33,6 +33,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
+import { Skeleton } from "@/components/ui/skeleton"
+import { Spinner } from "@/components/ui/spinner"
+import { toast } from "@/components/ui/toast"
 import {
   type WorkshopLifecycleStatus,
   type WorkshopStatus,
@@ -42,7 +45,21 @@ import {
   getWorkshopPhaseIndex,
 } from "@/lib/workshop-lifecycle"
 import { cn } from "@/lib/utils"
-import { createFileRoute, Link } from "@tanstack/react-router"
+import {
+  type ManageIdea,
+  type ManageWorkshop,
+  getManageIdeasOptions,
+  getManageWorkshopOptions,
+  useExportPpt,
+  useUpdateWorkshopStatus,
+} from "@/services/workshops-manage"
+import { useQuery, useSuspenseQuery } from "@tanstack/react-query"
+import {
+  createFileRoute,
+  type ErrorComponentProps,
+  Link,
+  useRouter,
+} from "@tanstack/react-router"
 import { format } from "date-fns"
 import {
   ArrowLeftIcon,
@@ -71,125 +88,33 @@ type TimerState = {
   remainingSeconds: number
 }
 
-type Team = {
-  id: string
-  name: string
-}
-
-type Pillar = {
-  id: string
-  name: string
-}
-
-type Idea = {
-  id: string
-  title: string
-  description: string
-  teamId: Team["id"]
-  pillarId: Pillar["id"]
-  shortlisted: boolean
-  submittedAt: string
-  thumbnailUrl: string
-}
-
-const MOCK_WORKSHOP = {
-  name: "Future-Ready Customer Experience",
-  description:
-    "Guide teams from opportunity discovery through voting on the strongest customer experience concepts.",
-  initialStatus: null as WorkshopLifecycleStatus,
-}
-
-const MOCK_TEAMS: Team[] = [
-  { id: "alpha", name: "Team Alpha" },
-  { id: "bravo", name: "Team Bravo" },
-  { id: "charlie", name: "Team Charlie" },
-  { id: "delta", name: "Team Delta" },
-]
-
-const MOCK_PILLARS: Pillar[] = [
-  { id: "sustainability", name: "Sustainability" },
-  { id: "accessibility", name: "Accessibility" },
-  { id: "personalization", name: "Personalization" },
-]
-
-const MOCK_IDEAS: Idea[] = [
-  {
-    id: "idea-1",
-    title: "Refill and Reward Stations",
-    description:
-      "A network of smart refill points that recognizes returning customers, tracks packaging avoided, and turns every refill into loyalty credit. The experience combines practical waste reduction with a visible, motivating record of collective impact.",
-    teamId: "alpha",
-    pillarId: "sustainability",
-    shortlisted: true,
-    submittedAt: "2026-09-11T09:18:00Z",
-    thumbnailUrl: "https://picsum.photos/seed/refill-station/800/600",
-  },
-  {
-    id: "idea-2",
-    title: "Calm Mode Shopping",
-    description:
-      "An accessibility setting that simplifies navigation, reduces visual noise, and offers step-by-step guidance across digital and physical touchpoints. Customers can save their preferences once and use them throughout the whole journey.",
-    teamId: "bravo",
-    pillarId: "accessibility",
-    shortlisted: false,
-    submittedAt: "2026-09-11T09:31:00Z",
-    thumbnailUrl: "https://picsum.photos/seed/calm-shopping/800/600",
-  },
-  {
-    id: "idea-3",
-    title: "My Week, Ready to Go",
-    description:
-      "A weekly planning assistant that learns household routines and prepares a flexible collection of essentials before customers need to search. Suggestions explain why they were made and remain fully editable.",
-    teamId: "charlie",
-    pillarId: "personalization",
-    shortlisted: true,
-    submittedAt: "2026-09-11T09:44:00Z",
-    thumbnailUrl: "https://picsum.photos/seed/weekly-planner/800/600",
-  },
-  {
-    id: "idea-4",
-    title: "Local Impact Receipt",
-    description:
-      "A redesigned receipt that translates purchases into simple local impact measures, including lower-carbon choices and support for nearby producers. It also recommends one realistic improvement for the next visit.",
-    teamId: "alpha",
-    pillarId: "sustainability",
-    shortlisted: false,
-    submittedAt: "2026-09-11T10:02:00Z",
-    thumbnailUrl: "https://picsum.photos/seed/impact-receipt/800/600",
-  },
-  {
-    id: "idea-5",
-    title: "Ask Without Barriers",
-    description:
-      "A multimodal help point where customers can type, speak, sign, or select visual prompts to ask for assistance. Requests reach the best-placed colleague without requiring customers to explain their access needs repeatedly.",
-    teamId: "delta",
-    pillarId: "accessibility",
-    shortlisted: true,
-    submittedAt: "2026-09-11T10:16:00Z",
-    thumbnailUrl: "https://picsum.photos/seed/accessible-help/800/600",
-  },
-  {
-    id: "idea-6",
-    title: "Discovery Path",
-    description:
-      "A store and app journey that adapts to the customer's available time and desired level of discovery, from a direct five-minute mission to a more exploratory visit built around new products and inspiration.",
-    teamId: "bravo",
-    pillarId: "personalization",
-    shortlisted: false,
-    submittedAt: "2026-09-11T10:28:00Z",
-    thumbnailUrl: "https://picsum.photos/seed/discovery-path/800/600",
-  },
-]
-
 export const Route = createFileRoute("/_authenticated/workshops/$code/manage")({
+  loader: ({ context, params }) =>
+    Promise.all([
+      context.queryClient.query(getManageWorkshopOptions(params.code)),
+      context.queryClient.query(
+        getManageIdeasOptions({
+          code: params.code,
+          team_id: null,
+          category_id: null,
+        })
+      ),
+    ]),
+  pendingMs: 150,
+  pendingMinMs: 250,
+  pendingComponent: ManageWorkshopPending,
+  errorComponent: ManageWorkshopError,
   component: RouteComponent,
 })
 
 function RouteComponent() {
   const { code } = Route.useParams()
-  const [workshopStatus, setWorkshopStatus] = useState<WorkshopLifecycleStatus>(
-    MOCK_WORKSHOP.initialStatus
-  )
+  const { data: workshop } = useSuspenseQuery({
+    ...getManageWorkshopOptions(code),
+    select: (response) => response.data,
+  })
+  const updateStatusMutation = useUpdateWorkshopStatus()
+  const exportPptMutation = useExportPpt()
   const [pendingTransition, setPendingTransition] =
     useState<WorkshopStatus | null>(null)
   const [timer, setTimer] = useState<TimerState>({
@@ -199,7 +124,20 @@ function RouteComponent() {
   })
   const [teamFilter, setTeamFilter] = useState("all")
   const [pillarFilter, setPillarFilter] = useState("all")
-  const [previewIdea, setPreviewIdea] = useState<Idea | null>(null)
+  const [previewIdea, setPreviewIdea] = useState<ManageIdea | null>(null)
+  const {
+    data: ideas = [],
+    isPending: isIdeasPending,
+    refetch: refetchIdeas,
+    error: ideasError,
+  } = useQuery({
+    ...getManageIdeasOptions({
+      code,
+      team_id: teamFilter === "all" ? null : Number(teamFilter),
+      category_id: pillarFilter === "all" ? null : Number(pillarFilter),
+    }),
+    select: (data) => data.data,
+  })
 
   useEffect(() => {
     if (timer.status !== "running") return
@@ -222,12 +160,6 @@ function RouteComponent() {
     return () => window.clearInterval(intervalId)
   }, [timer.status])
 
-  const filteredIdeas = MOCK_IDEAS.filter(
-    (idea) =>
-      (teamFilter === "all" || idea.teamId === teamFilter) &&
-      (pillarFilter === "all" || idea.pillarId === pillarFilter)
-  )
-
   const resetTimer = () => {
     setTimer((current) => ({
       ...current,
@@ -236,23 +168,64 @@ function RouteComponent() {
     }))
   }
 
-  const transitionWorkshop = (targetStatus: WorkshopStatus) => {
-    setWorkshopStatus((currentStatus) =>
-      canTransitionWorkshop(currentStatus, targetStatus)
-        ? targetStatus
-        : currentStatus
-    )
+  const transitionWorkshop = async (targetStatus: WorkshopStatus) => {
+    if (!canTransitionWorkshop(workshop.status, targetStatus)) return false
+
+    try {
+      const response = await updateStatusMutation.mutateAsync({
+        code,
+        status: targetStatus,
+      })
+      toast.add({
+        type: "success",
+        title: "Workshop status updated",
+        description: response.message,
+      })
+      return true
+    } catch {
+      return false
+    }
+  }
+
+  const exportReport = async () => {
+    try {
+      const response = await exportPptMutation.mutateAsync({
+        workshop_code: code,
+      })
+      const link = document.createElement("a")
+      link.href = response.data.url
+      link.target = "_blank"
+      link.rel = "noopener noreferrer"
+      document.body.append(link)
+      link.click()
+      link.remove()
+      toast.add({
+        type: "success",
+        title: "Report ready",
+        description: response.message,
+      })
+    } catch {
+      // Mutation hooks surface API errors and leave the action available to retry.
+    }
   }
 
   return (
     <div className="space-y-6">
-      <WorkshopHeader code={code} status={workshopStatus} />
+      <WorkshopHeader
+        code={code}
+        name={workshop.workshopName}
+        description={workshop.Desc}
+        status={workshop.status}
+      />
 
       <div className="grid gap-4 xl:grid-cols-[minmax(0,1.3fr)_minmax(28rem,0.9fr)]">
         <LifecycleCard
-          status={workshopStatus}
-          onStart={() => transitionWorkshop("Ideate")}
+          status={workshop.status}
+          isUpdating={updateStatusMutation.isPending}
+          isExporting={exportPptMutation.isPending}
+          onStart={() => void transitionWorkshop("Ideate")}
           onRequestTransition={setPendingTransition}
+          onExport={() => void exportReport()}
         />
         <TimerCard
           timer={timer}
@@ -274,25 +247,42 @@ function RouteComponent() {
         />
       </div>
 
-      <WorkshopStats />
+      <WorkshopStats
+        totalTeams={workshop.totalTeam}
+        totalPillars={workshop.totalCategory}
+        totalIdeas={workshop.TotalIdea}
+      />
 
       <IdeaTracker
-        ideas={filteredIdeas}
+        ideas={ideas}
+        teams={workshop.teams}
+        pillars={workshop.categories}
+        totalIdeas={workshop.TotalIdea}
         teamFilter={teamFilter}
         pillarFilter={pillarFilter}
+        isLoading={isIdeasPending}
+        errorMessage={ideasError?.message ?? null}
         onTeamFilterChange={setTeamFilter}
         onPillarFilterChange={setPillarFilter}
         onPreview={setPreviewIdea}
+        onRetry={() => void refetchIdeas()}
       />
 
       <LifecycleDialog
         targetStatus={pendingTransition}
+        isPending={updateStatusMutation.isPending}
         onOpenChange={(open) => {
-          if (!open) setPendingTransition(null)
+          if (!open && !updateStatusMutation.isPending) {
+            setPendingTransition(null)
+          }
         }}
-        onConfirm={() => {
-          if (pendingTransition) transitionWorkshop(pendingTransition)
-          setPendingTransition(null)
+        onConfirm={async () => {
+          if (
+            pendingTransition &&
+            (await transitionWorkshop(pendingTransition))
+          ) {
+            setPendingTransition(null)
+          }
         }}
       />
 
@@ -311,9 +301,13 @@ function RouteComponent() {
 
 function WorkshopHeader({
   code,
+  name,
+  description,
   status,
 }: {
   code: string
+  name: string
+  description: string
   status: WorkshopLifecycleStatus
 }) {
   return (
@@ -331,12 +325,12 @@ function WorkshopHeader({
         </Link>
         <div className="flex flex-wrap items-center gap-2">
           <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">
-            {MOCK_WORKSHOP.name}
+            {name}
           </h1>
           <WorkshopStatusBadge status={status} />
         </div>
         <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
-          {MOCK_WORKSHOP.description}
+          {description}
         </p>
       </div>
       <Badge variant="outline" className="w-fit font-mono uppercase">
@@ -348,12 +342,18 @@ function WorkshopHeader({
 
 function LifecycleCard({
   status,
+  isUpdating,
+  isExporting,
   onStart,
   onRequestTransition,
+  onExport,
 }: {
   status: WorkshopLifecycleStatus
+  isUpdating: boolean
+  isExporting: boolean
   onStart: () => void
   onRequestTransition: (status: WorkshopStatus) => void
+  onExport: () => void
 }) {
   const currentPhaseIndex = getWorkshopPhaseIndex(status)
 
@@ -441,17 +441,22 @@ function LifecycleCard({
             </p>
           </div>
           {status === null && (
-            <Button className="w-full sm:w-auto" onClick={onStart}>
-              <PlayIcon />
-              Start Workshop
+            <Button
+              className="w-full sm:w-auto"
+              disabled={isUpdating}
+              onClick={onStart}
+            >
+              {isUpdating ? <Spinner /> : <PlayIcon />}
+              {isUpdating ? "Starting..." : "Start Workshop"}
             </Button>
           )}
           {status === "Ideate" && (
             <Button
               className="w-full sm:w-auto"
+              disabled={isUpdating}
               onClick={() => onRequestTransition("Vote")}
             >
-              <TagsIcon />
+              {isUpdating ? <Spinner /> : <TagsIcon />}
               Start Voting
             </Button>
           )}
@@ -459,16 +464,22 @@ function LifecycleCard({
             <Button
               variant="destructive"
               className="w-full sm:w-auto"
+              disabled={isUpdating}
               onClick={() => onRequestTransition("Completed")}
             >
-              <FlagIcon />
+              {isUpdating ? <Spinner /> : <FlagIcon />}
               End Workshop
             </Button>
           )}
           {status === "Completed" && (
-            <Button variant="outline" className="w-full sm:w-auto" disabled>
-              <DownloadIcon />
-              Download Report
+            <Button
+              variant="outline"
+              className="w-full sm:w-auto"
+              disabled={isExporting}
+              onClick={onExport}
+            >
+              {isExporting ? <Spinner /> : <DownloadIcon />}
+              {isExporting ? "Preparing Report..." : "Download Report"}
             </Button>
           )}
         </div>
@@ -631,13 +642,21 @@ function TimerDurationInput({
   )
 }
 
-function WorkshopStats() {
+function WorkshopStats({
+  totalTeams,
+  totalPillars,
+  totalIdeas,
+}: {
+  totalTeams: number
+  totalPillars: number
+  totalIdeas: number
+}) {
   const stats = [
-    { label: "Teams", value: MOCK_TEAMS.length, icon: UsersIcon },
-    { label: "Pillars", value: MOCK_PILLARS.length, icon: FolderKanbanIcon },
+    { label: "Teams", value: totalTeams, icon: UsersIcon },
+    { label: "Pillars", value: totalPillars, icon: FolderKanbanIcon },
     {
       label: "Ideas Submitted",
-      value: MOCK_IDEAS.length,
+      value: totalIdeas,
       icon: LightbulbIcon,
     },
   ]
@@ -670,33 +689,49 @@ function WorkshopStats() {
 
 function IdeaTracker({
   ideas,
+  teams,
+  pillars,
+  totalIdeas,
   teamFilter,
   pillarFilter,
+  isLoading,
+  errorMessage,
   onTeamFilterChange,
   onPillarFilterChange,
   onPreview,
+  onRetry,
 }: {
-  ideas: Idea[]
+  ideas: ManageIdea[]
+  teams: ManageWorkshop["teams"]
+  pillars: ManageWorkshop["categories"]
+  totalIdeas: number
   teamFilter: string
   pillarFilter: string
+  isLoading: boolean
+  errorMessage: string | null
   onTeamFilterChange: (value: string) => void
   onPillarFilterChange: (value: string) => void
-  onPreview: (idea: Idea) => void
+  onPreview: (idea: ManageIdea) => void
+  onRetry: () => void
 }) {
   const teamItems = [
     { value: "all", label: "All Teams" },
-    ...MOCK_TEAMS.map((team) => ({ value: team.id, label: team.name })),
+    ...teams.map((team) => ({
+      value: String(team.ID),
+      label: team.TeamName,
+    })),
   ]
   const pillarItems = [
     { value: "all", label: "All Pillars" },
-    ...MOCK_PILLARS.map((pillar) => ({
-      value: pillar.id,
-      label: pillar.name,
+    ...pillars.map((pillar) => ({
+      value: String(pillar.ID),
+      label: pillar.Category,
     })),
   ]
+  const isFiltered = teamFilter !== "all" || pillarFilter !== "all"
 
   return (
-    <section aria-labelledby="idea-tracker-heading">
+    <section aria-labelledby="idea-tracker-heading" aria-busy={isLoading}>
       <div className="flex flex-col gap-3 bg-background/90 py-4 backdrop-blur-md lg:flex-row lg:items-end lg:justify-between">
         <div>
           <div className="flex items-center gap-2">
@@ -704,7 +739,7 @@ function IdeaTracker({
               Idea Tracker
             </h2>
             <Badge variant="secondary">
-              {MOCK_IDEAS.length} {MOCK_IDEAS.length === 1 ? "idea" : "ideas"}
+              {totalIdeas} {totalIdeas === 1 ? "idea" : "ideas"}
             </Badge>
           </div>
           <p className="mt-1 text-xs text-muted-foreground">
@@ -768,14 +803,18 @@ function IdeaTracker({
         </div>
       </div>
 
-      {MOCK_IDEAS.length === 0 ? (
+      {errorMessage ? (
+        <IdeasError message={errorMessage} onRetry={onRetry} />
+      ) : isLoading ? (
+        <IdeasLoading />
+      ) : totalIdeas === 0 ? (
         <IdeasEmpty />
       ) : ideas.length === 0 ? (
-        <IdeasEmpty filtered />
+        <IdeasEmpty filtered={isFiltered} />
       ) : (
         <div className="grid grid-cols-[repeat(auto-fill,minmax(min(320px,100%),1fr))] gap-4">
           {ideas.map((idea) => (
-            <IdeaCard key={idea.id} idea={idea} onPreview={onPreview} />
+            <IdeaCard key={idea.ID} idea={idea} onPreview={onPreview} />
           ))}
         </div>
       )}
@@ -787,8 +826,8 @@ function IdeaCard({
   idea,
   onPreview,
 }: {
-  idea: Idea
-  onPreview: (idea: Idea) => void
+  idea: ManageIdea
+  onPreview: (idea: ManageIdea) => void
 }) {
   return (
     <Card className="h-full gap-0 py-0">
@@ -797,8 +836,8 @@ function IdeaCard({
       </div>
       <CardHeader className="gap-3 py-4">
         <div className="flex min-w-0 items-start justify-between gap-3">
-          <CardTitle>{idea.title}</CardTitle>
-          {idea.shortlisted && (
+          <CardTitle>{idea.Title}</CardTitle>
+          {idea.flgTeam && (
             <Badge className="shrink-0">
               <FlagIcon />
               Shortlisted
@@ -806,17 +845,19 @@ function IdeaCard({
           )}
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <Badge variant="secondary">{getTeamName(idea.teamId)}</Badge>
-          <Badge variant="outline">{getPillarName(idea.pillarId)}</Badge>
+          <Badge variant="secondary">{idea.TeamName || "Unknown team"}</Badge>
+          <Badge variant="outline">
+            {idea.CategoryName || "Unknown pillar"}
+          </Badge>
           <span className="flex items-center gap-1 text-xs text-muted-foreground">
             <Clock3Icon className="size-3" />
-            {formatSubmittedAt(idea.submittedAt)}
+            {formatSubmittedAt(idea.CreatedDttm)}
           </span>
         </div>
       </CardHeader>
       <CardContent className="flex flex-1 flex-col pb-4">
         <p className="line-clamp-3 text-sm text-muted-foreground">
-          {idea.description}
+          {idea.Desc}
         </p>
         <Button
           variant="outline"
@@ -852,12 +893,41 @@ function IdeasEmpty({ filtered = false }: { filtered?: boolean }) {
   )
 }
 
+function IdeasLoading() {
+  return (
+    <div className="flex min-h-64 items-center justify-center border border-dashed border-border">
+      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+        <Spinner />
+        Loading ideas...
+      </div>
+    </div>
+  )
+}
+
+function IdeasError({
+  message,
+  onRetry,
+}: {
+  message: string
+  onRetry: () => void
+}) {
+  return (
+    <div className="flex min-h-64 flex-col items-center justify-center border border-destructive/40 px-6 text-center">
+      <h3 className="text-sm font-semibold">Unable to load ideas</h3>
+      <p className="mt-1 max-w-sm text-xs text-muted-foreground">{message}</p>
+      <Button className="mt-4" variant="outline" size="sm" onClick={onRetry}>
+        Try again
+      </Button>
+    </div>
+  )
+}
+
 function IdeaPreviewDialog({
   idea,
   open,
   onOpenChange,
 }: {
-  idea: Idea
+  idea: ManageIdea
   open: boolean
   onOpenChange: (open: boolean) => void
 }) {
@@ -865,9 +935,9 @@ function IdeaPreviewDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-h-[calc(100dvh-2rem)] overflow-y-auto sm:max-w-3xl">
         <DialogHeader>
-          <DialogTitle>{idea.title}</DialogTitle>
+          <DialogTitle>{idea.Title}</DialogTitle>
           <DialogDescription>
-            Full idea submission from {getTeamName(idea.teamId)}.
+            Full idea submission from {idea.TeamName || "Unknown team"}.
           </DialogDescription>
         </DialogHeader>
 
@@ -877,9 +947,13 @@ function IdeaPreviewDialog({
           </div>
           <div className="min-w-0 space-y-4">
             <div className="flex flex-wrap gap-2">
-              <Badge variant="secondary">{getTeamName(idea.teamId)}</Badge>
-              <Badge variant="outline">{getPillarName(idea.pillarId)}</Badge>
-              {idea.shortlisted && (
+              <Badge variant="secondary">
+                {idea.TeamName || "Unknown team"}
+              </Badge>
+              <Badge variant="outline">
+                {idea.CategoryName || "Unknown pillar"}
+              </Badge>
+              {idea.flgTeam && (
                 <Badge>
                   <FlagIcon />
                   Shortlisted
@@ -889,13 +963,13 @@ function IdeaPreviewDialog({
             <div>
               <p className="text-xs font-medium">Submitted</p>
               <p className="mt-1 text-xs text-muted-foreground">
-                {formatSubmittedAt(idea.submittedAt)}
+                {formatSubmittedAt(idea.CreatedDttm)}
               </p>
             </div>
             <div>
               <p className="text-xs font-medium">Description</p>
               <p className="mt-1 text-sm leading-relaxed text-muted-foreground">
-                {idea.description}
+                {idea.Desc}
               </p>
             </div>
           </div>
@@ -905,14 +979,14 @@ function IdeaPreviewDialog({
   )
 }
 
-function IdeaThumbnail({ idea }: { idea: Idea }) {
+function IdeaThumbnail({ idea }: { idea: ManageIdea }) {
   const [hasError, setHasError] = useState(false)
 
-  if (hasError) {
+  if (!idea.imageFileName?.trim() || hasError) {
     return (
       <div
         className="flex size-full items-center justify-center text-muted-foreground"
-        aria-label={`${idea.title} thumbnail unavailable`}
+        aria-label={`${idea.Title} thumbnail unavailable`}
       >
         <ImageIcon className="size-8" />
       </div>
@@ -921,8 +995,8 @@ function IdeaThumbnail({ idea }: { idea: Idea }) {
 
   return (
     <img
-      src={idea.thumbnailUrl}
-      alt={`${idea.title} submission thumbnail`}
+      src={idea.imageFileName}
+      alt={`${idea.Title} submission thumbnail`}
       className="size-full object-contain"
       onError={() => setHasError(true)}
     />
@@ -931,12 +1005,14 @@ function IdeaThumbnail({ idea }: { idea: Idea }) {
 
 function LifecycleDialog({
   targetStatus,
+  isPending,
   onOpenChange,
   onConfirm,
 }: {
   targetStatus: WorkshopStatus | null
+  isPending: boolean
   onOpenChange: (open: boolean) => void
-  onConfirm: () => void
+  onConfirm: () => Promise<void>
 }) {
   const isEnding = targetStatus === "Completed"
 
@@ -959,12 +1035,20 @@ function LifecycleDialog({
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancel>Cancel</AlertDialogCancel>
+          <AlertDialogCancel disabled={isPending}>Cancel</AlertDialogCancel>
           <AlertDialogAction
             variant={isEnding ? "destructive" : "default"}
-            onClick={onConfirm}
+            disabled={isPending}
+            onClick={() => void onConfirm()}
           >
-            {isEnding ? "End Workshop" : "Start Voting"}
+            {isPending && <Spinner />}
+            {isPending
+              ? isEnding
+                ? "Ending..."
+                : "Starting..."
+              : isEnding
+                ? "End Workshop"
+                : "Start Voting"}
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>
@@ -1031,12 +1115,57 @@ function formatSubmittedAt(value: string) {
     : format(date, "PPP 'at' p")
 }
 
-function getTeamName(id: Team["id"]) {
-  return MOCK_TEAMS.find((team) => team.id === id)?.name ?? "Unknown team"
+function ManageWorkshopPending() {
+  return (
+    <div className="space-y-6">
+      <div>
+        <Skeleton className="mb-3 h-9 w-40" />
+        <Skeleton className="h-8 w-full max-w-lg" />
+        <Skeleton className="mt-2 h-4 w-full max-w-2xl" />
+      </div>
+      <div className="grid gap-4 xl:grid-cols-[minmax(0,1.3fr)_minmax(28rem,0.9fr)]">
+        <Skeleton className="h-128" />
+        <Skeleton className="h-128" />
+      </div>
+      <div className="grid gap-3 sm:grid-cols-3">
+        {Array.from({ length: 3 }).map((_, index) => (
+          <Skeleton key={index} className="h-24" />
+        ))}
+      </div>
+      <Skeleton className="h-72" />
+    </div>
+  )
 }
 
-function getPillarName(id: Pillar["id"]) {
+function ManageWorkshopError({ error, reset }: ErrorComponentProps) {
+  const router = useRouter()
+
   return (
-    MOCK_PILLARS.find((pillar) => pillar.id === id)?.name ?? "Unknown pillar"
+    <div className="space-y-4">
+      <Link
+        to="/workshops"
+        className={cn(
+          buttonVariants({ variant: "ghost" }),
+          "-ml-2 text-muted-foreground"
+        )}
+      >
+        <ArrowLeftIcon />
+        Back to workshops
+      </Link>
+      <div className="border border-destructive/40 p-10 text-center">
+        <h1 className="font-semibold">Unable to load workshop</h1>
+        <p className="mt-1 text-sm text-muted-foreground">{error.message}</p>
+        <Button
+          className="mt-4"
+          variant="outline"
+          onClick={() => {
+            reset()
+            void router.invalidate()
+          }}
+        >
+          Try again
+        </Button>
+      </div>
+    </div>
   )
 }
