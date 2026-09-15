@@ -78,6 +78,12 @@ import { COACH_PRESET_AVATARS } from "@/lib/constants"
 type Upload = File | string | null
 type ThemeTab = "colors" | "assets"
 
+type PlaceholderImage = {
+  id: string | null
+  fileName: string
+  file: File | null
+}
+
 type Pillar = { id: string; title: string; context: string }
 type WalkthroughMessage = { id: string; title: string; description: string }
 type Team = {
@@ -147,7 +153,7 @@ export type WorkshopFormValue = {
   shortlistedIdeaPage: string
   statsBoard: string
   votingPage: string
-  placeholderImages: File[]
+  placeholderImages: PlaceholderImage[]
 }
 
 const steps = [
@@ -453,7 +459,11 @@ export function createEditWorkshopFormValue(
       workshop.ShortlistedIdeaPage ?? initialWorkshop.shortlistedIdeaPage,
     statsBoard: workshop.StatsBoard ?? initialWorkshop.statsBoard,
     votingPage: workshop.VotingPage ?? initialWorkshop.votingPage,
-    placeholderImages: [],
+    placeholderImages: workshop.placeholder.map((image) => ({
+      id: image.ID,
+      fileName: image.fileName,
+      file: null,
+    })),
   }
 }
 
@@ -623,7 +633,11 @@ function getStepErrors(step: number, workshop: WorkshopFormValue) {
       }
     }
 
-    if (workshop.placeholderImages.some((file) => !isImageUpload(file)))
+    if (
+      workshop.placeholderImages.some(
+        (image) => !isImageUpload(image.file ?? image.fileName)
+      )
+    )
       nextErrors.placeholderImages = "Every placeholder must be an image file."
   }
 
@@ -1882,8 +1896,8 @@ function MultipleImageField({
   errorKey: string
   label: string
   description: string
-  value: File[]
-  onChange: (files: File[]) => void
+  value: PlaceholderImage[]
+  onChange: (images: PlaceholderImage[]) => void
   error?: string
 }) {
   const inputRef = useRef<HTMLInputElement>(null)
@@ -1915,25 +1929,42 @@ function MultipleImageField({
         aria-describedby={describedBy}
         onChange={(event) => {
           const files = Array.from(event.target.files ?? [])
-          if (files.length) onChange([...value, ...files])
+          if (files.length) {
+            onChange([
+              ...value,
+              ...files.map((file) => ({
+                id: null,
+                fileName: file.name,
+                file,
+              })),
+            ])
+          }
           event.target.value = ""
         }}
       />
       <div className="grid grid-cols-[repeat(auto-fill,minmax(min(14rem,100%),1fr))] gap-3">
-        {value.map((file, index) => (
+        {value.map((image, index) => (
           <div
-            key={`${file.name}-${file.lastModified}-${file.size}-${index}`}
+            key={
+              image.id ??
+              `${image.fileName}-${image.file?.lastModified}-${image.file?.size}-${index}`
+            }
             className="relative flex min-h-24 items-center gap-3 border border-input p-3 pr-11"
           >
             <div className="flex size-16 shrink-0 items-center justify-center bg-muted p-1">
-              <FilePreview file={file} />
+              <FilePreview file={image.file ?? image.fileName} />
             </div>
             <div className="min-w-0 flex-1">
-              <p className="truncate text-xs font-medium" title={file.name}>
-                {file.name}
+              <p
+                className="truncate text-xs font-medium"
+                title={getUploadName(image.file ?? image.fileName)}
+              >
+                {getUploadName(image.file ?? image.fileName)}
               </p>
               <p className="mt-1 text-[11px] text-muted-foreground">
-                {(file.size / 1024).toFixed(0)} KB
+                {image.file
+                  ? `${(image.file.size / 1024).toFixed(0)} KB`
+                  : "Existing file"}
               </p>
             </div>
             <Button
@@ -1941,7 +1972,7 @@ function MultipleImageField({
               variant="ghost"
               size="icon-sm"
               className="absolute top-2 right-2"
-              aria-label={`Remove ${file.name}`}
+              aria-label={`Remove ${getUploadName(image.file ?? image.fileName)}`}
               onClick={() =>
                 onChange(value.filter((_, itemIndex) => itemIndex !== index))
               }

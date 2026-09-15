@@ -14,6 +14,8 @@ type WorkshopBasePayload = Omit<
   | "coach"
   | "avatar_files"
   | "team_thumbnails"
+  | "placeholder_img_files"
+  | "placeholder_img"
 >
 
 function uploadFile(upload: File | string | null) {
@@ -164,6 +166,7 @@ export async function createWorkshopPayload(
 ): Promise<AddUpdateWorkshopPayload> {
   const avatarFiles: File[] = []
   const teamThumbnails: File[] = []
+  const placeholderImgFiles: File[] = []
 
   const coaches = await mapCoaches(workshop, avatarFiles, "add")
 
@@ -171,6 +174,7 @@ export async function createWorkshopPayload(
     ...buildBasePayload(workshop),
     avatar_files: avatarFiles,
     team_thumbnails: teamThumbnails,
+    placeholder_img_files: placeholderImgFiles,
     teams: workshop.teams.map((team) => {
       const { thumbnailFileName, thumbnailFileIndex } = mapTeamThumbnail(
         team.thumbnail,
@@ -202,6 +206,14 @@ export async function createWorkshopPayload(
       action: "add",
     })),
     coach: coaches,
+    placeholder_img: workshop.placeholderImages.map((image) => ({
+      id: null,
+      fileName: image.fileName,
+      placeholderFileIndex: image.file
+        ? placeholderImgFiles.push(image.file) - 1
+        : null,
+      action: "add",
+    })),
   }
 }
 
@@ -211,6 +223,7 @@ export async function updateWorkshopPayload(
 ): Promise<AddUpdateWorkshopPayload> {
   const avatarFiles: File[] = []
   const teamThumbnails: File[] = []
+  const placeholderImgFiles: File[] = []
 
   const coaches = await mapCoaches(workshop, avatarFiles, "update", original)
 
@@ -220,6 +233,9 @@ export async function updateWorkshopPayload(
   )
   const originalWalkthrough = new Map(
     original.walkThrough.map((message) => [message.ID, message])
+  )
+  const originalPlaceholderImages = new Map(
+    original.placeholder.map((image) => [image.ID, image])
   )
 
   const teams: AddUpdateWorkshopPayload["teams"] = workshop.teams.map(
@@ -305,14 +321,48 @@ export async function updateWorkshopPayload(
     })
   }
 
+  const placeholderImg: AddUpdateWorkshopPayload["placeholder_img"] =
+    workshop.placeholderImages.map((image) => {
+      if (image.id && originalPlaceholderImages.has(image.id)) {
+        originalPlaceholderImages.delete(image.id)
+
+        return {
+          id: image.id,
+          fileName: image.fileName,
+          placeholderFileIndex: null,
+          action: "update",
+        }
+      }
+
+      return {
+        id: null,
+        fileName: image.fileName,
+        placeholderFileIndex: image.file
+          ? placeholderImgFiles.push(image.file) - 1
+          : null,
+        action: "add",
+      }
+    })
+
+  for (const image of originalPlaceholderImages.values()) {
+    placeholderImg.push({
+      id: image.ID,
+      fileName: image.fileName,
+      placeholderFileIndex: null,
+      action: "delete",
+    })
+  }
+
   return {
     ...buildBasePayload(workshop),
     id: original.ID,
     avatar_files: avatarFiles,
     team_thumbnails: teamThumbnails,
+    placeholder_img_files: placeholderImgFiles,
     teams,
     categories,
     walkThrough,
     coach: coaches,
+    placeholder_img: placeholderImg,
   }
 }

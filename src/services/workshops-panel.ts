@@ -206,6 +206,10 @@ export interface WorkshopById {
   ShortlistedIdeaPage: string | null
   StatsBoard: string | null
   VotingPage: string | null
+  placeholder: {
+    ID: string
+    fileName: string
+  }[]
   teams: {
     ID: string
     WorkshopID: string
@@ -313,6 +317,7 @@ export interface AddUpdateWorkshopPayload {
 
   avatar_files: File[] // coach avatars
   team_thumbnails: File[] // team thumbnails
+  placeholder_img_files: File[]
 
   is_changed: boolean
   is_protected: boolean
@@ -362,6 +367,12 @@ export interface AddUpdateWorkshopPayload {
     avatarFileName: string | null
     avatarFileIndex: number | null
     isActive: boolean
+    action: WorkshopAction
+  }[]
+  placeholder_img: {
+    id: string | null
+    fileName: string | null
+    placeholderFileIndex: number | null
     action: WorkshopAction
   }[]
 }
@@ -454,10 +465,15 @@ const addUpdateWorkshop = async (payload: AddUpdateWorkshopPayload) => {
     formData.append("team_thumbnails", file)
   })
 
+  payload.placeholder_img_files.forEach((file) => {
+    formData.append("placeholder_img_files", file)
+  })
+
   formData.append("teams", JSON.stringify(payload.teams))
   formData.append("categories", JSON.stringify(payload.categories))
   formData.append("coach", JSON.stringify(payload.coach))
   formData.append("welcome", JSON.stringify(payload.walkThrough))
+  formData.append("placeholder_img", JSON.stringify(payload.placeholder_img))
 
   formData.append("is_changed", String(payload.is_changed))
   formData.append("is_protected", String(payload.is_protected))
