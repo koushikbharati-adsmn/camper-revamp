@@ -24,9 +24,17 @@ export interface ParticipantWorkshopCategory {
 export interface ParticipantWorkshopTeam {
   ID: number
   TeamName: string
+  Description: string
   TeamColorCode: string
   TeamCode: null | string
   ThumbnailFileName: string
+}
+
+export interface ParticipantWorkshopWalkthrough {
+  ID: string
+  Title: string
+  Description: string
+  DisplayOrder: number
 }
 
 export interface ParticipantWorkshop {
@@ -34,7 +42,7 @@ export interface ParticipantWorkshop {
   Name: string
   WorkshopContext: string
   Desc: string
-  logoFileName: string
+  logoFileName: string // logo url
   page_bg_image: string | null
   GuidelineFileName: string
   shortUrl: string | null
@@ -77,6 +85,7 @@ export interface ParticipantWorkshop {
   teams: ParticipantWorkshopTeam[]
   category: ParticipantWorkshopCategory[]
   coaches: ParticipantWorkshopCoach[]
+  walkThrough: ParticipantWorkshopWalkthrough[]
 }
 
 interface GetParticipantWorkshopResponse {
@@ -114,9 +123,9 @@ export interface ParticipantIdea {
   TeamName: string
   Category: string
   Desc: string
-  imageFileName: string
+  imageFileName: string // image url
   flgSelf: boolean
-  flgTeam: boolean
+  flgTeam: boolean // shortlisted or not
 }
 
 interface GetParticipantIdeasResponse {
@@ -129,6 +138,8 @@ interface GetParticipantIdeasParams {
   workshop_code: string
   category_id: number | null
   team_id: number | null
+  is_shortlisted: boolean
+  is_coached: boolean // isSharpened
 }
 
 const getParticipantIdeas = async (params: GetParticipantIdeasParams) => {
