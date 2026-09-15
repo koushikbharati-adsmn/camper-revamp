@@ -86,7 +86,7 @@ export interface GetManageIdeasParams {
 
 const getManageIdeas = async (params: GetManageIdeasParams) => {
   const res = await apiClient.get<GetManageIdeasResponse>("/admin/run/ideas", {
-    params,
+    params: { ...params, shortlist: "none" },
   })
 
   if (!res.data.success) {
