@@ -34,6 +34,7 @@ import {
 import { Skeleton } from "@/components/ui/skeleton"
 import { Spinner } from "@/components/ui/spinner"
 import { toast } from "@/components/ui/toast"
+import { formatRelativeDate } from "@/lib/date"
 import {
   Select,
   SelectContent,
@@ -61,7 +62,6 @@ import {
   Link,
   useRouter,
 } from "@tanstack/react-router"
-import { formatDistanceToNow } from "date-fns"
 import {
   ClipboardIcon,
   CopyIcon,
@@ -242,7 +242,7 @@ function WorkshopCard({
           <div className="min-w-0">
             <CardTitle className="truncate">{workshop.Name}</CardTitle>
             <CardDescription>
-              {formatCreatedDate(workshop.CreatedDttm)}
+              Created {formatRelativeDate(workshop.CreatedDttm)}
             </CardDescription>
           </div>
         </div>
@@ -497,14 +497,6 @@ function getDisplayStatus(
   const phase = getWorkshopPhase(status)
 
   return { label: phase.label, className: phase.badgeClassName }
-}
-
-function formatCreatedDate(value: string) {
-  const date = new Date(value)
-
-  if (Number.isNaN(date.getTime())) return "Created date unavailable"
-
-  return `Created ${formatDistanceToNow(date, { addSuffix: true })}`
 }
 
 function WorkshopsPending() {

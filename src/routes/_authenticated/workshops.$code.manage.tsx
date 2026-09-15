@@ -36,6 +36,7 @@ import {
 import { Skeleton } from "@/components/ui/skeleton"
 import { Spinner } from "@/components/ui/spinner"
 import { toast } from "@/components/ui/toast"
+import { formatRelativeDate } from "@/lib/date"
 import {
   type WorkshopLifecycleStatus,
   type WorkshopStatus,
@@ -60,7 +61,6 @@ import {
   Link,
   useRouter,
 } from "@tanstack/react-router"
-import { format } from "date-fns"
 import {
   ArrowLeftIcon,
   CheckIcon,
@@ -851,7 +851,7 @@ function IdeaCard({
           </Badge>
           <span className="flex items-center gap-1 text-xs text-muted-foreground">
             <Clock3Icon className="size-3" />
-            {formatSubmittedAt(idea.CreatedDttm)}
+            Submitted {formatRelativeDate(idea.CreatedDttm)}
           </span>
         </div>
       </CardHeader>
@@ -963,7 +963,7 @@ function IdeaPreviewDialog({
             <div>
               <p className="text-xs font-medium">Submitted</p>
               <p className="mt-1 text-xs text-muted-foreground">
-                {formatSubmittedAt(idea.CreatedDttm)}
+                {formatRelativeDate(idea.CreatedDttm)}
               </p>
             </div>
             <div>
@@ -1105,14 +1105,6 @@ function formatDuration(totalSeconds: number) {
   return [duration.hours, duration.minutes, duration.seconds]
     .map((value) => String(value).padStart(2, "0"))
     .join(":")
-}
-
-function formatSubmittedAt(value: string) {
-  const date = new Date(value)
-
-  return Number.isNaN(date.getTime())
-    ? "Submitted time unavailable"
-    : format(date, "PPP 'at' p")
 }
 
 function ManageWorkshopPending() {
