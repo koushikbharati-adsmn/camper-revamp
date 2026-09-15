@@ -1,7 +1,8 @@
 import apiClient from "@/lib/api-client"
 import type { WorkshopLifecycleStatus } from "@/lib/workshop-lifecycle"
-import { queryOptions } from "@tanstack/react-query"
+import { queryOptions, useMutation } from "@tanstack/react-query"
 import type { VotingScope } from "./workshops-panel"
+import { toast } from "@/components/ui/toast"
 
 export interface ParticipantWorkshopCoach {
   ID: number
@@ -124,7 +125,7 @@ export interface ParticipantIdea {
   Category: string
   Desc: string
   imageFileName: string // image url
-  flgSelf: boolean
+  flgSelf: boolean // self idea or not
   flgTeam: boolean // shortlisted or not
 }
 
@@ -138,8 +139,8 @@ interface GetParticipantIdeasParams {
   workshop_code: string
   category_id: number | null
   team_id: number | null
-  is_shortlisted: boolean
-  is_coached: boolean // isSharpened
+  is_shortlisted: boolean | null
+  is_coached: boolean | null // isSharpened
 }
 
 const getParticipantIdeas = async (params: GetParticipantIdeasParams) => {
@@ -156,5 +157,117 @@ export function getParticipantIdeasOptions(params: GetParticipantIdeasParams) {
   return queryOptions({
     queryKey: ["PARTICIPANT_IDEAS", params],
     queryFn: () => getParticipantIdeas(params),
+  })
+}
+
+interface SaveIdeaPayload {
+  idea_id?: number
+  visitor_id: string
+  workshop_code: string
+  team_id: number
+  category_id: number
+  desc: string
+  title: string
+}
+
+interface SaveIdeaResponse {
+  success: boolean
+  message: string
+  data: {
+    idea_id: number
+  }
+}
+
+const saveIdea = async (payload: SaveIdeaPayload) => {
+  const res = await apiClient.post<SaveIdeaResponse>(
+    "/api/participant/idea",
+    payload
+  )
+
+  return res.data
+}
+
+export const useSaveIdea = () => {
+  return useMutation({
+    mutationFn: (payload: SaveIdeaPayload) => saveIdea(payload),
+    onError: (error) => {
+      toast.add({
+        type: "error",
+        title: "Oops! Something went wrong",
+        description: error.message,
+      })
+    },
+  })
+}
+
+interface ShortlistIdeaPayload {
+  workshop_code: string
+  idea_id: number
+  flag: boolean
+}
+
+interface ShortlistIdeaResponse {
+  success: boolean
+  message: string
+}
+
+const shortlistIdea = async (payload: ShortlistIdeaPayload) => {
+  const res = await apiClient.post<ShortlistIdeaResponse>(
+    "/api/participant/idea/shortlist",
+    payload
+  )
+  return res.data
+}
+
+export const useShortlistIdea = () => {
+  return useMutation({
+    mutationFn: (payload: ShortlistIdeaPayload) => shortlistIdea(payload),
+    onError: (error) => {
+      toast.add({
+        type: "error",
+        title: "Oops! Something went wrong",
+        description: error.message,
+      })
+    },
+  })
+}
+
+interface GenerateIdeaImagePayload {
+  workshop_code: string
+  pillar_context: string
+  workshop_context: string
+  user_idea: string
+  branding_guidelines: string
+}
+
+interface GenerateIdeaImageResponse {
+  success: boolean
+  data: {
+    status: string
+    image: string
+    ref_id: string
+    workshop_code: string
+  }
+}
+
+const generateIdeaImage = async (payload: GenerateIdeaImagePayload) => {
+  const res = await apiClient.post<GenerateIdeaImageResponse>(
+    "/ai/generate",
+    payload
+  )
+  return res.data
+}
+
+export const useGenerateIdeaImage = () => {
+  return useMutation({
+    mutationFn: (payload: GenerateIdeaImagePayload) =>
+      generateIdeaImage(payload),
+    onError: (error) => {
+      toast.add({
+        type: "error",
+        title: "Oops! Something went wrong",
+        description: error.message,
+      })
+    },
   })
 }
