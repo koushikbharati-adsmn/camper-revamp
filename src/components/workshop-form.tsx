@@ -429,7 +429,7 @@ export function createEditWorkshopFormValue(
       })),
     usePasscode: workshop.IsProtected,
     coaches: workshop.coaches.map((coach) => ({
-      id: String(coach.CoachID),
+      id: coach.ID,
       key: coach.CoachKey,
       name: coach.CoachName,
       title: coach.Title ?? "",
