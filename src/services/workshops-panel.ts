@@ -199,7 +199,7 @@ export interface WorkshopById {
   ReportFileName: null | string
   IsProtected: boolean // is teams protected with passcode
   winningIdeaCount: number | null
-  votingScope: "workshop" | "pillar"
+  votingScope: VotingScope
   votingLimit: number | null
   TeamSelect: string | null
   IdeationPage: string | null
