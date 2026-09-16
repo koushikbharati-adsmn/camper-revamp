@@ -21,7 +21,11 @@ export default function ActivityList({ activities, showTooltip = false, onShowSc
         <h2>Latest Activity</h2>
 
         {onShowScanQr && (
-          <button type="button" className="sectionTwo__activity" onClick={onShowScanQr}>
+          <button
+            type="button"
+            className="bg-theme1 text-theme2 cursor-pointer rounded-full px-3 py-2 font-ogilvy-r text-base whitespace-nowrap shadow-sm transition-all duration-200 hover:scale-105 hover:shadow-md active:scale-95"
+            onClick={onShowScanQr}
+          >
             Show QR
           </button>
         )}

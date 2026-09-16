@@ -290,7 +290,7 @@
 /* =========================================================
    WEBSITE BASE LAYOUT (workshop / big-screen / stage pages)
 ========================================================= */
-html,
+/* html,
 body,
 #root {
   height: 100%;
@@ -307,37 +307,11 @@ body,
   @media (max-width: 991px) {
     padding-inline: 1rem;
   }
-}
+} */
 
 /* =========================================================
-   CUSTOM VERTICAL SCROLLBAR
+   Color Picker Layout 
 ========================================================= */
-.custom-vertical-scrollbar {
-  overflow-y: auto;
-  overflow-x: hidden;
-  /* Firefox */
-  scrollbar-width: thin;
-  scrollbar-color: var(--color1) var(--color8);
-}
-
-/* Chrome / Edge / Safari */
-.custom-vertical-scrollbar::-webkit-scrollbar {
-  width: 6px;
-}
-
-.custom-vertical-scrollbar::-webkit-scrollbar-track {
-  background: var(--color8);
-  border-radius: 999px;
-}
-
-.custom-vertical-scrollbar::-webkit-scrollbar-thumb {
-  background: var(--color1);
-  border-radius: 999px;
-}
-
-.custom-vertical-scrollbar::-webkit-scrollbar-thumb:hover {
-  background: var(--color1);
-}
 
 .color-picker-layout .react-colorful__saturation {
   border-radius: 0px;

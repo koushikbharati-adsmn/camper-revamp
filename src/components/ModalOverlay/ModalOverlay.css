@@ -6,7 +6,7 @@
   }
 
   .modal-overlay__dialog {
-    @apply bg-theme2 text-theme1 relative m-0 grid max-h-[90vh] w-full max-w-lg gap-3 overflow-y-auto rounded-2xl p-5 shadow-xl animate-[modal-dialog-in_0.25s_ease-out_both] motion-reduce:animate-none;
+    @apply bg-theme2 text-theme1 relative m-0 grid max-h-[90vh] w-full max-w-lg gap-3 overflow-y-auto rounded-2xl p-5 shadow-sm animate-[modal-dialog-in_0.25s_ease-out_both] motion-reduce:animate-none;
   }
 
   @keyframes modal-overlay-fade {

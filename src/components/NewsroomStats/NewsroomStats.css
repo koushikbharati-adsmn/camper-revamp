@@ -31,7 +31,7 @@
   }
 
   .newsroom-stats__rows {
-    @apply grid gap-8;
+    @apply grid gap-2;
   }
 
   .newsroom-stats__row {
