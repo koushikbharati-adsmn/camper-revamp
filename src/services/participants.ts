@@ -124,6 +124,8 @@ export interface ParticipantIdea {
   TeamName: string
   Category: string
   Desc: string
+  Title?: string | null
+  Context?: string | null
   imageFileName: string // image url
   flgSelf: boolean
   flgTeam: boolean // shortlisted or not
@@ -283,8 +285,7 @@ interface ScoutIdeaResponse {
   success: boolean
   data: {
     status: string
-    ref_id: string
-    text: string
+    text: string[]
   }
 }
 

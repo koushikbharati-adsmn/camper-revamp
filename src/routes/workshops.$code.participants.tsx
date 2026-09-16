@@ -1,15 +1,30 @@
 import { getVisitorId } from "@/lib/fingerprint"
+import { toast } from "@/components/ui/toast"
 import {
   type ParticipantIdea,
   type ParticipantWorkshop,
   getParticipantIdeasOptions,
   getParticipantWorkshopOptions,
+  useSaveIdea,
 } from "@/services/participants"
-import { queryOptions, useQuery, useSuspenseQuery } from "@tanstack/react-query"
+import {
+  queryOptions,
+  useQuery,
+  useQueryClient,
+  useSuspenseQuery,
+} from "@tanstack/react-query"
 import { createFileRoute } from "@tanstack/react-router"
 import { useEffect, useRef, useState } from "react"
+import { BellIcon } from "lucide-react"
 
 type IdeaFilter = "all" | "shortlisted" | "sharpened"
+
+const tickerItems = [
+  "Lorem Ipsum is simply dummy text",
+  "Lorem Ipsum is simply dummy text",
+  "Lorem Ipsum is simply dummy text",
+  "Lorem Ipsum is simply dummy text",
+]
 
 const walkthroughSessionKey = (workshopId: string) =>
   `participant-walkthrough:${workshopId}`
@@ -111,9 +126,6 @@ function ParticipantExperience({
     select: (response) => response.data,
   })
   const selectedTeam = workshop.teams.find((team) => team.ID === selectedTeamId)
-  const selectedCategory = workshop.category.find(
-    (category) => category.ID === selectedCategoryId
-  )
 
   const completeWalkthrough = () => {
     saveWalkthroughCompletion(workshop.ID)
@@ -123,26 +135,23 @@ function ParticipantExperience({
   return (
     <div className="flex h-dvh flex-col">
       <header
+        className="grid h-16"
         style={{
           backgroundColor: workshop.header_bg_color,
           color: workshop.header_txt_color,
         }}
       >
-        <nav className="flex items-center justify-between">
-          <img src={workshop.logoFileName} alt="logo" />
+        <nav className="flex items-center justify-between px-6">
+          <img
+            className="h-10 w-auto invert"
+            src={workshop.logoFileName}
+            alt="logo"
+          />
 
-          <ul className="flex gap-4">
-            <li
-              onClick={() => {
-                setSelectedTeamId(null)
-                setSelectedCategoryId(null)
-                setIdeaFilter("all")
-              }}
-            >
-              Home
-            </li>
-            <li>The Newsroom</li>
-            <li>The Stage</li>
+          <ul className="flex gap-10">
+            <li className="font-medium">Home</li>
+            <li className="font-medium">The Newsroom</li>
+            <li className="font-medium">The Stage</li>
           </ul>
         </nav>
       </header>
@@ -156,12 +165,13 @@ function ParticipantExperience({
           />
         ) : selectedTeam ? (
           <IdeasScreen
+            code={code}
+            visitorId={visitorId}
             teamName={selectedTeam.TeamName}
-            pillarName={selectedCategory?.Name ?? ""}
             teams={workshop.teams}
             categories={workshop.category}
             ideas={ideas}
-            selectedTeamId={selectedTeamId}
+            selectedTeamId={selectedTeam.ID}
             selectedCategoryId={selectedCategoryId}
             ideaFilter={ideaFilter}
             isPending={areIdeasPending}
@@ -177,12 +187,48 @@ function ParticipantExperience({
         )}
       </main>
       <footer
+        className="flex h-12 overflow-hidden border-y border-black/5"
         style={{
           backgroundColor: workshop.ticker_bg_color,
           color: workshop.ticker_txt_color,
         }}
       >
-        Footer
+        <div className="relative z-10 flex shrink-0 items-center bg-inherit pl-4">
+          <span
+            className="px-3 py-1.5 text-xs font-semibold"
+            style={{
+              backgroundColor: workshop.ticker_bg_color,
+              color: workshop.ticker_txt_color,
+            }}
+          >
+            LIVE
+          </span>
+
+          <span className="h-7 border-r border-black/40" />
+        </div>
+
+        <div className="flex min-w-0 flex-1 items-center overflow-hidden">
+          <div className="flex w-max animate-[ticker-scroll_20s_linear_infinite] whitespace-nowrap hover:paused">
+            {[0, 1].map((group) => (
+              <div
+                key={group}
+                className="pointer-events-none flex shrink-0 items-center select-none"
+                aria-hidden={group === 1}
+              >
+                {tickerItems.map((item, index) => (
+                  <div
+                    key={`${group}-${index}`}
+                    className="flex items-center gap-2 px-8"
+                  >
+                    <BellIcon className="size-4 shrink-0" strokeWidth={1.8} />
+
+                    <span className="text-xs font-semibold">{item}</span>
+                  </div>
+                ))}
+              </div>
+            ))}
+          </div>
+        </div>
       </footer>
     </div>
   )
@@ -333,8 +379,9 @@ function TeamsScreen({
 }
 
 function IdeasScreen({
+  code,
+  visitorId,
   teamName,
-  pillarName,
   teams,
   categories,
   ideas,
@@ -346,12 +393,13 @@ function IdeasScreen({
   onCategoryChange,
   onIdeaFilterChange,
 }: {
+  code: string
+  visitorId: string
   teamName: string
-  pillarName: string | null
   teams: ParticipantWorkshop["teams"]
   categories: ParticipantWorkshop["category"]
   ideas: ParticipantIdea[]
-  selectedTeamId: number | null
+  selectedTeamId: number
   selectedCategoryId: number | null
   ideaFilter: IdeaFilter
   isPending: boolean
@@ -360,6 +408,12 @@ function IdeasScreen({
   onIdeaFilterChange: (filter: IdeaFilter) => void
 }) {
   const [isAddIdeaOpen, setIsAddIdeaOpen] = useState(false)
+  const [editingIdea, setEditingIdea] = useState<ParticipantIdea | null>(null)
+
+  const closeIdeaDialog = () => {
+    setIsAddIdeaOpen(false)
+    setEditingIdea(null)
+  }
 
   return (
     <section>
@@ -368,17 +422,26 @@ function IdeasScreen({
         <button
           type="button"
           className="border px-4 py-2"
-          onClick={() => setIsAddIdeaOpen(true)}
+          onClick={() => {
+            setEditingIdea(null)
+            setIsAddIdeaOpen(true)
+          }}
         >
           Add Idea
         </button>
       </div>
 
-      <AddIdeaDialog
+      <IdeaDialog
+        key={editingIdea?.ID ?? "new"}
         open={isAddIdeaOpen}
+        code={code}
+        visitorId={visitorId}
+        teamId={selectedTeamId!}
         teamName={teamName}
-        pillarName={pillarName}
-        onClose={() => setIsAddIdeaOpen(false)}
+        categories={categories}
+        selectedCategoryId={selectedCategoryId}
+        idea={editingIdea}
+        onClose={closeIdeaDialog}
       />
 
       <div className="mb-6 flex flex-wrap gap-4">
@@ -449,7 +512,22 @@ function IdeasScreen({
                 />
               )}
               <p className="font-medium">{idea.Category}</p>
+              {idea.Title && (
+                <h2 className="mt-2 font-semibold">{idea.Title}</h2>
+              )}
               <p className="mt-2 text-sm">{idea.Desc}</p>
+              {idea.flgSelf && (
+                <button
+                  type="button"
+                  className="mt-4 border px-3 py-1.5 text-sm"
+                  onClick={() => {
+                    setEditingIdea(idea)
+                    setIsAddIdeaOpen(true)
+                  }}
+                >
+                  Edit
+                </button>
+              )}
             </li>
           ))}
         </ul>
@@ -460,21 +538,39 @@ function IdeasScreen({
   )
 }
 
-function AddIdeaDialog({
+function IdeaDialog({
   open,
+  code,
+  visitorId,
+  teamId,
   teamName,
-  pillarName,
+  categories,
+  selectedCategoryId,
+  idea,
   onClose,
 }: {
   open: boolean
+  code: string
+  visitorId: string
+  teamId: number
   teamName: string
-  pillarName: string | null
+  categories: ParticipantWorkshop["category"]
+  selectedCategoryId: number | null
+  idea: ParticipantIdea | null
   onClose: () => void
 }) {
   const dialogRef = useRef<HTMLDialogElement>(null)
   const formRef = useRef<HTMLFormElement>(null)
+  const queryClient = useQueryClient()
+  const saveIdeaMutation = useSaveIdea()
+  const ideaCategoryId = idea
+    ? categories.find((category) => category.Name === idea.Category)?.ID
+    : undefined
+  const defaultCategoryId =
+    ideaCategoryId ?? selectedCategoryId ?? categories[0]?.ID
 
   const closeDialog = () => {
+    if (saveIdeaMutation.isPending) return
     formRef.current?.reset()
     onClose()
   }
@@ -490,32 +586,58 @@ function AddIdeaDialog({
   return (
     <dialog
       ref={dialogRef}
-      aria-labelledby="add-idea-title"
+      aria-labelledby="idea-dialog-title"
       className="m-auto w-[min(32rem,calc(100%-2rem))] border bg-white p-0 text-black backdrop:bg-black/50"
       onClose={closeDialog}
     >
       <form
         ref={formRef}
         className="grid gap-5 p-6"
-        onSubmit={(event) => {
+        aria-busy={saveIdeaMutation.isPending}
+        onSubmit={async (event) => {
           event.preventDefault()
-          closeDialog()
+          const formData = new FormData(event.currentTarget)
+
+          try {
+            const response = await saveIdeaMutation.mutateAsync({
+              ...(idea ? { idea_id: idea.ID } : {}),
+              visitor_id: visitorId,
+              workshop_code: code,
+              team_id: teamId,
+              category_id: Number(formData.get("categoryId")),
+              desc: String(formData.get("description")).trim(),
+              title: String(formData.get("title")).trim() || null,
+              context: String(formData.get("context")).trim() || null,
+            })
+
+            await queryClient.invalidateQueries({
+              queryKey: ["PARTICIPANT_IDEAS"],
+            })
+            toast.add({
+              type: "success",
+              title: idea ? "Idea updated" : "Idea added",
+              description: response.message,
+            })
+            closeDialog()
+          } catch {
+            return
+          }
         }}
       >
         <div className="flex items-start justify-between gap-4">
           <div>
-            <h2 id="add-idea-title" className="text-xl font-semibold">
-              Add an idea
+            <h2 id="idea-dialog-title" className="text-xl font-semibold">
+              {idea ? "Edit idea" : "Add an idea"}
             </h2>
             <p className="mt-1 text-sm text-neutral-600">
-              Share a new idea with {teamName}.{" "}
-              {pillarName && `Pillar: ${pillarName}`}
+              {idea ? "Update your idea" : "Share a new idea"} with {teamName}.
             </p>
           </div>
           <button
             type="button"
             className="grid size-9 place-items-center border text-xl leading-none"
             aria-label="Close dialog"
+            disabled={saveIdeaMutation.isPending}
             onClick={closeDialog}
           >
             &times;
@@ -527,10 +649,31 @@ function AddIdeaDialog({
           <input
             name="title"
             type="text"
-
+            defaultValue={idea?.Title ?? ""}
+            disabled={saveIdeaMutation.isPending}
             placeholder="Give your idea a clear title"
             className="w-full border px-3 py-2 outline-none focus:border-black"
           />
+        </label>
+
+        <label className="grid gap-2">
+          <span className="text-sm font-medium">Pillar</span>
+          <select
+            name="categoryId"
+            required
+            defaultValue={defaultCategoryId}
+            disabled={saveIdeaMutation.isPending}
+            className="w-full border px-3 py-2 outline-none focus:border-black"
+          >
+            {categories.length === 0 && (
+              <option value="">No pillars available</option>
+            )}
+            {categories.map((category) => (
+              <option key={category.ID} value={category.ID}>
+                {category.Name}
+              </option>
+            ))}
+          </select>
         </label>
 
         <label className="grid gap-2">
@@ -539,6 +682,8 @@ function AddIdeaDialog({
             name="description"
             required
             autoFocus
+            defaultValue={idea?.Desc ?? ""}
+            disabled={saveIdeaMutation.isPending}
             rows={5}
             placeholder="Describe the idea, the problem it solves, and its impact"
             className="w-full resize-y border px-3 py-2 outline-none focus:border-black"
@@ -550,6 +695,8 @@ function AddIdeaDialog({
           <textarea
             name="context"
             rows={5}
+            defaultValue={idea?.Context ?? ""}
+            disabled={saveIdeaMutation.isPending}
             placeholder="Describe the context in which this idea will be used"
             className="w-full resize-y border px-3 py-2 outline-none focus:border-black"
           />
@@ -559,6 +706,7 @@ function AddIdeaDialog({
           <button
             type="button"
             className="border px-4 py-2"
+            disabled={saveIdeaMutation.isPending}
             onClick={closeDialog}
           >
             Cancel
@@ -566,8 +714,13 @@ function AddIdeaDialog({
           <button
             type="submit"
             className="border border-black bg-black px-4 py-2 text-white"
+            disabled={saveIdeaMutation.isPending || categories.length === 0}
           >
-            Add idea
+            {saveIdeaMutation.isPending
+              ? "Saving..."
+              : idea
+                ? "Save changes"
+                : "Add idea"}
           </button>
         </div>
       </form>
