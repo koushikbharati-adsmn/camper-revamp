@@ -24,10 +24,16 @@ import {
   SparklesIcon,
   SquarePenIcon,
   StarIcon,
+  XIcon,
 } from "lucide-react"
 import useEmblaCarousel from "embla-carousel-react"
 import { formatRelativeDate } from "@/lib/date"
 import { ExperienceButton } from "@/components/experience/experience-button"
+import {
+  ExperienceSelect,
+  ExperienceSelectOption,
+} from "@/components/experience/experience-select"
+import { ExperienceSegmentedControl } from "@/components/experience/experience-segmented-control"
 
 type IdeaFilter = "all" | "shortlisted" | "sharpened"
 
@@ -518,9 +524,10 @@ function IdeasScreen({
       <IdeaDialog
         key={editingIdea?.ID ?? "new"}
         open={isAddIdeaOpen}
+        workshop={workshop}
         code={code}
         visitorId={visitorId}
-        teamId={selectedTeamId!}
+        teamId={selectedTeamId}
         categories={categories}
         selectedCategoryId={selectedCategoryId}
         idea={editingIdea}
@@ -531,68 +538,66 @@ function IdeasScreen({
         {selectedTeamId && (
           <label>
             <span className="sr-only">Team</span>
-            <select
-              className="h-10 w-full rounded-lg border bg-white px-4 text-sm font-medium outline-none focus:border-neutral-900 lg:w-auto lg:min-w-36"
+            <ExperienceSelect
+              workshop={workshop}
               value={selectedTeamId}
               onChange={(event) => onTeamChange(Number(event.target.value))}
+              className="w-full lg:w-auto"
             >
               {teams.map((team) => (
-                <option key={team.ID} value={team.ID}>
+                <ExperienceSelectOption key={team.ID} value={team.ID}>
                   {team.TeamName}
-                </option>
+                </ExperienceSelectOption>
               ))}
-            </select>
+            </ExperienceSelect>
           </label>
         )}
 
         <label>
           <span className="sr-only">Pillar</span>
-          <select
-            className="h-10 w-full rounded-lg border bg-white px-4 text-sm font-medium outline-none focus:border-neutral-900 lg:w-auto lg:min-w-40"
+          <ExperienceSelect
+            workshop={workshop}
             value={selectedCategoryId ?? "all"}
             onChange={(event) =>
               onCategoryChange(
                 event.target.value === "all" ? null : Number(event.target.value)
               )
             }
+            className="w-full lg:w-auto"
           >
-            <option value="all">All pillars</option>
+            <ExperienceSelectOption value="all">
+              All pillars
+            </ExperienceSelectOption>
+
             {categories.map((category) => (
-              <option key={category.ID} value={category.ID}>
+              <ExperienceSelectOption key={category.ID} value={category.ID}>
                 {category.Name}
-              </option>
+              </ExperienceSelectOption>
             ))}
-          </select>
+          </ExperienceSelect>
         </label>
 
         <div className="max-w-full overflow-x-auto">
-          <div
-            className="flex w-max min-w-full rounded-lg border bg-white p-1 lg:min-w-0"
-            role="group"
-            aria-label="Filter ideas"
-          >
-            {(
-              [
-                ["all", "All Ideas"],
-                ["shortlisted", "Shortlisted"],
-                ["sharpened", "Sharpened"],
-              ] as const
-            ).map(([value, label]) => (
-              <button
-                key={value}
-                type="button"
-                className={`shrink-0 rounded-md px-4 py-1.5 text-sm font-medium transition-colors ${
-                  ideaFilter === value
-                    ? "bg-neutral-100 text-neutral-950"
-                    : "text-neutral-600 hover:text-neutral-950"
-                }`}
-                aria-pressed={ideaFilter === value}
-                onClick={() => onIdeaFilterChange(value)}
-              >
-                {label}
-              </button>
-            ))}
-          </div>
+          <ExperienceSegmentedControl
+            value={ideaFilter}
+            options={[
+              {
+                value: "all",
+                label: "All Ideas",
+              },
+              {
+                value: "shortlisted",
+                label: "Shortlisted",
+              },
+              {
+                value: "sharpened",
+                label: "Sharpened",
+              },
+            ]}
+            workshop={workshop}
+            ariaLabel="Filter ideas"
+            onValueChange={onIdeaFilterChange}
+          />
         </div>
       </div>
 
@@ -707,6 +712,7 @@ function IdeasScreen({
 
 function IdeaDialog({
   open,
+  workshop,
   code,
   visitorId,
   teamId,
@@ -716,6 +722,7 @@ function IdeaDialog({
   onClose,
 }: {
   open: boolean
+  workshop: ParticipantWorkshop
   code: string
   visitorId: string
   teamId: number
@@ -726,41 +733,62 @@ function IdeaDialog({
 }) {
   const dialogRef = useRef<HTMLDialogElement>(null)
   const formRef = useRef<HTMLFormElement>(null)
+
   const queryClient = useQueryClient()
   const saveIdeaMutation = useSaveIdea()
+
   const ideaCategoryId = idea
     ? categories.find((category) => category.Name === idea.Category)?.ID
     : undefined
+
   const defaultCategoryId =
     ideaCategoryId ?? selectedCategoryId ?? categories[0]?.ID
 
   const closeDialog = () => {
     if (saveIdeaMutation.isPending) return
+
     formRef.current?.reset()
     onClose()
   }
 
   useEffect(() => {
     const dialog = dialogRef.current
+
     if (!dialog) return
 
-    if (open && !dialog.open) dialog.showModal()
-    if (!open && dialog.open) dialog.close()
+    if (open && !dialog.open) {
+      dialog.showModal()
+    }
+
+    if (!open && dialog.open) {
+      dialog.close()
+    }
   }, [open])
 
   return (
     <dialog
       ref={dialogRef}
       aria-labelledby="idea-dialog-title"
-      className="m-auto w-[min(32rem,calc(100%-2rem))] rounded-lg border bg-white text-black backdrop:bg-black/50"
+      className="fixed inset-0 m-0 h-dvh max-h-dvh w-full max-w-none overflow-hidden border-0 bg-transparent p-0 backdrop:bg-black/50 sm:m-auto sm:h-fit sm:max-h-[calc(100dvh-2rem)] sm:w-[min(40rem,calc(100%-2rem))]"
+      onCancel={(event) => {
+        if (saveIdeaMutation.isPending) {
+          event.preventDefault()
+        }
+      }}
       onClose={closeDialog}
     >
       <form
         ref={formRef}
-        className="grid gap-4 p-4 sm:gap-6 sm:p-6"
+        className="flex h-full max-h-dvh flex-col overflow-hidden sm:h-auto sm:max-h-[calc(100dvh-2rem)] sm:rounded-lg sm:border sm:shadow-lg"
+        style={{
+          backgroundColor: workshop.card_primary_bg_color,
+          borderColor: workshop.card_primary_border_color,
+          color: workshop.txt_primary_color,
+        }}
         aria-busy={saveIdeaMutation.isPending}
         onSubmit={async (event) => {
           event.preventDefault()
+
           const formData = new FormData(event.currentTarget)
 
           try {
@@ -778,107 +806,191 @@ function IdeaDialog({
             await queryClient.invalidateQueries({
               queryKey: ["PARTICIPANT_IDEAS"],
             })
+
             toast.add({
               type: "success",
               title: idea ? "Idea updated" : "Idea added",
               description: response.message,
             })
+
             closeDialog()
           } catch {
             return
           }
         }}
       >
-        <div className="flex items-start justify-between gap-4">
-          <div>
-            <h2 id="idea-dialog-title" className="text-xl font-semibold">
+        {/* Header */}
+        <div
+          className="flex shrink-0 items-center justify-between gap-3 border-b px-4 py-3 sm:px-6 sm:py-4"
+          style={{
+            backgroundColor: workshop.card_primary_bg_color,
+            borderColor: workshop.card_primary_border_color,
+          }}
+        >
+          <div className="min-w-0">
+            <h2
+              id="idea-dialog-title"
+              className="text-lg font-semibold tracking-[-0.02em] sm:text-xl"
+            >
               {idea ? "Edit idea" : "Add an idea"}
             </h2>
-            <p className="mt-1 text-sm text-neutral-600">
-              Pick a pillar. Write the boldest Idea you can.
+
+            <p
+              className="mt-0.5 text-xs sm:mt-1 sm:text-sm"
+              style={{
+                color: workshop.txt_secondary_color,
+              }}
+            >
+              Pick a pillar. Write the boldest idea you can.
             </p>
           </div>
+
           <button
             type="button"
-            className="grid size-9 place-items-center border text-xl leading-none"
+            className="grid size-9 shrink-0 place-items-center rounded-md border transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 disabled:pointer-events-none disabled:opacity-50"
+            style={{
+              borderColor: workshop.card_primary_border_color,
+              outlineColor: workshop.btn_primary_bg_color,
+            }}
             aria-label="Close dialog"
             disabled={saveIdeaMutation.isPending}
             onClick={closeDialog}
           >
-            &times;
+            <XIcon className="size-4" aria-hidden="true" />
           </button>
         </div>
 
-        <label className="grid gap-2">
-          <span className="text-sm font-medium">Pillar</span>
-          <select
-            name="categoryId"
-            required
-            defaultValue={defaultCategoryId}
-            disabled={saveIdeaMutation.isPending}
-            className="w-full rounded-sm border px-3 py-2 outline-none focus:border-black"
-          >
-            {categories.length === 0 && (
-              <option value="">No pillars available</option>
-            )}
-            {categories.map((category) => (
-              <option key={category.ID} value={category.ID}>
-                {category.Name}
-              </option>
-            ))}
-          </select>
-        </label>
+        {/* Scrollable content */}
+        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain sm:flex-none">
+          <div className="grid gap-4 px-4 py-4 sm:gap-5 sm:px-6 sm:py-6">
+            {/* Pillar */}
+            <label className="grid gap-1.5 sm:gap-2">
+              <span className="text-sm font-medium">Pillar</span>
 
-        <label className="grid gap-2">
-          <span className="text-sm font-medium">Description</span>
-          <textarea
-            name="description"
-            required
-            autoFocus
-            defaultValue={idea?.Desc ?? ""}
-            disabled={saveIdeaMutation.isPending}
-            rows={5}
-            placeholder="Describe the idea, the problem it solves, and its impact"
-            className="w-full resize-none rounded-sm border px-3 py-2 outline-none focus:border-black"
-          />
-        </label>
+              <ExperienceSelect
+                workshop={workshop}
+                name="categoryId"
+                required
+                defaultValue={defaultCategoryId}
+                disabled={saveIdeaMutation.isPending}
+                className="w-full"
+              >
+                {categories.length === 0 && (
+                  <ExperienceSelectOption value="">
+                    No pillars available
+                  </ExperienceSelectOption>
+                )}
 
-        <label className="grid gap-2">
-          <span className="text-sm font-medium">Title (Optional)</span>
-          <input
-            name="title"
-            type="text"
-            defaultValue={idea?.title ?? ""}
-            disabled={saveIdeaMutation.isPending}
-            placeholder="Give your idea a clear title"
-            className="w-full rounded-sm border px-3 py-2 outline-none focus:border-black"
-          />
-        </label>
+                {categories.map((category) => (
+                  <ExperienceSelectOption key={category.ID} value={category.ID}>
+                    {category.Name}
+                  </ExperienceSelectOption>
+                ))}
+              </ExperienceSelect>
+            </label>
 
-        <label className="grid gap-2">
-          <span className="text-sm font-medium">Context (Optional)</span>
-          <textarea
-            name="context"
-            rows={5}
-            defaultValue={idea?.Context ?? ""}
-            disabled={saveIdeaMutation.isPending}
-            placeholder="Describe the context in which this idea will be used"
-            className="w-full resize-none rounded-sm border px-3 py-2 outline-none focus:border-black"
-          />
-        </label>
+            {/* Description */}
+            <label className="grid gap-1.5 sm:gap-2">
+              <span className="text-sm font-medium">Description</span>
 
-        <div className="flex justify-end gap-3">
-          <button
+              <textarea
+                name="description"
+                required
+                autoFocus
+                rows={4}
+                defaultValue={idea?.Desc ?? ""}
+                disabled={saveIdeaMutation.isPending}
+                placeholder="Describe the idea, the problem it solves, and its impact"
+                className="min-h-24 w-full resize-none rounded-md border bg-transparent px-3 py-2 text-sm leading-6 transition-colors outline-none focus-visible:outline-2 focus-visible:outline-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                style={{
+                  borderColor: workshop.card_primary_border_color,
+                  outlineColor: workshop.btn_primary_bg_color,
+                }}
+              />
+            </label>
+
+            {/* Title */}
+            <label className="grid gap-1.5 sm:gap-2">
+              <div className="flex items-center gap-2">
+                <span className="text-sm font-medium">Title</span>
+
+                <span
+                  className="text-sm"
+                  style={{
+                    color: workshop.txt_secondary_color,
+                  }}
+                >
+                  (Optional)
+                </span>
+              </div>
+
+              <input
+                name="title"
+                type="text"
+                defaultValue={idea?.title ?? ""}
+                disabled={saveIdeaMutation.isPending}
+                placeholder="Give your idea a clear title"
+                className="h-10 w-full rounded-md border bg-transparent px-3 text-sm transition-colors outline-none focus-visible:outline-2 focus-visible:outline-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                style={{
+                  borderColor: workshop.card_primary_border_color,
+                  outlineColor: workshop.btn_primary_bg_color,
+                }}
+              />
+            </label>
+
+            {/* Context */}
+            <label className="grid gap-1.5 sm:gap-2">
+              <div className="flex items-center gap-2">
+                <span className="text-sm font-medium">Context</span>
+
+                <span
+                  className="text-sm"
+                  style={{
+                    color: workshop.txt_secondary_color,
+                  }}
+                >
+                  (Optional)
+                </span>
+              </div>
+
+              <textarea
+                name="context"
+                rows={4}
+                defaultValue={idea?.Context ?? ""}
+                disabled={saveIdeaMutation.isPending}
+                placeholder="Describe the context in which this idea will be used"
+                className="min-h-24 w-full resize-none rounded-md border bg-transparent px-3 py-2 text-sm leading-6 transition-colors outline-none focus-visible:outline-2 focus-visible:outline-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                style={{
+                  borderColor: workshop.card_primary_border_color,
+                  outlineColor: workshop.btn_primary_bg_color,
+                }}
+              />
+            </label>
+          </div>
+        </div>
+
+        {/* Footer */}
+        <div
+          className="flex shrink-0 items-center justify-end gap-2 border-t px-4 py-3 sm:gap-3 sm:px-6 sm:py-4"
+          style={{
+            backgroundColor: workshop.card_primary_bg_color,
+            borderColor: workshop.card_primary_border_color,
+          }}
+        >
+          <ExperienceButton
             type="button"
-            className="border px-4 py-2"
+            variant="secondary"
+            workshop={workshop}
             disabled={saveIdeaMutation.isPending}
             onClick={closeDialog}
           >
             Cancel
-          </button>
-          <button
+          </ExperienceButton>
+
+          <ExperienceButton
             type="submit"
-            className="border border-black bg-black px-4 py-2 text-white"
+            variant="primary"
+            workshop={workshop}
             disabled={saveIdeaMutation.isPending || categories.length === 0}
           >
             {saveIdeaMutation.isPending
@@ -886,7 +998,7 @@ function IdeaDialog({
               : idea
                 ? "Save changes"
                 : "Add idea"}
-          </button>
+          </ExperienceButton>
         </div>
       </form>
     </dialog>
