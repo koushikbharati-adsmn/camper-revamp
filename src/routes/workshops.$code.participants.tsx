@@ -709,7 +709,9 @@ function IdeasScreen({
                         </button>
                       )}
                     </div>
-                    <SparklesIcon className="size-5" aria-hidden="true" />
+                    {idea.flgCoach && (
+                      <SparklesIcon className="size-5" aria-hidden="true" />
+                    )}
                   </div>
                   <div>
                     <h2 className="text-xl leading-tight font-semibold">

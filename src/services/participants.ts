@@ -129,6 +129,7 @@ export interface ParticipantIdea {
   imageFileName: string // image url
   flgSelf: boolean // self idea
   flgTeam: boolean // shortlisted or not
+  flgCoach: boolean // isSharpened
   CreatedDttm: string
 }
 
