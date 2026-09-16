@@ -7,6 +7,7 @@ import {
   getParticipantWorkshopOptions,
   useGenerateIdeaImage,
   useSaveIdea,
+  useScoutIdea,
   useShortlistIdea,
 } from "@/services/participants"
 import {
@@ -516,10 +517,18 @@ function IdeasScreen({
   onIdeaFilterChange: (filter: IdeaFilter) => void
 }) {
   const [isAddIdeaOpen, setIsAddIdeaOpen] = useState(false)
+  const [isScoutOpen, setIsScoutOpen] = useState(false)
   const [editingIdea, setEditingIdea] = useState<ParticipantIdea | null>(null)
+  const [scoutSuggestions, setScoutSuggestions] = useState<string[] | null>(
+    null
+  )
   const queryClient = useQueryClient()
   const generateIdeaImageMutation = useGenerateIdeaImage()
+  const scoutIdeaMutation = useScoutIdea()
   const shortlistIdeaMutation = useShortlistIdea()
+  const selectedCategory = categories.find(
+    (category) => category.ID === selectedCategoryId
+  )
 
   const closeIdeaDialog = () => {
     setIsAddIdeaOpen(false)
@@ -547,6 +556,25 @@ function IdeasScreen({
     }
   }
 
+  const scoutIdeas = async () => {
+    if (!selectedCategory || ideas.length === 0) return
+
+    setScoutSuggestions(null)
+    setIsScoutOpen(true)
+
+    try {
+      const response = await scoutIdeaMutation.mutateAsync({
+        workshop_code: code,
+        pillar_title: selectedCategory.Name,
+        user_ideas: ideas.map((idea) => idea.Desc),
+      })
+
+      setScoutSuggestions(response.data.text)
+    } catch {
+      return
+    }
+  }
+
   return (
     <section className="container mx-auto w-full p-4 sm:p-6 lg:p-8">
       <IdeaDialog
@@ -560,6 +588,16 @@ function IdeasScreen({
         selectedCategoryId={selectedCategoryId}
         idea={editingIdea}
         onClose={closeIdeaDialog}
+      />
+
+      <ScoutDialog
+        open={isScoutOpen}
+        workshop={workshop}
+        pillarTitle={selectedCategory?.Name ?? ""}
+        suggestions={scoutSuggestions ?? []}
+        isPending={scoutIdeaMutation.isPending}
+        isError={scoutIdeaMutation.isError}
+        onClose={() => setIsScoutOpen(false)}
       />
 
       <div className="mb-6 flex flex-col items-stretch justify-end gap-3 lg:flex-row lg:items-center">
@@ -813,7 +851,171 @@ function IdeasScreen({
           No ideas available for these filters.
         </p>
       )}
+
+      <ExperienceButton
+        variant="primary"
+        workshop={workshop}
+        className="fixed right-4 bottom-16 z-20 flex items-center justify-center gap-2 shadow-lg sm:right-6"
+        disabled={
+          !selectedCategory || ideas.length === 0 || scoutIdeaMutation.isPending
+        }
+        title={
+          selectedCategory
+            ? ideas.length === 0
+              ? "No visible ideas to scout"
+              : undefined
+            : "Select a pillar to use Scout"
+        }
+        onClick={() => void scoutIdeas()}
+      >
+        <SparklesIcon
+          className={`size-4 ${scoutIdeaMutation.isPending ? "animate-pulse" : ""}`}
+          aria-hidden="true"
+        />
+        {scoutIdeaMutation.isPending ? "Scouting..." : "Scout"}
+      </ExperienceButton>
     </section>
+  )
+}
+
+function ScoutDialog({
+  open,
+  workshop,
+  pillarTitle,
+  suggestions,
+  isPending,
+  isError,
+  onClose,
+}: {
+  open: boolean
+  workshop: ParticipantWorkshop
+  pillarTitle: string
+  suggestions: string[]
+  isPending: boolean
+  isError: boolean
+  onClose: () => void
+}) {
+  const dialogRef = useRef<HTMLDialogElement>(null)
+
+  useEffect(() => {
+    const dialog = dialogRef.current
+
+    if (!dialog) return
+
+    if (open && !dialog.open) {
+      dialog.showModal()
+    }
+
+    if (!open && dialog.open) {
+      dialog.close()
+    }
+  }, [open])
+
+  const closeDialog = () => {
+    dialogRef.current?.close()
+  }
+
+  return (
+    <dialog
+      ref={dialogRef}
+      aria-labelledby="scout-dialog-title"
+      className="fixed inset-0 m-auto max-h-[calc(100dvh-2rem)] w-[calc(100%-2rem)] max-w-xl overflow-hidden rounded-lg border bg-transparent p-0 shadow-xl backdrop:bg-black/50"
+      onClose={onClose}
+    >
+      <div
+        className="flex max-h-[calc(100dvh-2rem)] flex-col"
+        style={{
+          backgroundColor: workshop.card_primary_bg_color,
+          color: workshop.txt_primary_color,
+        }}
+      >
+        <header className="flex items-start justify-between gap-4 px-5 pt-5 sm:px-6 sm:pt-6">
+          <div>
+            <h2
+              id="scout-dialog-title"
+              className="text-xl font-semibold tracking-[-0.02em]"
+            >
+              Scout Suggests
+            </h2>
+            <p
+              className="mt-1 text-sm"
+              style={{ color: workshop.txt_secondary_color }}
+            >
+              Three fresh directions inspired by your team&apos;s ideas.
+            </p>
+          </div>
+
+          <button
+            type="button"
+            className="grid size-8 shrink-0 place-items-center rounded-full transition-colors focus-visible:outline-2 focus-visible:outline-offset-2"
+            style={{
+              backgroundColor: workshop.btn_secondary_bg_color,
+              color: workshop.btn_secondary_txt_color,
+              outlineColor: workshop.btn_primary_bg_color,
+            }}
+            aria-label="Close Scout suggestions"
+            onClick={closeDialog}
+          >
+            <XIcon className="size-4" aria-hidden="true" />
+          </button>
+        </header>
+
+        <div
+          className="min-h-0 flex-1 overflow-y-auto px-5 py-5 sm:px-6"
+          aria-busy={isPending}
+        >
+          <div
+            className="rounded-lg border p-4 sm:p-5"
+            style={{
+              backgroundColor: workshop.card_secondary_bg_color,
+              borderColor: workshop.card_primary_border_color,
+              color: workshop.card_secondary_txt_color,
+            }}
+          >
+            <p className="mb-4 text-xs font-semibold tracking-[0.14em] uppercase">
+              {pillarTitle}
+            </p>
+
+            {isPending ? (
+              <div className="grid gap-5" aria-label="Loading suggestions">
+                {Array.from({ length: 3 }, (_, index) => (
+                  <div key={index} className="flex gap-3" aria-hidden="true">
+                    <span className="h-4 w-4 shrink-0 animate-pulse rounded bg-current opacity-10" />
+                    <div className="grid flex-1 gap-2">
+                      <span className="h-3 w-full animate-pulse rounded bg-current opacity-10" />
+                      <span className="h-3 w-5/6 animate-pulse rounded bg-current opacity-10" />
+                      <span className="h-3 w-2/3 animate-pulse rounded bg-current opacity-10" />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : isError ? (
+              <p className="text-sm leading-6">
+                Scout couldn&apos;t generate suggestions. Close this dialog and
+                try again.
+              </p>
+            ) : (
+              <ol className="grid list-decimal gap-4 pl-6 text-sm leading-6 sm:text-base sm:leading-7">
+                {suggestions.map((suggestion, index) => (
+                  <li key={`${index}-${suggestion}`}>{suggestion}</li>
+                ))}
+              </ol>
+            )}
+          </div>
+        </div>
+
+        <footer className="px-5 pb-5 sm:px-6 sm:pb-6">
+          <ExperienceButton
+            variant="primary"
+            workshop={workshop}
+            className="w-full"
+            onClick={closeDialog}
+          >
+            Back
+          </ExperienceButton>
+        </footer>
+      </div>
+    </dialog>
   )
 }
 
