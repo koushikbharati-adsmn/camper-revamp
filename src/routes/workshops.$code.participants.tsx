@@ -15,7 +15,8 @@ import {
 } from "@tanstack/react-query"
 import { createFileRoute } from "@tanstack/react-router"
 import { useEffect, useRef, useState } from "react"
-import { BellIcon } from "lucide-react"
+import { BellIcon, ChevronLeftIcon, ChevronRightIcon } from "lucide-react"
+import useEmblaCarousel from "embla-carousel-react"
 
 type IdeaFilter = "all" | "shortlisted" | "sharpened"
 
@@ -130,7 +131,7 @@ function ParticipantExperience({
           </ul>
         </nav>
       </header>
-      <main className="flex-1 overflow-y-auto p-4 sm:p-6">
+      <main className="flex-1 overflow-y-auto">
         {shouldShowWalkthrough ? (
           <WalkthroughScreen
             key={workshop.ID}
@@ -226,7 +227,7 @@ function WalkthroughScreen({
   if (!currentItem) return null
 
   return (
-    <section className="grid min-h-full place-items-center py-4 sm:py-8">
+    <section className="grid min-h-full place-items-center px-4 py-4 sm:px-6 sm:py-6">
       <div
         className="flex min-h-112 w-full max-w-5xl flex-col overflow-hidden rounded-lg border shadow-xs sm:min-h-128"
         style={{
@@ -346,33 +347,135 @@ function TeamsScreen({
   teams: ParticipantWorkshop["teams"]
   onSelectTeam: (teamId: number) => void
 }) {
-  if (teams.length === 0) return <p>No teams available.</p>
+  const [emblaRef, emblaApi] = useEmblaCarousel({
+    align: "center",
+    loop: true,
+  })
+  const [selectedIndex, setSelectedIndex] = useState(0)
+
+  useEffect(() => {
+    if (!emblaApi) return
+
+    const updateCarouselState = () => {
+      setSelectedIndex(emblaApi.selectedScrollSnap())
+    }
+
+    updateCarouselState()
+    emblaApi.on("select", updateCarouselState)
+    emblaApi.on("reInit", updateCarouselState)
+
+    return () => {
+      emblaApi.off("select", updateCarouselState)
+      emblaApi.off("reInit", updateCarouselState)
+    }
+  }, [emblaApi])
+
+  if (teams.length === 0)
+    return <p className="p-4 sm:p-6">No teams available.</p>
 
   return (
-    <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-      {teams.map((team) => (
-        <li key={team.ID}>
-          <button
-            type="button"
-            className="flex w-full items-center gap-3 border p-4 text-left"
-            style={{ borderColor: team.TeamColorCode }}
-            onClick={() => onSelectTeam(team.ID)}
+    <section
+      className="flex min-h-full flex-col justify-center py-4 sm:py-6"
+      aria-label="Select a team"
+      aria-roledescription="carousel"
+    >
+      <div className="mx-auto w-full max-w-7xl">
+        <div className="relative">
+          <div ref={emblaRef} className="overflow-hidden py-4 sm:py-6">
+            <ul className="-ml-4 flex touch-pan-y sm:-ml-6">
+              {teams.map((team, index) => {
+                const isSelected = index === selectedIndex
+
+                return (
+                  <li
+                    key={team.ID}
+                    className="min-w-0 flex-[0_0_84%] pl-4 sm:flex-[0_0_58%] sm:pl-6 lg:flex-[0_0_38%] xl:flex-[0_0_34%]"
+                    role="group"
+                    aria-roledescription="slide"
+                    aria-label={`${index + 1} of ${teams.length}`}
+                  >
+                    <button
+                      type="button"
+                      className={`flex h-full w-full flex-col overflow-hidden border bg-white text-left transition-[transform,opacity] duration-300 focus-visible:outline-2 focus-visible:outline-offset-4 ${
+                        isSelected
+                          ? "scale-100 opacity-100 sm:scale-105"
+                          : "scale-[0.90] opacity-55"
+                      }`}
+                      onClick={() => onSelectTeam(team.ID)}
+                    >
+                      <div className="aspect-4/3 w-full overflow-hidden bg-neutral-100">
+                        {team.ThumbnailFileName && (
+                          <img
+                            src={team.ThumbnailFileName}
+                            alt=""
+                            className="size-full object-cover"
+                          />
+                        )}
+                      </div>
+
+                      <div className="flex flex-1 flex-col p-4 sm:p-6">
+                        <h2 className="text-center text-xl leading-tight font-semibold tracking-[-0.02em] sm:text-2xl">
+                          {team.TeamName}
+                        </h2>
+                        <p className="text-center text-sm leading-6 text-neutral-600 sm:text-base">
+                          {team.Description}
+                        </p>
+                      </div>
+                    </button>
+                  </li>
+                )
+              })}
+            </ul>
+          </div>
+
+          {teams.length > 1 && (
+            <>
+              <button
+                type="button"
+                className="absolute top-1/2 left-2 z-10 grid size-10 -translate-y-1/2 place-items-center rounded-full border bg-white text-neutral-900 shadow-sm transition-colors hover:bg-neutral-100 focus-visible:outline-2 focus-visible:outline-offset-4 sm:-left-16"
+                aria-label="Previous team"
+                onClick={() => emblaApi?.scrollPrev()}
+              >
+                <ChevronLeftIcon className="size-5" aria-hidden="true" />
+              </button>
+
+              <button
+                type="button"
+                className="absolute top-1/2 right-2 z-10 grid size-10 -translate-y-1/2 place-items-center rounded-full border bg-white text-neutral-900 shadow-sm transition-colors hover:bg-neutral-100 focus-visible:outline-2 focus-visible:outline-offset-4 sm:-right-16"
+                aria-label="Next team"
+                onClick={() => emblaApi?.scrollNext()}
+              >
+                <ChevronRightIcon className="size-5" aria-hidden="true" />
+              </button>
+            </>
+          )}
+        </div>
+
+        {teams.length > 1 && (
+          <div
+            className="mt-4 flex items-center justify-center"
+            aria-label="Choose slide"
           >
-            {team.ThumbnailFileName && (
-              <img
-                src={team.ThumbnailFileName}
-                alt=""
-                className="size-12 object-cover"
-              />
-            )}
-            <span>
-              <span className="block font-medium">{team.TeamName}</span>
-              <span className="block text-sm">{team.Description}</span>
-            </span>
-          </button>
-        </li>
-      ))}
-    </ul>
+            <div className="flex items-center gap-2.5">
+              {teams.map((team, index) => (
+                <button
+                  key={team.ID}
+                  type="button"
+                  className={`size-2.5 rounded-full transition-transform focus-visible:outline-2 focus-visible:outline-offset-4 ${
+                    index === selectedIndex
+                      ? "scale-135 bg-neutral-900"
+                      : "bg-neutral-300"
+                  }`}
+                  aria-label={`Go to ${team.TeamName}`}
+                  aria-current={index === selectedIndex ? "true" : undefined}
+                  onClick={() => emblaApi?.scrollTo(index)}
+                />
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+    </section>
   )
 }
 
@@ -414,7 +517,7 @@ function IdeasScreen({
   }
 
   return (
-    <section>
+    <section className="p-4 sm:p-6">
       <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
         <h1 className="text-2xl font-semibold">{teamName} Ideas</h1>
         <button
