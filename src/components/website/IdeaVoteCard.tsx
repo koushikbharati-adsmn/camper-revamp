@@ -39,7 +39,7 @@ export default function IdeaVoteCard({
 }: IdeaVoteCardProps) {
   const [isFavorite, setIsFavorite] = useState(false)
   const [showConfetti, setShowConfetti] = useState(false)
-  const [_showSparklesConfetti, setShowSparklesConfetti] = useState(false)
+  const [, setShowSparklesConfetti] = useState(false)
 
   const handleFavorite = () => {
     setIsFavorite((favorite) => {
