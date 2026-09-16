@@ -124,11 +124,12 @@ export interface ParticipantIdea {
   TeamName: string
   Category: string
   Desc: string
-  Title?: string | null
-  Context?: string | null
+  title: string | null
+  Context: string | null
   imageFileName: string // image url
-  flgSelf: boolean
+  flgSelf: boolean // self idea
   flgTeam: boolean // shortlisted or not
+  CreatedDttm: string
 }
 
 interface GetParticipantIdeasResponse {

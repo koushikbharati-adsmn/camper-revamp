@@ -15,8 +15,18 @@ import {
 } from "@tanstack/react-query"
 import { createFileRoute } from "@tanstack/react-router"
 import { useEffect, useRef, useState } from "react"
-import { BellIcon, ChevronLeftIcon, ChevronRightIcon } from "lucide-react"
+import {
+  BellIcon,
+  ChevronLeftIcon,
+  ChevronRightIcon,
+  ClockIcon,
+  PlusIcon,
+  SparklesIcon,
+  SquarePenIcon,
+  StarIcon,
+} from "lucide-react"
 import useEmblaCarousel from "embla-carousel-react"
+import { formatRelativeDate } from "@/lib/date"
 
 type IdeaFilter = "all" | "shortlisted" | "sharpened"
 
@@ -56,8 +66,8 @@ function RouteComponent() {
       visitor_id: visitorId,
     }),
     select: (response) => response.data,
-    refetchOnWindowFocus: true,
-    refetchOnMount: true,
+    // refetchOnWindowFocus: true,
+    // refetchOnMount: true,
   })
 
   return (
@@ -141,6 +151,7 @@ function ParticipantExperience({
           />
         ) : selectedTeam ? (
           <IdeasScreen
+            workshop={workshop}
             code={code}
             visitorId={visitorId}
             teamName={selectedTeam.TeamName}
@@ -478,6 +489,7 @@ function TeamsScreen({
 }
 
 function IdeasScreen({
+  workshop,
   code,
   visitorId,
   teamName,
@@ -492,6 +504,7 @@ function IdeasScreen({
   onCategoryChange,
   onIdeaFilterChange,
 }: {
+  workshop: ParticipantWorkshop
   code: string
   visitorId: string
   teamName: string
@@ -515,21 +528,7 @@ function IdeasScreen({
   }
 
   return (
-    <section className="p-4 sm:p-6">
-      <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
-        <h1 className="text-2xl font-semibold">{teamName} Ideas</h1>
-        <button
-          type="button"
-          className="border px-4 py-2"
-          onClick={() => {
-            setEditingIdea(null)
-            setIsAddIdeaOpen(true)
-          }}
-        >
-          Add Idea
-        </button>
-      </div>
-
+    <section className="container mx-auto w-full p-4 sm:p-6 lg:p-8">
       <IdeaDialog
         key={editingIdea?.ID ?? "new"}
         open={isAddIdeaOpen}
@@ -543,12 +542,12 @@ function IdeasScreen({
         onClose={closeIdeaDialog}
       />
 
-      <div className="mb-6 flex flex-wrap gap-4">
+      <div className="mb-6 flex flex-col items-stretch justify-end gap-3 lg:flex-row lg:items-center">
         {selectedTeamId && (
-          <label className="grid gap-1">
-            <span>Team</span>
+          <label>
+            <span className="sr-only">Team</span>
             <select
-              className="border px-3 py-2"
+              className="h-10 w-full rounded-lg border bg-white px-4 text-sm font-medium outline-none focus:border-neutral-900 lg:w-auto lg:min-w-36"
               value={selectedTeamId}
               onChange={(event) => onTeamChange(Number(event.target.value))}
             >
@@ -561,10 +560,10 @@ function IdeasScreen({
           </label>
         )}
 
-        <label className="grid gap-1">
-          <span>Pillar</span>
+        <label>
+          <span className="sr-only">Pillar</span>
           <select
-            className="border px-3 py-2"
+            className="h-10 w-full rounded-lg border bg-white px-4 text-sm font-medium outline-none focus:border-neutral-900 lg:w-auto lg:min-w-40"
             value={selectedCategoryId ?? "all"}
             onChange={(event) =>
               onCategoryChange(
@@ -581,57 +580,146 @@ function IdeasScreen({
           </select>
         </label>
 
-        <label className="grid gap-1">
-          <span>Ideas</span>
-          <select
-            className="border px-3 py-2"
-            value={ideaFilter}
-            onChange={(event) =>
-              onIdeaFilterChange(event.target.value as IdeaFilter)
-            }
+        <div className="max-w-full overflow-x-auto">
+          <div
+            className="flex w-max min-w-full rounded-lg border bg-white p-1 lg:min-w-0"
+            role="group"
+            aria-label="Filter ideas"
           >
-            <option value="all">All ideas</option>
-            <option value="shortlisted">Shortlisted ideas</option>
-            <option value="sharpened">Sharpened ideas</option>
-          </select>
-        </label>
+            {(
+              [
+                ["all", "All"],
+                ["shortlisted", "Shortlisted"],
+                ["sharpened", "Sharpened"],
+              ] as const
+            ).map(([value, label]) => (
+              <button
+                key={value}
+                type="button"
+                className={`shrink-0 rounded-md px-4 py-1.5 text-sm font-medium transition-colors ${
+                  ideaFilter === value
+                    ? "bg-neutral-100 text-neutral-950"
+                    : "text-neutral-600 hover:text-neutral-950"
+                }`}
+                aria-pressed={ideaFilter === value}
+                onClick={() => onIdeaFilterChange(value)}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        </div>
       </div>
 
-      {isPending ? (
-        <p>Loading ideas...</p>
-      ) : ideas.length > 0 ? (
-        <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {ideas.map((idea) => (
-            <li key={idea.ID} className="border p-4">
-              {idea.imageFileName && (
-                <img
-                  src={idea.imageFileName}
-                  alt=""
-                  className="mb-3 aspect-video w-full object-cover"
-                />
-              )}
-              <p className="font-medium">{idea.Category}</p>
-              {idea.Title && (
-                <h2 className="mt-2 font-semibold">{idea.Title}</h2>
-              )}
-              <p className="mt-2 text-sm">{idea.Desc}</p>
-              {idea.flgSelf && (
-                <button
-                  type="button"
-                  className="mt-4 border px-3 py-1.5 text-sm"
-                  onClick={() => {
-                    setEditingIdea(idea)
-                    setIsAddIdeaOpen(true)
-                  }}
-                >
-                  Edit
-                </button>
-              )}
-            </li>
-          ))}
-        </ul>
-      ) : (
-        <p>No ideas available.</p>
+      <ul
+        className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
+        aria-busy={isPending}
+      >
+        <li>
+          <button
+            type="button"
+            className="flex h-full w-full flex-col overflow-hidden rounded-lg border bg-white text-left shadow-xs transition-transform focus-visible:outline-2 focus-visible:outline-offset-4"
+            onClick={() => {
+              setEditingIdea(null)
+              setIsAddIdeaOpen(true)
+            }}
+          >
+            <span className="grid aspect-4/3 w-full place-items-center bg-neutral-100 text-neutral-400">
+              <PlusIcon className="size-9" aria-hidden="true" />
+            </span>
+            <span className="grid flex-1 place-items-center px-4 py-6 text-center text-xl font-semibold tracking-[-0.02em] uppercase">
+              Add new idea
+            </span>
+          </button>
+        </li>
+
+        {isPending
+          ? Array.from({ length: 3 }, (_, index) => (
+              <li
+                key={index}
+                className="min-h-96 animate-pulse overflow-hidden rounded-lg border bg-white shadow-xs sm:min-h-112"
+                aria-hidden="true"
+              >
+                <div className="aspect-4/3 bg-neutral-100" />
+                <div className="space-y-4 p-5">
+                  <div className="h-3 w-20 rounded bg-neutral-100" />
+                  <div className="h-6 w-3/4 rounded bg-neutral-100" />
+                  <div className="h-16 rounded bg-neutral-100" />
+                </div>
+              </li>
+            ))
+          : ideas.map((idea) => (
+              <li
+                key={idea.ID}
+                className="flex flex-col overflow-hidden rounded-lg border bg-white shadow-xs"
+              >
+                <div className="aspect-4/3 w-full overflow-hidden bg-neutral-100">
+                  {idea.imageFileName && (
+                    <img
+                      src={idea.imageFileName}
+                      alt=""
+                      className="size-full object-cover"
+                    />
+                  )}
+                </div>
+
+                <div className="flex flex-1 flex-col gap-4 p-4">
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-3">
+                      <button type="button">
+                        <StarIcon className="size-5" aria-hidden="true" />
+                      </button>
+                      {idea.flgSelf && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setEditingIdea(idea)
+                            setIsAddIdeaOpen(true)
+                          }}
+                        >
+                          <SquarePenIcon
+                            className="size-5"
+                            aria-hidden="true"
+                          />
+                        </button>
+                      )}
+                    </div>
+                    <SparklesIcon className="size-5" aria-hidden="true" />
+                  </div>
+                  <div>
+                    <h2 className="text-xl leading-tight font-semibold">
+                      {idea.title || "Untitled"}
+                    </h2>
+                    <p className="flex items-center gap-2 text-sm text-neutral-600">
+                      <ClockIcon className="size-3.5" />
+                      {formatRelativeDate(idea.CreatedDttm)}
+                    </p>
+                  </div>
+                  <p className="line-clamp-3 text-sm text-neutral-600">
+                    {idea.Desc}
+                  </p>
+
+                  <button
+                    type="button"
+                    className="w-28 rounded-md border px-5 py-2 text-sm font-medium transition-transform focus-visible:outline-2 focus-visible:outline-offset-2"
+                    style={{
+                      backgroundColor: workshop.btn_primary_bg_color,
+                      borderColor: workshop.btn_primary_bg_color,
+                      color: workshop.btn_primary_txt_color,
+                      outlineColor: workshop.btn_primary_bg_color,
+                    }}
+                  >
+                    Sharpen
+                  </button>
+                </div>
+              </li>
+            ))}
+      </ul>
+
+      {!isPending && ideas.length === 0 && (
+        <p className="mt-6 text-center text-sm text-neutral-500">
+          No ideas available for these filters.
+        </p>
       )}
     </section>
   )
@@ -748,7 +836,7 @@ function IdeaDialog({
           <input
             name="title"
             type="text"
-            defaultValue={idea?.Title ?? ""}
+            defaultValue={idea?.title ?? ""}
             disabled={saveIdeaMutation.isPending}
             placeholder="Give your idea a clear title"
             className="w-full border px-3 py-2 outline-none focus:border-black"
