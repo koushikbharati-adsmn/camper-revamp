@@ -1,5 +1,6 @@
 import { toast } from "@/components/ui/toast"
 import apiClient from "@/lib/api-client"
+import type { WorkshopLifecycleStatus } from "@/lib/workshop-lifecycle"
 import {
   queryOptions,
   useMutation,
@@ -7,8 +8,7 @@ import {
 } from "@tanstack/react-query"
 
 export type WorkshopFilterStatus =
-  "in-progress" | "not-started" | "completed" | "all"
-export type WorkshopStatus = "Ideate" | "Vote" | "Completed"
+  "not-started" | "ideate" | "vote" | "completed" | "all"
 
 export interface WorkshopList {
   ID: string
@@ -18,7 +18,7 @@ export interface WorkshopList {
   Desc: string
   TotalIdea: number | null
   logoFileName: string | null
-  status: WorkshopStatus | null
+  status: WorkshopLifecycleStatus
   AdminName: string | null
   CreatedDttm: string
   CreatedBy: string
@@ -67,9 +67,12 @@ export const useResetWorkshop = () => {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: (payload: ResetWorkshopPayload) => resetWorkshop(payload),
-    onSuccess: () => {
+    onSuccess: (_response, payload) => {
       queryClient.invalidateQueries({
         queryKey: ["WORKSHOPS"],
+      })
+      queryClient.invalidateQueries({
+        queryKey: ["WORKSHOP_ID", payload.id],
       })
     },
     onError: (error) => {
@@ -162,50 +165,51 @@ export interface WorkshopById {
   WorkshopContext: string // context
   GuidelineFileName: string // brand guidelines content
   logoFileName: string // logo url
-  PrimaryColor: string // primary color hex code
-  SecondaryColor: string // secondary color hex code
-  PortraitFileName: string // portrait background url
-  LandscapeFileName: string // landscape background url
-  HeadingFontFileName: string // heading font url
-  BodyFontFileName: string // body font url
-  HeaderBGColor?: string
-  HeaderTxtColor?: string
-  PageBGColor?: string
-  TxtPrimaryColor?: string
-  TxtSecondaryColor?: string
-  BtnPrimaryBGColor?: string
-  BtnPrimaryTxtColor?: string
-  BtnSecondaryBGColor?: string
-  BtnSecondaryActiveBGColor?: string
-  BtnSecondaryTxtColor?: string
-  BtnSecondaryBorderColor?: string
-  CardPrimaryBGColor?: string
-  CardPrimaryBorderColor?: string
-  CardPrimaryBorderRadius?: number
-  CardPrimaryBorderWidth?: number
-  CardSecondaryBGColor?: string
-  CardSecondaryBorderRadius?: number
-  CardSecondaryTxtColor?: string
-  TickerLiveBGColor?: string
-  TickerLiveTxtColor?: string
-  TickerBGColor?: string
-  TickerTxtColor?: string
+  page_bg_image: string // background image
+  font_primary_name: string | null
+  font_secondary_name: string | null
+  header_bg_color: string | null
+  header_txt_color: string | null
+  page_bg_color: string | null
+  txt_primary_color: string | null
+  txt_secondary_color: string | null
+  btn_primary_bg_color: string | null
+  btn_primary_txt_color: string | null
+  btn_secondary_bg_color: string | null
+  btn_secondary_active_bg_color: string | null
+  btn_secondary_txt_color: string | null
+  btn_secondary_border_color: string | null
+  card_primary_bg_color: string | null
+  card_primary_border_color: string | null
+  card_primary_border_radius: number | null
+  card_primary_border_width: number | null
+  card_secondary_bg_color: string | null
+  card_secondary_border_radius: number | null
+  card_secondary_txt_color: string | null
+  ticker_live_bg_color: string | null
+  ticker_live_txt_color: string | null
+  ticker_bg_color: string | null
+  ticker_txt_color: string | null
   CreatedBy: number
   CreatedDttm: string
   CreateDate: string
-  ModifiedBy: null | string
+  ModifiedBy: null | number
   ModifiedDttm: string
-  status: WorkshopStatus | null
+  status: WorkshopLifecycleStatus
   ReportFileName: null | string
   IsProtected: boolean // is teams protected with passcode
-  WinningIdeaCount: number
-  VotingScope: "workshop" | "pillar"
-  VotingLimit: number | null
+  winningIdeaCount: number | null
+  votingScope: VotingScope
+  votingLimit: number | null
   TeamSelect: string | null
   IdeationPage: string | null
   ShortlistedIdeaPage: string | null
   StatsBoard: string | null
   VotingPage: string | null
+  placeholder: {
+    ID: string
+    fileName: string
+  }[]
   teams: {
     ID: string
     WorkshopID: string
@@ -245,7 +249,6 @@ export interface WorkshopById {
     Title: string
     Description: string
     DisplayOrder: number
-    IsActive: boolean
     CreatedDttm: string
     WorkshopID: string
   }[]
@@ -314,8 +317,11 @@ export interface AddUpdateWorkshopPayload {
 
   avatar_files: File[] // coach avatars
   team_thumbnails: File[] // team thumbnails
+  placeholder_img_files: File[]
 
   is_changed: boolean
+  is_protected: boolean
+
   winning_idea_count: number
   voting_scope: VotingScope
   voting_limit: number | null
@@ -361,6 +367,12 @@ export interface AddUpdateWorkshopPayload {
     avatarFileName: string | null
     avatarFileIndex: number | null
     isActive: boolean
+    action: WorkshopAction
+  }[]
+  placeholder_img: {
+    id: string | null
+    fileName: string | null
+    placeholderFileIndex: number | null
     action: WorkshopAction
   }[]
 }
@@ -426,18 +438,14 @@ const addUpdateWorkshop = async (payload: AddUpdateWorkshopPayload) => {
   formData.append("ticker_txt_color", payload.ticker_txt_color)
   formData.append("winning_idea_count", String(payload.winning_idea_count))
   formData.append("voting_scope", payload.voting_scope)
-  formData.append(
-    "voting_limit",
-    payload.voting_limit === null ? "null" : String(payload.voting_limit)
-  )
-  formData.append("team_select", payload.team_select ?? "null")
-  formData.append("ideation_page", payload.ideation_page ?? "null")
-  formData.append(
-    "shortlisted_idea_page",
-    payload.shortlisted_idea_page ?? "null"
-  )
-  formData.append("stats_board", payload.stats_board ?? "null")
-  formData.append("voting_page", payload.voting_page ?? "null")
+  if (payload.voting_limit !== null) {
+    formData.append("voting_limit", String(payload.voting_limit))
+  }
+  formData.append("team_select", payload.team_select ?? "")
+  formData.append("ideation_page", payload.ideation_page ?? "")
+  formData.append("shortlisted_idea_page", payload.shortlisted_idea_page ?? "")
+  formData.append("stats_board", payload.stats_board ?? "")
+  formData.append("voting_page", payload.voting_page ?? "")
 
   if (payload.page_bg_image)
     formData.append("page_bg_image", payload.page_bg_image)
@@ -457,12 +465,18 @@ const addUpdateWorkshop = async (payload: AddUpdateWorkshopPayload) => {
     formData.append("team_thumbnails", file)
   })
 
+  payload.placeholder_img_files.forEach((file) => {
+    formData.append("placeholder_img_files", file)
+  })
+
   formData.append("teams", JSON.stringify(payload.teams))
   formData.append("categories", JSON.stringify(payload.categories))
   formData.append("coach", JSON.stringify(payload.coach))
   formData.append("welcome", JSON.stringify(payload.walkThrough))
+  formData.append("placeholder_img", JSON.stringify(payload.placeholder_img))
 
   formData.append("is_changed", String(payload.is_changed))
+  formData.append("is_protected", String(payload.is_protected))
 
   const res = await apiClient.post<AddUpdateWorkshopResponse>(
     "/admin/workshop",

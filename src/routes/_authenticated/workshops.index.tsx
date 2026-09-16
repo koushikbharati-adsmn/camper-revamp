@@ -34,6 +34,7 @@ import {
 import { Skeleton } from "@/components/ui/skeleton"
 import { Spinner } from "@/components/ui/spinner"
 import { toast } from "@/components/ui/toast"
+import { formatRelativeDate } from "@/lib/date"
 import {
   Select,
   SelectContent,
@@ -44,8 +45,11 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import {
+  type WorkshopLifecycleStatus,
+  getWorkshopPhase,
+} from "@/lib/workshop-lifecycle"
+import {
   type WorkshopList,
-  type WorkshopStatus,
   getWorkshopsOptions,
   useDeleteWorkshop,
   useDuplicateWorkshop,
@@ -58,7 +62,6 @@ import {
   Link,
   useRouter,
 } from "@tanstack/react-router"
-import { formatDistanceToNow } from "date-fns"
 import {
   ClipboardIcon,
   CopyIcon,
@@ -77,9 +80,10 @@ import * as z from "zod"
 
 const workshopFilterStatusSchema = z.enum([
   "all",
-  "completed",
   "not-started",
-  "in-progress",
+  "ideate",
+  "vote",
+  "completed",
 ])
 
 export const Route = createFileRoute("/_authenticated/workshops/")({
@@ -97,10 +101,11 @@ export const Route = createFileRoute("/_authenticated/workshops/")({
 })
 
 const items = [
-  { label: "Select a status", value: "all" },
-  { label: "Completed", value: "completed" },
+  { label: "All Workshops", value: "all" },
   { label: "Not Started", value: "not-started" },
-  { label: "In Progress", value: "in-progress" },
+  { label: "Ideate", value: "ideate" },
+  { label: "Vote", value: "vote" },
+  { label: "Completed", value: "completed" },
 ]
 
 function RouteComponent() {
@@ -237,7 +242,7 @@ function WorkshopCard({
           <div className="min-w-0">
             <CardTitle className="truncate">{workshop.Name}</CardTitle>
             <CardDescription>
-              {formatCreatedDate(workshop.CreatedDttm)}
+              Created {formatRelativeDate(workshop.CreatedDttm)}
             </CardDescription>
           </div>
         </div>
@@ -369,8 +374,8 @@ function WorkshopActionDialog({
         description: response.message,
       })
       onOpenChange(false)
-    } finally {
-      onOpenChange(false)
+    } catch {
+      // Mutation hooks surface API errors while the dialog remains open to retry.
     }
   }
 
@@ -478,41 +483,20 @@ function WorkshopLogo({
 }
 
 function getDisplayStatus(
-  status: WorkshopStatus | null,
+  status: WorkshopLifecycleStatus,
   isPromptReady: boolean
 ) {
   if (!isPromptReady) {
     return {
       label: "Generating Prompt",
-      className: "bg-blue-100 text-blue-700",
-    }
-  }
-  if (status === "Completed") {
-    return {
-      label: "Completed",
-      className: "bg-green-100 text-green-700",
+      className:
+        "bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300",
     }
   }
 
-  if (status === "Ideate" || status === "Vote") {
-    return {
-      label: "In Progress",
-      className: "bg-amber-100 text-amber-700",
-    }
-  }
+  const phase = getWorkshopPhase(status)
 
-  return {
-    label: "Not Started",
-    className: "bg-zinc-100 text-zinc-700",
-  }
-}
-
-function formatCreatedDate(value: string) {
-  const date = new Date(value)
-
-  if (Number.isNaN(date.getTime())) return "Created date unavailable"
-
-  return `Created ${formatDistanceToNow(date, { addSuffix: true })}`
+  return { label: phase.label, className: phase.badgeClassName }
 }
 
 function WorkshopsPending() {

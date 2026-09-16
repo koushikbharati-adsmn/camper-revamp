@@ -43,7 +43,7 @@ function RouteComponent() {
     <SidebarProvider className="h-svh overflow-hidden">
       <AppSidebar user={user} />
       <SidebarInset className="min-h-0 overflow-hidden">
-        <header className="flex h-15 shrink-0 items-center gap-2 border-b border-border px-4 py-3.5">
+        <header className="flex h-12 shrink-0 items-center gap-2 border-b border-border px-4 py-3 md:h-16 md:py-3.5">
           <SidebarTrigger className="-ml-1" />
           <img
             className="h-full w-full dark:invert"

@@ -33,6 +33,7 @@ import { Spinner } from "@/components/ui/spinner"
 import { Switch } from "@/components/ui/switch"
 import { Textarea } from "@/components/ui/textarea"
 import { toast } from "@/components/ui/toast"
+import { formatRelativeDate } from "@/lib/date"
 import { cn } from "@/lib/utils"
 import {
   getWalkthroughOptions,
@@ -66,7 +67,6 @@ import {
   type ErrorComponentProps,
   useRouter,
 } from "@tanstack/react-router"
-import { format } from "date-fns"
 import {
   GripVerticalIcon,
   InfoIcon,
@@ -337,7 +337,7 @@ function SortableWalkthroughCard({
               <span className="h-3 w-px bg-border" aria-hidden="true" />
 
               <p className="text-xs text-muted-foreground">
-                Created {formatCreatedDate(walkthrough.CreatedDttm)}
+                Created {formatRelativeDate(walkthrough.CreatedDttm)}
               </p>
             </div>
           </div>
@@ -491,7 +491,7 @@ function WalkthroughEditorDialog({
             </DialogDescription>
           </DialogHeader>
 
-          <FieldGroup>
+          <FieldGroup className="no-scrollbar max-h-[70vh] overflow-y-auto">
             <form.Field
               name="title"
               children={(field) => {
@@ -701,12 +701,6 @@ function WalkthroughsEmpty() {
       </p>
     </div>
   )
-}
-
-function formatCreatedDate(value: number) {
-  const date = new Date(value < 1_000_000_000_000 ? value * 1000 : value)
-
-  return Number.isNaN(date.getTime()) ? "Unknown" : format(date, "MMM d, yyyy")
 }
 
 function WalkthroughsPending() {

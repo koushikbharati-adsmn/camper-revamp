@@ -62,6 +62,7 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { toast } from "@/components/ui/toast"
+import { formatRelativeDate } from "@/lib/date"
 import { getInitials, getRolesLabel } from "@/lib/utils"
 import {
   getUsersOptions,
@@ -77,7 +78,6 @@ import {
   type ErrorComponentProps,
   useRouter,
 } from "@tanstack/react-router"
-import { format } from "date-fns"
 import {
   EllipsisIcon,
   PencilIcon,
@@ -350,7 +350,7 @@ function UsersTable({
               <StatusBadge isActive={user.isActive} />
             </TableCell>
             <TableCell className="hidden text-muted-foreground lg:table-cell">
-              {formatCreatedDate(user.CreatedDttm)}
+              {formatRelativeDate(user.CreatedDttm)}
             </TableCell>
             <TableCell>
               <UserActions
@@ -395,7 +395,7 @@ function UserCard({
         <RoleBadge role={user.Role} />
         <StatusBadge isActive={user.isActive} />
         <span className="ml-auto text-xs text-muted-foreground">
-          {formatCreatedDate(user.CreatedDttm)}
+          Created {formatRelativeDate(user.CreatedDttm)}
         </span>
       </CardContent>
     </Card>
@@ -584,7 +584,7 @@ function UserEditorDialog({
             </DialogDescription>
           </DialogHeader>
 
-          <FieldGroup className="min-h-0 flex-1 overflow-y-auto">
+          <FieldGroup className="no-scrollbar max-h-[70vh] overflow-y-auto">
             <form.Field
               name="name"
               children={(field) => {
@@ -833,11 +833,6 @@ function UsersEmpty({ hasSearch }: { hasSearch: boolean }) {
       </p>
     </div>
   )
-}
-
-function formatCreatedDate(value: number) {
-  const date = new Date(value < 1_000_000_000_000 ? value * 1000 : value)
-  return Number.isNaN(date.getTime()) ? "Unknown" : format(date, "PPPp")
 }
 
 function UsersPending() {

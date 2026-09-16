@@ -51,6 +51,7 @@ import { Switch } from "@/components/ui/switch"
 import { Textarea } from "@/components/ui/textarea"
 import { toast } from "@/components/ui/toast"
 import { COACH_PRESET_AVATARS } from "@/lib/constants"
+import { formatRelativeDate } from "@/lib/date"
 import { cn, getInitials } from "@/lib/utils"
 import {
   type CoachItem,
@@ -65,7 +66,6 @@ import {
   type ErrorComponentProps,
   useRouter,
 } from "@tanstack/react-router"
-import { formatDistanceToNow } from "date-fns"
 import {
   EllipsisIcon,
   FileTextIcon,
@@ -276,13 +276,10 @@ function CoachCard({
         </p>
       </CardContent>
 
-      <CardFooter className="mt-auto justify-between gap-3">
+      <CardFooter className="mt-auto justify-between gap-3 bg-card">
         <CoachStatusBadge isActive={coach.IsActive} />
-        <span
-          className="truncate text-xs"
-          style={{ color: secondaryTextColor }}
-        >
-          {formatCreatedDate(coach.CreatedDttm)}
+        <span className="truncate text-xs">
+          Created {formatRelativeDate(coach.CreatedDttm)}
         </span>
       </CardFooter>
     </Card>
@@ -386,7 +383,7 @@ function CoachEditorDialog({
         if (!saveCoachMutation.isPending) onOpenChange(nextOpen)
       }}
     >
-      <DialogContent className="max-h-[calc(100dvh-2rem)] overflow-y-auto sm:max-w-xl">
+      <DialogContent className="sm:max-w-xl">
         <form
           noValidate
           aria-busy={saveCoachMutation.isPending}
@@ -405,7 +402,7 @@ function CoachEditorDialog({
             </DialogDescription>
           </DialogHeader>
 
-          <FieldGroup>
+          <FieldGroup className="no-scrollbar max-h-[70vh] overflow-y-auto">
             <form.Field
               name="name"
               children={(field) => {
@@ -741,7 +738,7 @@ function CoachPromptDialog({
             </DialogDescription>
           </DialogHeader>
 
-          <FieldGroup>
+          <FieldGroup className="no-scrollbar max-h-[70vh] overflow-y-auto">
             <form.Field
               name="prompt"
               children={(field) => {
@@ -867,14 +864,6 @@ function CoachesEmpty() {
       </p>
     </div>
   )
-}
-
-function formatCreatedDate(value: string) {
-  const date = new Date(value)
-
-  if (Number.isNaN(date.getTime())) return "Created date unavailable"
-
-  return `Created ${formatDistanceToNow(date, { addSuffix: true })}`
 }
 
 function getCoachColor(value: string | null | undefined, fallback: string) {

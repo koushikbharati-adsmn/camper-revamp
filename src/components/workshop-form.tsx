@@ -65,6 +65,8 @@ import {
   CheckIcon,
   FileIcon,
   GripVerticalIcon,
+  ImageIcon,
+  PaletteIcon,
   PlusIcon,
   Trash2Icon,
   UploadIcon,
@@ -75,6 +77,12 @@ import { COACH_PRESET_AVATARS } from "@/lib/constants"
 
 type Upload = File | string | null
 type ThemeTab = "colors" | "assets"
+
+type PlaceholderImage = {
+  id: string | null
+  fileName: string
+  file: File | null
+}
 
 type Pillar = { id: string; title: string; context: string }
 type WalkthroughMessage = { id: string; title: string; description: string }
@@ -145,6 +153,7 @@ export type WorkshopFormValue = {
   shortlistedIdeaPage: string
   statsBoard: string
   votingPage: string
+  placeholderImages: PlaceholderImage[]
 }
 
 const steps = [
@@ -199,6 +208,7 @@ const workshopFieldSteps: Partial<Record<keyof WorkshopFormValue, number>> = {
   shortlistedIdeaPage: 6,
   statsBoard: 6,
   votingPage: 6,
+  placeholderImages: 6,
 }
 
 const DEFAULT_COACH_COLORS = {
@@ -262,6 +272,7 @@ const initialWorkshop: WorkshopFormValue = {
   shortlistedIdeaPage: "The stage",
   statsBoard: "The newsroom",
   votingPage: "The ballot",
+  placeholderImages: [],
 }
 
 function getInitialWalkthroughMessages(
@@ -329,62 +340,69 @@ export function createEditWorkshopFormValue(
     context: workshop.WorkshopContext,
     guidelines: workshop.GuidelineFileName,
     headerBackgroundColor:
-      workshop.HeaderBGColor ?? initialWorkshop.headerBackgroundColor,
-    headerTextColor: workshop.HeaderTxtColor ?? initialWorkshop.headerTextColor,
+      workshop.header_bg_color ?? initialWorkshop.headerBackgroundColor,
+    headerTextColor:
+      workshop.header_txt_color ?? initialWorkshop.headerTextColor,
     pageBackgroundColor:
-      workshop.PageBGColor ?? initialWorkshop.pageBackgroundColor,
+      workshop.page_bg_color ?? initialWorkshop.pageBackgroundColor,
     primaryTextColor:
-      workshop.TxtPrimaryColor ?? initialWorkshop.primaryTextColor,
+      workshop.txt_primary_color ?? initialWorkshop.primaryTextColor,
     secondaryTextColor:
-      workshop.TxtSecondaryColor ?? initialWorkshop.secondaryTextColor,
+      workshop.txt_secondary_color ?? initialWorkshop.secondaryTextColor,
     primaryButtonBackgroundColor:
-      workshop.BtnPrimaryBGColor ??
+      workshop.btn_primary_bg_color ??
       initialWorkshop.primaryButtonBackgroundColor,
     primaryButtonTextColor:
-      workshop.BtnPrimaryTxtColor ?? initialWorkshop.primaryButtonTextColor,
+      workshop.btn_primary_txt_color ?? initialWorkshop.primaryButtonTextColor,
     secondaryButtonBackgroundColor:
-      workshop.BtnSecondaryBGColor ??
+      workshop.btn_secondary_bg_color ??
       initialWorkshop.secondaryButtonBackgroundColor,
     secondaryButtonActiveBackgroundColor:
-      workshop.BtnSecondaryActiveBGColor ??
+      workshop.btn_secondary_active_bg_color ??
       initialWorkshop.secondaryButtonActiveBackgroundColor,
     secondaryButtonTextColor:
-      workshop.BtnSecondaryTxtColor ?? initialWorkshop.secondaryButtonTextColor,
+      workshop.btn_secondary_txt_color ??
+      initialWorkshop.secondaryButtonTextColor,
     secondaryButtonBorderColor:
-      workshop.BtnSecondaryBorderColor ??
+      workshop.btn_secondary_border_color ??
       initialWorkshop.secondaryButtonBorderColor,
     primaryCardBackgroundColor:
-      workshop.CardPrimaryBGColor ?? initialWorkshop.primaryCardBackgroundColor,
+      workshop.card_primary_bg_color ??
+      initialWorkshop.primaryCardBackgroundColor,
     primaryCardBorderColor:
-      workshop.CardPrimaryBorderColor ?? initialWorkshop.primaryCardBorderColor,
+      workshop.card_primary_border_color ??
+      initialWorkshop.primaryCardBorderColor,
     primaryCardBorderRadius: String(
-      workshop.CardPrimaryBorderRadius ??
+      workshop.card_primary_border_radius ??
         initialWorkshop.primaryCardBorderRadius
     ),
     primaryCardBorderWidth: String(
-      workshop.CardPrimaryBorderWidth ?? initialWorkshop.primaryCardBorderWidth
+      workshop.card_primary_border_width ??
+        initialWorkshop.primaryCardBorderWidth
     ),
     secondaryCardBackgroundColor:
-      workshop.CardSecondaryBGColor ??
+      workshop.card_secondary_bg_color ??
       initialWorkshop.secondaryCardBackgroundColor,
     secondaryCardBorderRadius: String(
-      workshop.CardSecondaryBorderRadius ??
+      workshop.card_secondary_border_radius ??
         initialWorkshop.secondaryCardBorderRadius
     ),
     secondaryCardTextColor:
-      workshop.CardSecondaryTxtColor ?? initialWorkshop.secondaryCardTextColor,
+      workshop.card_secondary_txt_color ??
+      initialWorkshop.secondaryCardTextColor,
     tickerLiveBackgroundColor:
-      workshop.TickerLiveBGColor ?? initialWorkshop.tickerLiveBackgroundColor,
+      workshop.ticker_live_bg_color ??
+      initialWorkshop.tickerLiveBackgroundColor,
     tickerLiveTextColor:
-      workshop.TickerLiveTxtColor ?? initialWorkshop.tickerLiveTextColor,
+      workshop.ticker_live_txt_color ?? initialWorkshop.tickerLiveTextColor,
     tickerBackgroundColor:
-      workshop.TickerBGColor ?? initialWorkshop.tickerBackgroundColor,
-    tickerTextColor: workshop.TickerTxtColor ?? initialWorkshop.tickerTextColor,
+      workshop.ticker_bg_color ?? initialWorkshop.tickerBackgroundColor,
+    tickerTextColor:
+      workshop.ticker_txt_color ?? initialWorkshop.tickerTextColor,
     logo: workshop.logoFileName || null,
-    pageBackgroundImage:
-      workshop.LandscapeFileName || workshop.PortraitFileName || null,
-    primaryFont: workshop.HeadingFontFileName || null,
-    secondaryFont: workshop.BodyFontFileName || null,
+    pageBackgroundImage: workshop.page_bg_image || null,
+    primaryFont: workshop.font_primary_name || null,
+    secondaryFont: workshop.font_secondary_name || null,
     pillars: workshop.categories.map((category) => ({
       id: category.ID,
       title: category.Name,
@@ -393,9 +411,9 @@ export function createEditWorkshopFormValue(
     teams: workshop.teams.map((team) => ({
       id: team.ID,
       name: team.TeamName,
-      color: team.TeamColorCode,
+      color: team.TeamColorCode || "#D9FF00",
       thumbnail: team.ThumbnailFileName || null,
-      description: team.Description,
+      description: team.Description ?? "",
       passcode: team.TeamCode ?? "",
     })),
     walkthroughMessages: [...workshop.walkThrough]
@@ -411,11 +429,11 @@ export function createEditWorkshopFormValue(
       })),
     usePasscode: workshop.IsProtected,
     coaches: workshop.coaches.map((coach) => ({
-      id: String(coach.CoachID),
+      id: coach.ID,
       key: coach.CoachKey,
       name: coach.CoachName,
-      title: coach.Title,
-      description: coach.Description,
+      title: coach.Title ?? "",
+      description: coach.Description ?? "",
       backgroundColor: getCoachColor(
         coach.BGColor,
         DEFAULT_COACH_COLORS.background
@@ -431,16 +449,21 @@ export function createEditWorkshopFormValue(
       avatar: coach.AvatarFileName,
       enabled: coach.IsActive,
     })),
-    winningIdeaCount: String(workshop.WinningIdeaCount ?? 1),
-    votingScope: workshop.VotingScope === "pillar" ? "pillar" : "workshop",
+    winningIdeaCount: String(workshop.winningIdeaCount ?? 1),
+    votingScope: workshop.votingScope ?? initialWorkshop.votingScope,
     votingLimit:
-      workshop.VotingLimit == null ? null : String(workshop.VotingLimit),
+      workshop.votingLimit == null ? null : String(workshop.votingLimit),
     teamSelect: workshop.TeamSelect ?? initialWorkshop.teamSelect,
     ideationPage: workshop.IdeationPage ?? initialWorkshop.ideationPage,
     shortlistedIdeaPage:
       workshop.ShortlistedIdeaPage ?? initialWorkshop.shortlistedIdeaPage,
     statsBoard: workshop.StatsBoard ?? initialWorkshop.statsBoard,
     votingPage: workshop.VotingPage ?? initialWorkshop.votingPage,
+    placeholderImages: workshop.placeholder.map((image) => ({
+      id: image.ID,
+      fileName: image.fileName,
+      file: null,
+    })),
   }
 }
 
@@ -450,7 +473,6 @@ function getStepErrors(step: number, workshop: WorkshopFormValue) {
   if (step === 0) {
     for (const [field, label] of [
       ["title", "Title"],
-      ["assignee", "Assignee"],
       ["brand", "Brand"],
       ["subtitle", "Subtitle"],
       ["context", "Workshop context"],
@@ -598,6 +620,25 @@ function getStepErrors(step: number, workshop: WorkshopFormValue) {
       !isPositiveInteger(workshop.votingLimit)
     )
       nextErrors.votingLimit = "Enter a whole number of at least one."
+
+    for (const [field, label] of [
+      ["teamSelect", "Team select"],
+      ["ideationPage", "Ideation page"],
+      ["shortlistedIdeaPage", "Shortlisted idea page"],
+      ["statsBoard", "Stats board"],
+      ["votingPage", "Voting page"],
+    ] as const) {
+      if (!workshop[field].trim()) {
+        nextErrors[field] = `${label} is required.`
+      }
+    }
+
+    if (
+      workshop.placeholderImages.some(
+        (image) => !isImageUpload(image.file ?? image.fileName)
+      )
+    )
+      nextErrors.placeholderImages = "Every placeholder must be an image file."
   }
 
   return nextErrors
@@ -1219,28 +1260,29 @@ function IdentityStep({
             )}
           </Field>
 
-          <Field data-invalid={!!errors.assignee} data-error-key="assignee">
-            <FieldLabel htmlFor="workshop-assignee">Assignee</FieldLabel>
+          <Field>
+            <FieldLabel htmlFor="workshop-assignee">
+              Assignee
+              <span className="font-normal text-muted-foreground">
+                (Optional)
+              </span>
+            </FieldLabel>
             <Select
-              value={workshop.assignee}
+              value={workshop.assignee || null}
               onValueChange={(value) => update("assignee", value ?? "")}
-              items={users.map((user) => ({
-                value: String(user.UserID),
-                label: user.Name,
-              }))}
+              items={[
+                { value: null, label: "Unassigned" },
+                ...users.map((user) => ({
+                  value: String(user.UserID),
+                  label: user.Name,
+                })),
+              ]}
             >
-              <SelectTrigger
-                id="workshop-assignee"
-                aria-invalid={!!errors.assignee}
-                aria-required="true"
-                aria-describedby={
-                  errors.assignee ? "workshop-assignee-error" : undefined
-                }
-                data-error-control
-              >
+              <SelectTrigger id="workshop-assignee" data-error-control>
                 <SelectValue placeholder="Select an assignee" />
               </SelectTrigger>
               <SelectContent>
+                <SelectItem value={null}>Unassigned</SelectItem>
                 {users.map((user) => (
                   <SelectItem key={user.UserID} value={String(user.UserID)}>
                     {user.Name}
@@ -1248,11 +1290,6 @@ function IdentityStep({
                 ))}
               </SelectContent>
             </Select>
-            {errors.assignee && (
-              <FieldError id="workshop-assignee-error">
-                {errors.assignee}
-              </FieldError>
-            )}
           </Field>
 
           <Field data-invalid={!!errors.brand} data-error-key="brand">
@@ -1553,8 +1590,14 @@ function ThemeStep({
         aria-label="Theme sections"
         className="mb-6 grid w-full grid-cols-2 border-b border-border group-data-horizontal/tabs:h-10!"
       >
-        <TabsTrigger value="colors">Colors</TabsTrigger>
-        <TabsTrigger value="assets">Assets</TabsTrigger>
+        <TabsTrigger value="colors">
+          <PaletteIcon />
+          Colors
+        </TabsTrigger>
+        <TabsTrigger value="assets">
+          <ImageIcon />
+          Assets
+        </TabsTrigger>
       </TabsList>
 
       <TabsContent value="colors">
@@ -1835,6 +1878,122 @@ function FileField({
           <span>Choose {label.toLowerCase()}</span>
         </Button>
       )}
+      {error && <FieldError id={`${id}-error`}>{error}</FieldError>}
+    </Field>
+  )
+}
+
+function MultipleImageField({
+  id,
+  errorKey,
+  label,
+  description,
+  value,
+  onChange,
+  error,
+}: {
+  id: string
+  errorKey: string
+  label: string
+  description: string
+  value: PlaceholderImage[]
+  onChange: (images: PlaceholderImage[]) => void
+  error?: string
+}) {
+  const inputRef = useRef<HTMLInputElement>(null)
+  const describedBy = `${id}-description${error ? ` ${id}-error` : ""}`
+
+  const selectFiles = () => {
+    if (!inputRef.current) return
+    inputRef.current.value = ""
+    inputRef.current.click()
+  }
+
+  return (
+    <Field data-invalid={!!error} data-error-key={errorKey}>
+      <div className="space-y-1">
+        <FieldLabel htmlFor={id}>{label}</FieldLabel>
+        <FieldDescription id={`${id}-description`}>
+          {description}
+        </FieldDescription>
+      </div>
+      <input
+        id={id}
+        ref={inputRef}
+        type="file"
+        multiple
+        accept="image/*"
+        className="sr-only"
+        tabIndex={-1}
+        aria-invalid={!!error}
+        aria-describedby={describedBy}
+        onChange={(event) => {
+          const files = Array.from(event.target.files ?? [])
+          if (files.length) {
+            onChange([
+              ...value,
+              ...files.map((file) => ({
+                id: null,
+                fileName: file.name,
+                file,
+              })),
+            ])
+          }
+          event.target.value = ""
+        }}
+      />
+      <div className="grid grid-cols-[repeat(auto-fill,minmax(min(14rem,100%),1fr))] gap-3">
+        {value.map((image, index) => (
+          <div
+            key={
+              image.id ??
+              `${image.fileName}-${image.file?.lastModified}-${image.file?.size}-${index}`
+            }
+            className="relative flex min-h-24 items-center gap-3 border border-input p-3 pr-11"
+          >
+            <div className="flex size-16 shrink-0 items-center justify-center bg-muted p-1">
+              <FilePreview file={image.file ?? image.fileName} />
+            </div>
+            <div className="min-w-0 flex-1">
+              <p
+                className="truncate text-xs font-medium"
+                title={getUploadName(image.file ?? image.fileName)}
+              >
+                {getUploadName(image.file ?? image.fileName)}
+              </p>
+              <p className="mt-1 text-[11px] text-muted-foreground">
+                {image.file
+                  ? `${(image.file.size / 1024).toFixed(0)} KB`
+                  : "Existing file"}
+              </p>
+            </div>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon-sm"
+              className="absolute top-2 right-2"
+              aria-label={`Remove ${getUploadName(image.file ?? image.fileName)}`}
+              onClick={() =>
+                onChange(value.filter((_, itemIndex) => itemIndex !== index))
+              }
+            >
+              <XIcon />
+            </Button>
+          </div>
+        ))}
+        <Button
+          type="button"
+          variant="outline"
+          data-error-control
+          aria-invalid={!!error}
+          aria-describedby={describedBy}
+          className="h-24 w-full flex-col gap-2 border-dashed text-muted-foreground hover:text-foreground"
+          onClick={selectFiles}
+        >
+          <UploadIcon />
+          <span>{value.length ? "Add more images" : "Choose images"}</span>
+        </Button>
+      </div>
       {error && <FieldError id={`${id}-error`}>{error}</FieldError>}
     </Field>
   )
@@ -3193,7 +3352,11 @@ function SettingsStep({
             const descriptionId = `${inputId}-description`
 
             return (
-              <Field key={field}>
+              <Field
+                key={field}
+                data-invalid={!!errors[field]}
+                data-error-key={field}
+              >
                 <div className="space-y-1">
                   <FieldLabel htmlFor={inputId}>{label}</FieldLabel>
                   <FieldDescription id={descriptionId}>
@@ -3204,12 +3367,39 @@ function SettingsStep({
                   id={inputId}
                   value={workshop[field]}
                   onChange={(event) => update(field, event.target.value)}
-                  aria-describedby={descriptionId}
+                  aria-invalid={!!errors[field]}
+                  aria-required="true"
+                  aria-describedby={`${descriptionId}${
+                    errors[field] ? ` ${inputId}-error` : ""
+                  }`}
+                  data-error-control
                 />
+                {errors[field] && (
+                  <FieldError id={`${inputId}-error`}>
+                    {errors[field]}
+                  </FieldError>
+                )}
               </Field>
             )
           })}
         </div>
+      </section>
+
+      <section aria-labelledby="settings-placeholder-images-heading">
+        <FormSectionHeader
+          id="settings-placeholder-images-heading"
+          title="Placeholder images"
+          description="Add reusable placeholder artwork for workshop content."
+        />
+        <MultipleImageField
+          id="workshop-placeholder-images"
+          errorKey="placeholderImages"
+          label="Images"
+          description="Select one or more image files. Additional selections are added to the existing list."
+          value={workshop.placeholderImages}
+          onChange={(files) => update("placeholderImages", files)}
+          error={errors.placeholderImages}
+        />
       </section>
     </div>
   )

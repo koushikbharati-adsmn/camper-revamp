@@ -19,6 +19,7 @@ import { Route as AuthenticatedUsersRouteImport } from './routes/_authenticated/
 import { Route as AuthenticatedWalkthroughsRouteImport } from './routes/_authenticated/walkthroughs'
 import { Route as AuthenticatedWorkshopsIndexRouteImport } from './routes/_authenticated/workshops.index'
 import { Route as AuthenticatedWorkshopsNewRouteImport } from './routes/_authenticated/workshops.new'
+import { Route as WorkshopsCodeParticipantsRouteImport } from './routes/workshops.$code.participants'
 import { Route as WorkshopsIdBigScreenRouteImport } from './routes/workshops.$id.big-screen'
 import { Route as AuthenticatedWorkshopsCodeManageRouteImport } from './routes/_authenticated/workshops.$code.manage'
 import { Route as AuthenticatedWorkshopsIdEditRouteImport } from './routes/_authenticated/workshops.$id.edit'
@@ -75,6 +76,12 @@ const AuthenticatedWorkshopsNewRoute =
     path: '/workshops/new',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const WorkshopsCodeParticipantsRoute =
+  WorkshopsCodeParticipantsRouteImport.update({
+    id: '/workshops/$code/participants',
+    path: '/workshops/$code/participants',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const WorkshopsIdBigScreenRoute = WorkshopsIdBigScreenRouteImport.update({
   id: '/workshops/$id/big-screen',
   path: '/workshops/$id/big-screen',
@@ -102,6 +109,7 @@ export interface FileRoutesByFullPath {
   '/users': typeof AuthenticatedUsersRoute
   '/walkthroughs': typeof AuthenticatedWalkthroughsRoute
   '/workshops/new': typeof AuthenticatedWorkshopsNewRoute
+  '/workshops/$code/participants': typeof WorkshopsCodeParticipantsRoute
   '/workshops/$id/big-screen': typeof WorkshopsIdBigScreenRoute
   '/workshops/': typeof AuthenticatedWorkshopsIndexRoute
   '/workshops/$code/manage': typeof AuthenticatedWorkshopsCodeManageRoute
@@ -116,6 +124,7 @@ export interface FileRoutesByTo {
   '/users': typeof AuthenticatedUsersRoute
   '/walkthroughs': typeof AuthenticatedWalkthroughsRoute
   '/workshops/new': typeof AuthenticatedWorkshopsNewRoute
+  '/workshops/$code/participants': typeof WorkshopsCodeParticipantsRoute
   '/workshops/$id/big-screen': typeof WorkshopsIdBigScreenRoute
   '/workshops': typeof AuthenticatedWorkshopsIndexRoute
   '/workshops/$code/manage': typeof AuthenticatedWorkshopsCodeManageRoute
@@ -132,6 +141,7 @@ export interface FileRoutesById {
   '/_authenticated/users': typeof AuthenticatedUsersRoute
   '/_authenticated/walkthroughs': typeof AuthenticatedWalkthroughsRoute
   '/_authenticated/workshops/new': typeof AuthenticatedWorkshopsNewRoute
+  '/workshops/$code/participants': typeof WorkshopsCodeParticipantsRoute
   '/workshops/$id/big-screen': typeof WorkshopsIdBigScreenRoute
   '/_authenticated/workshops/': typeof AuthenticatedWorkshopsIndexRoute
   '/_authenticated/workshops/$code/manage': typeof AuthenticatedWorkshopsCodeManageRoute
@@ -148,6 +158,7 @@ export interface FileRouteTypes {
     | '/users'
     | '/walkthroughs'
     | '/workshops/new'
+    | '/workshops/$code/participants'
     | '/workshops/$id/big-screen'
     | '/workshops/'
     | '/workshops/$code/manage'
@@ -162,6 +173,7 @@ export interface FileRouteTypes {
     | '/users'
     | '/walkthroughs'
     | '/workshops/new'
+    | '/workshops/$code/participants'
     | '/workshops/$id/big-screen'
     | '/workshops'
     | '/workshops/$code/manage'
@@ -177,6 +189,7 @@ export interface FileRouteTypes {
     | '/_authenticated/users'
     | '/_authenticated/walkthroughs'
     | '/_authenticated/workshops/new'
+    | '/workshops/$code/participants'
     | '/workshops/$id/big-screen'
     | '/_authenticated/workshops/'
     | '/_authenticated/workshops/$code/manage'
@@ -189,6 +202,7 @@ export interface RootRouteChildren {
   LoginRoute: typeof LoginRoute
   PrivacyPolicyRoute: typeof PrivacyPolicyRoute
   TermsAndConditionsRoute: typeof TermsAndConditionsRoute
+  WorkshopsCodeParticipantsRoute: typeof WorkshopsCodeParticipantsRoute
   WorkshopsIdBigScreenRoute: typeof WorkshopsIdBigScreenRoute
 }
 
@@ -264,6 +278,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedWorkshopsNewRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/workshops/$code/participants': {
+      id: '/workshops/$code/participants'
+      path: '/workshops/$code/participants'
+      fullPath: '/workshops/$code/participants'
+      preLoaderRoute: typeof WorkshopsCodeParticipantsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/workshops/$id/big-screen': {
       id: '/workshops/$id/big-screen'
       path: '/workshops/$id/big-screen'
@@ -317,6 +338,7 @@ const rootRouteChildren: RootRouteChildren = {
   LoginRoute: LoginRoute,
   PrivacyPolicyRoute: PrivacyPolicyRoute,
   TermsAndConditionsRoute: TermsAndConditionsRoute,
+  WorkshopsCodeParticipantsRoute: WorkshopsCodeParticipantsRoute,
   WorkshopsIdBigScreenRoute: WorkshopsIdBigScreenRoute,
 }
 export const routeTree = rootRouteImport
