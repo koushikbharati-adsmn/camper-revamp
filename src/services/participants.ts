@@ -125,7 +125,7 @@ export interface ParticipantIdea {
   Category: string
   Desc: string
   imageFileName: string // image url
-  flgSelf: boolean // self idea or not
+  flgSelf: boolean
   flgTeam: boolean // shortlisted or not
 }
 
@@ -167,7 +167,8 @@ interface SaveIdeaPayload {
   team_id: number
   category_id: number
   desc: string
-  title: string
+  title: string | null
+  context: string | null
 }
 
 interface SaveIdeaResponse {
@@ -262,6 +263,39 @@ export const useGenerateIdeaImage = () => {
   return useMutation({
     mutationFn: (payload: GenerateIdeaImagePayload) =>
       generateIdeaImage(payload),
+    onError: (error) => {
+      toast.add({
+        type: "error",
+        title: "Oops! Something went wrong",
+        description: error.message,
+      })
+    },
+  })
+}
+
+interface ScoutIdeaPayload {
+  workshop_code: string
+  pillar_title: string
+  user_ideas: string[]
+}
+
+interface ScoutIdeaResponse {
+  success: boolean
+  data: {
+    status: string
+    ref_id: string
+    text: string
+  }
+}
+
+const scoutIdea = async (payload: ScoutIdeaPayload) => {
+  const res = await apiClient.post<ScoutIdeaResponse>("/ai/scout", payload)
+  return res.data
+}
+
+export const useScoutIdea = () => {
+  return useMutation({
+    mutationFn: (payload: ScoutIdeaPayload) => scoutIdea(payload),
     onError: (error) => {
       toast.add({
         type: "error",

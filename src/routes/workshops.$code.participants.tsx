@@ -59,6 +59,8 @@ function RouteComponent() {
       visitor_id: visitorId,
     }),
     select: (response) => response.data,
+    refetchOnWindowFocus: true,
+    refetchOnMount: true,
   })
 
   return (
@@ -521,12 +523,11 @@ function AddIdeaDialog({
         </div>
 
         <label className="grid gap-2">
-          <span className="text-sm font-medium">Title</span>
+          <span className="text-sm font-medium">Title (Optional)</span>
           <input
             name="title"
             type="text"
-            required
-            autoFocus
+
             placeholder="Give your idea a clear title"
             className="w-full border px-3 py-2 outline-none focus:border-black"
           />
@@ -537,8 +538,19 @@ function AddIdeaDialog({
           <textarea
             name="description"
             required
+            autoFocus
             rows={5}
             placeholder="Describe the idea, the problem it solves, and its impact"
+            className="w-full resize-y border px-3 py-2 outline-none focus:border-black"
+          />
+        </label>
+
+        <label className="grid gap-2">
+          <span className="text-sm font-medium">Context (Optional)</span>
+          <textarea
+            name="context"
+            rows={5}
+            placeholder="Describe the context in which this idea will be used"
             className="w-full resize-y border px-3 py-2 outline-none focus:border-black"
           />
         </label>
