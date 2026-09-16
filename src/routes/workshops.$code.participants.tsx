@@ -27,6 +27,7 @@ import {
 } from "lucide-react"
 import useEmblaCarousel from "embla-carousel-react"
 import { formatRelativeDate } from "@/lib/date"
+import { ExperienceButton } from "@/components/experience/experience-button"
 
 type IdeaFilter = "all" | "shortlisted" | "sharpened"
 
@@ -154,7 +155,6 @@ function ParticipantExperience({
             workshop={workshop}
             code={code}
             visitorId={visitorId}
-            teamName={selectedTeam.TeamName}
             teams={workshop.teams}
             categories={workshop.category}
             ideas={ideas}
@@ -310,30 +310,18 @@ function WalkthroughScreen({
           style={{ borderColor: workshop.card_primary_border_color }}
         >
           {!isFirstItem && (
-            <button
-              type="button"
-              className="min-w-28 rounded-md border px-5 py-2 text-sm font-medium transition-transform focus-visible:outline-2 focus-visible:outline-offset-2"
-              style={{
-                backgroundColor: workshop.btn_secondary_bg_color,
-                borderColor: workshop.btn_secondary_border_color,
-                color: workshop.btn_secondary_txt_color,
-                outlineColor: workshop.btn_secondary_border_color,
-              }}
+            <ExperienceButton
+              variant="secondary"
+              workshop={workshop}
               onClick={() => setCurrentIndex((index) => index - 1)}
             >
               Previous
-            </button>
+            </ExperienceButton>
           )}
 
-          <button
-            type="button"
-            className="min-w-28 rounded-md border px-5 py-2 text-sm font-medium transition-transform focus-visible:outline-2 focus-visible:outline-offset-2"
-            style={{
-              backgroundColor: workshop.btn_primary_bg_color,
-              borderColor: workshop.btn_primary_bg_color,
-              color: workshop.btn_primary_txt_color,
-              outlineColor: workshop.btn_primary_bg_color,
-            }}
+          <ExperienceButton
+            variant="primary"
+            workshop={workshop}
             onClick={() => {
               if (isLastItem) {
                 onBegin()
@@ -344,7 +332,7 @@ function WalkthroughScreen({
             }}
           >
             {isLastItem ? "Begin" : "Next"}
-          </button>
+          </ExperienceButton>
         </div>
       </div>
     </section>
@@ -492,7 +480,6 @@ function IdeasScreen({
   workshop,
   code,
   visitorId,
-  teamName,
   teams,
   categories,
   ideas,
@@ -507,7 +494,6 @@ function IdeasScreen({
   workshop: ParticipantWorkshop
   code: string
   visitorId: string
-  teamName: string
   teams: ParticipantWorkshop["teams"]
   categories: ParticipantWorkshop["category"]
   ideas: ParticipantIdea[]
@@ -535,7 +521,6 @@ function IdeasScreen({
         code={code}
         visitorId={visitorId}
         teamId={selectedTeamId!}
-        teamName={teamName}
         categories={categories}
         selectedCategoryId={selectedCategoryId}
         idea={editingIdea}
@@ -588,7 +573,7 @@ function IdeasScreen({
           >
             {(
               [
-                ["all", "All"],
+                ["all", "All Ideas"],
                 ["shortlisted", "Shortlisted"],
                 ["sharpened", "Sharpened"],
               ] as const
@@ -699,18 +684,13 @@ function IdeasScreen({
                     {idea.Desc}
                   </p>
 
-                  <button
-                    type="button"
-                    className="w-28 rounded-md border px-5 py-2 text-sm font-medium transition-transform focus-visible:outline-2 focus-visible:outline-offset-2"
-                    style={{
-                      backgroundColor: workshop.btn_primary_bg_color,
-                      borderColor: workshop.btn_primary_bg_color,
-                      color: workshop.btn_primary_txt_color,
-                      outlineColor: workshop.btn_primary_bg_color,
-                    }}
+                  <ExperienceButton
+                    variant="primary"
+                    workshop={workshop}
+                    className="w-28"
                   >
                     Sharpen
-                  </button>
+                  </ExperienceButton>
                 </div>
               </li>
             ))}
@@ -730,7 +710,6 @@ function IdeaDialog({
   code,
   visitorId,
   teamId,
-  teamName,
   categories,
   selectedCategoryId,
   idea,
@@ -740,7 +719,6 @@ function IdeaDialog({
   code: string
   visitorId: string
   teamId: number
-  teamName: string
   categories: ParticipantWorkshop["category"]
   selectedCategoryId: number | null
   idea: ParticipantIdea | null
@@ -774,12 +752,12 @@ function IdeaDialog({
     <dialog
       ref={dialogRef}
       aria-labelledby="idea-dialog-title"
-      className="m-auto w-[min(32rem,calc(100%-2rem))] border bg-white p-0 text-black backdrop:bg-black/50"
+      className="m-auto w-[min(32rem,calc(100%-2rem))] rounded-lg border bg-white text-black backdrop:bg-black/50"
       onClose={closeDialog}
     >
       <form
         ref={formRef}
-        className="grid gap-5 p-6"
+        className="grid gap-4 p-4 sm:gap-6 sm:p-6"
         aria-busy={saveIdeaMutation.isPending}
         onSubmit={async (event) => {
           event.preventDefault()
@@ -817,7 +795,7 @@ function IdeaDialog({
               {idea ? "Edit idea" : "Add an idea"}
             </h2>
             <p className="mt-1 text-sm text-neutral-600">
-              {idea ? "Update your idea" : "Share a new idea"} with {teamName}.
+              Pick a pillar. Write the boldest Idea you can.
             </p>
           </div>
           <button
@@ -832,25 +810,13 @@ function IdeaDialog({
         </div>
 
         <label className="grid gap-2">
-          <span className="text-sm font-medium">Title (Optional)</span>
-          <input
-            name="title"
-            type="text"
-            defaultValue={idea?.title ?? ""}
-            disabled={saveIdeaMutation.isPending}
-            placeholder="Give your idea a clear title"
-            className="w-full border px-3 py-2 outline-none focus:border-black"
-          />
-        </label>
-
-        <label className="grid gap-2">
           <span className="text-sm font-medium">Pillar</span>
           <select
             name="categoryId"
             required
             defaultValue={defaultCategoryId}
             disabled={saveIdeaMutation.isPending}
-            className="w-full border px-3 py-2 outline-none focus:border-black"
+            className="w-full rounded-sm border px-3 py-2 outline-none focus:border-black"
           >
             {categories.length === 0 && (
               <option value="">No pillars available</option>
@@ -873,7 +839,19 @@ function IdeaDialog({
             disabled={saveIdeaMutation.isPending}
             rows={5}
             placeholder="Describe the idea, the problem it solves, and its impact"
-            className="w-full resize-y border px-3 py-2 outline-none focus:border-black"
+            className="w-full resize-none rounded-sm border px-3 py-2 outline-none focus:border-black"
+          />
+        </label>
+
+        <label className="grid gap-2">
+          <span className="text-sm font-medium">Title (Optional)</span>
+          <input
+            name="title"
+            type="text"
+            defaultValue={idea?.title ?? ""}
+            disabled={saveIdeaMutation.isPending}
+            placeholder="Give your idea a clear title"
+            className="w-full rounded-sm border px-3 py-2 outline-none focus:border-black"
           />
         </label>
 
@@ -885,11 +863,11 @@ function IdeaDialog({
             defaultValue={idea?.Context ?? ""}
             disabled={saveIdeaMutation.isPending}
             placeholder="Describe the context in which this idea will be used"
-            className="w-full resize-y border px-3 py-2 outline-none focus:border-black"
+            className="w-full resize-none rounded-sm border px-3 py-2 outline-none focus:border-black"
           />
         </label>
 
-        <div className="flex justify-end gap-3 border-t pt-5">
+        <div className="flex justify-end gap-3">
           <button
             type="button"
             className="border px-4 py-2"
