@@ -396,7 +396,7 @@ function TeamsScreen({
                   >
                     <button
                       type="button"
-                      className={`flex h-full w-full flex-col overflow-hidden border bg-white text-left transition-[transform,opacity] duration-300 focus-visible:outline-2 focus-visible:outline-offset-4 ${
+                      className={`flex h-full w-full flex-col overflow-hidden rounded-md border bg-white text-left shadow-xs transition-[transform,opacity] duration-300 focus-visible:outline-2 focus-visible:outline-offset-4 ${
                         isSelected
                           ? "scale-100 opacity-100 sm:scale-105"
                           : "scale-[0.90] opacity-55"
@@ -404,13 +404,11 @@ function TeamsScreen({
                       onClick={() => onSelectTeam(team.ID)}
                     >
                       <div className="aspect-4/3 w-full overflow-hidden bg-neutral-100">
-                        {team.ThumbnailFileName && (
-                          <img
-                            src={team.ThumbnailFileName}
-                            alt=""
-                            className="size-full object-cover"
-                          />
-                        )}
+                        <img
+                          src={team.ThumbnailFileName}
+                          alt=""
+                          className="size-full object-cover"
+                        />
                       </div>
 
                       <div className="flex flex-1 flex-col p-4 sm:p-6">
