@@ -238,20 +238,18 @@ export const useShortlistIdea = () => {
 }
 
 interface GenerateIdeaImagePayload {
+  idea_id: number
   workshop_code: string
   pillar_context: string
   workshop_context: string
-  user_idea: string
-  branding_guidelines: string
+  user_idea: string // idea description
+  brand_guidelines: string
 }
 
 interface GenerateIdeaImageResponse {
   success: boolean
   data: {
-    status: string
-    image: string
-    ref_id: string
-    workshop_code: string
+    image: string // image url
   }
 }
 

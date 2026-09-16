@@ -5,6 +5,7 @@ import {
   type ParticipantWorkshop,
   getParticipantIdeasOptions,
   getParticipantWorkshopOptions,
+  useGenerateIdeaImage,
   useSaveIdea,
   useShortlistIdea,
 } from "@/services/participants"
@@ -21,7 +22,9 @@ import {
   ChevronLeftIcon,
   ChevronRightIcon,
   ClockIcon,
+  ImagePlusIcon,
   PlusIcon,
+  RefreshCwIcon,
   SparklesIcon,
   SquarePenIcon,
   StarIcon,
@@ -515,11 +518,33 @@ function IdeasScreen({
   const [isAddIdeaOpen, setIsAddIdeaOpen] = useState(false)
   const [editingIdea, setEditingIdea] = useState<ParticipantIdea | null>(null)
   const queryClient = useQueryClient()
+  const generateIdeaImageMutation = useGenerateIdeaImage()
   const shortlistIdeaMutation = useShortlistIdea()
 
   const closeIdeaDialog = () => {
     setIsAddIdeaOpen(false)
     setEditingIdea(null)
+  }
+
+  const generateIdeaImage = async (idea: ParticipantIdea) => {
+    try {
+      await generateIdeaImageMutation.mutateAsync({
+        idea_id: idea.ID,
+        workshop_code: code,
+        pillar_context:
+          categories.find((category) => category.Name === idea.Category)
+            ?.Context ?? "",
+        workshop_context: workshop.WorkshopContext,
+        user_idea: idea.Desc,
+        brand_guidelines: workshop.GuidelineFileName,
+      })
+
+      await queryClient.invalidateQueries({
+        queryKey: ["PARTICIPANT_IDEAS"],
+      })
+    } catch {
+      return
+    }
   }
 
   return (
@@ -646,13 +671,58 @@ function IdeasScreen({
                 key={idea.ID}
                 className="flex flex-col overflow-hidden rounded-lg border bg-white shadow-xs"
               >
-                <div className="aspect-4/3 w-full overflow-hidden bg-neutral-100">
-                  {idea.imageFileName && (
-                    <img
-                      src={idea.imageFileName}
-                      alt=""
-                      className="size-full object-cover"
-                    />
+                <div className="relative aspect-4/3 w-full overflow-hidden bg-neutral-100">
+                  {idea.imageFileName ? (
+                    <>
+                      <img
+                        src={idea.imageFileName}
+                        alt={idea.title || "idea"}
+                        className="size-full object-contain"
+                      />
+                      <button
+                        type="button"
+                        className="absolute right-2 bottom-2 grid size-8 place-content-center rounded-md bg-neutral-950 text-white disabled:cursor-wait disabled:opacity-50"
+                        aria-label={`Regenerate the image for ${idea.title || "idea"}`}
+                        aria-busy={
+                          generateIdeaImageMutation.isPending &&
+                          generateIdeaImageMutation.variables.idea_id ===
+                            idea.ID
+                        }
+                        disabled={generateIdeaImageMutation.isPending}
+                        onClick={() => void generateIdeaImage(idea)}
+                      >
+                        <RefreshCwIcon
+                          className={`size-4 ${
+                            generateIdeaImageMutation.isPending &&
+                            generateIdeaImageMutation.variables.idea_id ===
+                              idea.ID
+                              ? "animate-spin"
+                              : ""
+                          }`}
+                          aria-hidden="true"
+                        />
+                      </button>
+                    </>
+                  ) : (
+                    <button
+                      type="button"
+                      className="flex h-full w-full flex-col items-center justify-center gap-2 text-neutral-400 disabled:cursor-wait disabled:opacity-50"
+                      aria-label={`Generate an image for ${idea.title || "idea"}`}
+                      aria-busy={
+                        generateIdeaImageMutation.isPending &&
+                        generateIdeaImageMutation.variables.idea_id === idea.ID
+                      }
+                      disabled={generateIdeaImageMutation.isPending}
+                      onClick={() => void generateIdeaImage(idea)}
+                    >
+                      <ImagePlusIcon className="size-9" aria-hidden="true" />
+                      <span>
+                        {generateIdeaImageMutation.isPending &&
+                        generateIdeaImageMutation.variables.idea_id === idea.ID
+                          ? "Generating Idea Card..."
+                          : "Click to Generate Idea Card"}
+                      </span>
+                    </button>
                   )}
                 </div>
 
