@@ -6,17 +6,17 @@ import { createFileRoute } from "@tanstack/react-router"
 import { formatRelativeDate } from "@/lib/date"
 import { getIdeasOptions, getWorkshopOptions } from "@/services/bigscreen"
 
-import ActivityList from "@/components/ActivityList/ActivityList"
-import Button from "@/components/Button/Button"
-import FieldInput from "@/components/FieldInput/FieldInput"
-import IdeaViewModal from "@/components/IdeaViewModal/IdeaViewModal"
-import IdeaVoteCard from "@/components/IdeaVoteCard/IdeaVoteCard"
-import ModalOverlay from "@/components/ModalOverlay/ModalOverlay"
-import NewsroomStats from "@/components/NewsroomStats/NewsroomStats"
-import NewsroomStatsSummary from "@/components/NewsroomStats/NewsroomStatsSummary"
-import Select from "@/components/Select/Select"
-import TextArea from "@/components/TextArea/TextArea"
-import TickerMarqueeSection from "@/components/TickerSection/TickerMarqueeSection"
+import ActivityList from "@/components/website/ActivityList"
+import Button from "@/components/website/Button"
+import FieldInput from "@/components/website/FieldInput"
+import IdeaViewModal from "@/components/website/IdeaViewModal"
+import IdeaVoteCard from "@/components/website/IdeaVoteCard"
+import ModalOverlay from "@/components/website/ModalOverlay"
+import NewsroomStats from "@/components/website/NewsroomStats"
+import NewsroomStatsSummary from "@/components/website/NewsroomStatsSummary"
+import Select from "@/components/website/Select"
+import TextArea from "@/components/website/TextArea"
+import TickerMarqueeSection from "@/components/website/TickerMarqueeSection"
 
 export const Route = createFileRoute("/workshops/$id/big-screen")({
   component: RouteComponent,
@@ -196,9 +196,11 @@ function RouteComponent() {
                     <h1 className="m-0 line-clamp-2 font-phudu-black text-2xl leading-normal md:text-4xl">
                       {workshop?.Name ?? "Workshop"}
                     </h1>
-                    <p className="m-0 line-clamp-2 font-ogilvy-r text-sm leading-[1.4] font-medium tracking-wide text-theme1 uppercase">
-                      SHARE YOUR BEST THINKING
-                    </p>
+                    {workshop?.Desc && (
+                      <p className="m-0 line-clamp-2 font-ogilvy-r text-sm leading-[1.4] font-medium tracking-wide text-theme1">
+                        {workshop.Desc}
+                      </p>
+                    )}
                   </div>
                   {/*
                     Fixed height so the toolbar takes up the same space
@@ -320,7 +322,7 @@ function RouteComponent() {
                           {ideas.map((idea, index) => (
                             <div
                               key={`${idea.title}-${index}`}
-                              className="min-w-0 overflow-hidden rounded-2xl border border-theme7 bg-theme2 transition-all duration-300 hover:-translate-y-1 [&_.idea-vote-card]:h-full [&_.idea-vote-card]:rounded-none [&_.idea-vote-card]:border-0 [&_.idea-vote-card]:shadow-none [&_.idea-vote-card]:transition-none [&_.idea-vote-card:hover]:translate-y-0 [&_.idea-vote-card:hover]:shadow-none"
+                              className="min-w-0 overflow-hidden rounded-2xl border border-theme7 bg-theme2 transition-all duration-300 hover:-translate-y-1"
                             >
                               <IdeaVoteCard
                                 showSparkles={false}
@@ -333,6 +335,7 @@ function RouteComponent() {
                                 viewLabel="Present"
                                 onView={() => setSelectedIdeaIndex(index)}
                                 onEdit={() => handleEditIdea(index)}
+                                className="h-full rounded-none border-0 shadow-none transition-none hover:translate-y-0 hover:shadow-none"
                               />
                             </div>
                           ))}
@@ -414,7 +417,7 @@ function RouteComponent() {
         onClose={() => setSelectedIdeaIndex(null)}
         idea={selectedIdea}
         pillarLabel={selectedPillar?.label}
-        className="w-full max-w-5xl rounded-2xl [&_.modal-overlay__header]:absolute [&_.modal-overlay__header]:top-4 [&_.modal-overlay__header]:right-4 [&_.modal-overlay__header]:z-10 [&_.modal-overlay__close]:bg-theme10"
+        className="w-full max-w-5xl rounded-2xl"
         onNext={() =>
           setSelectedIdeaIndex(((selectedIdeaIndex ?? 0) + 1) % ideas.length)
         }

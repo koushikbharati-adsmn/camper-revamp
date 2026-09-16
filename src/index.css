@@ -310,7 +310,83 @@ body,
 } */
 
 /* =========================================================
-   Color Picker Layout 
+   WEBSITE COMPONENT ANIMATIONS (workshop / big-screen / stage pages)
+   Referenced from components/website/* via Tailwind's arbitrary
+   animate-[name_duration_easing_fill] utility — kept here since a
+   @keyframes rule has to live in a real stylesheet, not a className.
+========================================================= */
+
+@keyframes big-screen-section-fade {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes modal-overlay-fade {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes modal-dialog-in {
+  from {
+    opacity: 0;
+    transform: scale(0.96) translateY(12px);
+  }
+
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+@keyframes vote-card-confetti {
+  0% {
+    opacity: 1;
+    transform: translate(-50%, 0) scale(0.5);
+  }
+
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -22px) scale(1.4) rotate(25deg);
+  }
+}
+
+@keyframes ticker-scroll {
+  from {
+    transform: translateX(0);
+  }
+
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+@keyframes ticker-indicator {
+  0%,
+  100% {
+    opacity: 0.45;
+    transform: scale(0.8);
+  }
+
+  50% {
+    opacity: 1;
+    transform: scale(1.15);
+  }
+}
+
+/* =========================================================
+   Color Picker Layout
 ========================================================= */
 
 .color-picker-layout .react-colorful__saturation {
