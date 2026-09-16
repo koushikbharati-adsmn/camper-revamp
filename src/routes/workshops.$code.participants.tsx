@@ -26,25 +26,6 @@ const tickerItems = [
   "Lorem Ipsum is simply dummy text",
 ]
 
-const walkthroughSessionKey = (workshopId: string) =>
-  `participant-walkthrough:${workshopId}`
-
-function hasCompletedWalkthrough(workshopId: string) {
-  try {
-    return sessionStorage.getItem(walkthroughSessionKey(workshopId)) === "true"
-  } catch {
-    return false
-  }
-}
-
-function saveWalkthroughCompletion(workshopId: string) {
-  try {
-    sessionStorage.setItem(walkthroughSessionKey(workshopId), "true")
-  } catch {
-    // In-memory state still prevents the walkthrough from repeating this visit.
-  }
-}
-
 const visitorIdOptions = queryOptions({
   queryKey: ["PARTICIPANT_VISITOR_ID"],
   queryFn: getVisitorId,
@@ -101,17 +82,13 @@ function ParticipantExperience({
     (first, second) => first.DisplayOrder - second.DisplayOrder
   )
   const [shouldShowWalkthrough, setShouldShowWalkthrough] = useState(
-    () => walkthroughItems.length > 0 && !hasCompletedWalkthrough(code)
+    walkthroughItems.length > 0
   )
   const [selectedTeamId, setSelectedTeamId] = useState<number | null>(null)
   const [selectedCategoryId, setSelectedCategoryId] = useState<number | null>(
     null
   )
   const [ideaFilter, setIdeaFilter] = useState<IdeaFilter>("all")
-
-  useEffect(() => {
-    if (shouldShowWalkthrough) saveWalkthroughCompletion(code)
-  }, [shouldShowWalkthrough, code])
 
   const { data: ideas = [], isPending: areIdeasPending } = useQuery({
     ...getParticipantIdeasOptions({
@@ -128,7 +105,6 @@ function ParticipantExperience({
   const selectedTeam = workshop.teams.find((team) => team.ID === selectedTeamId)
 
   const completeWalkthrough = () => {
-    saveWalkthroughCompletion(workshop.ID)
     setShouldShowWalkthrough(false)
   }
 
@@ -141,21 +117,20 @@ function ParticipantExperience({
           color: workshop.header_txt_color,
         }}
       >
-        <nav className="flex items-center justify-between px-6">
+        <nav className="flex items-center justify-between px-4 sm:px-6">
           <img
             className="h-10 w-auto invert"
             src={workshop.logoFileName}
             alt="logo"
           />
 
-          <ul className="flex gap-10">
-            <li className="font-medium">Home</li>
+          <ul className="flex gap-6 sm:gap-10">
             <li className="font-medium">The Newsroom</li>
             <li className="font-medium">The Stage</li>
           </ul>
         </nav>
       </header>
-      <main className="flex-1 overflow-y-auto p-6">
+      <main className="flex-1 overflow-y-auto p-4 sm:p-6">
         {shouldShowWalkthrough ? (
           <WalkthroughScreen
             key={workshop.ID}
@@ -251,9 +226,9 @@ function WalkthroughScreen({
   if (!currentItem) return null
 
   return (
-    <section className="grid min-h-full place-items-center py-8">
+    <section className="grid min-h-full place-items-center py-4 sm:py-8">
       <div
-        className="w-full max-w-2xl border p-6 sm:p-10"
+        className="flex min-h-112 w-full max-w-5xl flex-col overflow-hidden rounded-lg border shadow-xs sm:min-h-128"
         style={{
           backgroundColor: workshop.card_primary_bg_color,
           borderColor: workshop.card_primary_border_color,
@@ -262,67 +237,90 @@ function WalkthroughScreen({
           color: workshop.txt_primary_color,
         }}
       >
-        <div className="mb-8 flex items-center justify-between gap-4">
-          <p
-            className="text-sm font-medium tracking-wide uppercase"
-            style={{ color: workshop.txt_secondary_color }}
-          >
-            Welcome to {workshop.Name}
-          </p>
-          <p className="shrink-0 text-sm">
-            {currentIndex + 1} / {items.length}
-          </p>
+        <div
+          className="grid border-b"
+          style={{ borderColor: workshop.card_primary_border_color }}
+          role="progressbar"
+          aria-label="Walkthrough progress"
+          aria-valuemin={1}
+          aria-valuemax={items.length}
+          aria-valuenow={currentIndex + 1}
+          aria-valuetext={`Step ${currentIndex + 1} of ${items.length}`}
+        >
+          <div className="flex gap-2 px-6 pt-4 sm:gap-3 sm:px-10 sm:pt-6">
+            {items.map((item, index) => (
+              <div key={item.ID} className="min-w-0 flex-1" aria-hidden="true">
+                <p
+                  className="mb-3 truncate text-center text-xs font-semibold tracking-wide uppercase"
+                  style={{
+                    color:
+                      index === currentIndex
+                        ? workshop.txt_primary_color
+                        : workshop.txt_secondary_color,
+                  }}
+                >
+                  <span className="sm:hidden">
+                    {String(index + 1).padStart(2, "0")}
+                  </span>
+                  <span className="hidden sm:inline">{item.Title}</span>
+                </p>
+                <span
+                  className="block h-1 rounded-full"
+                  style={{
+                    backgroundColor:
+                      index <= currentIndex
+                        ? workshop.btn_primary_bg_color
+                        : workshop.btn_secondary_bg_color,
+                  }}
+                />
+              </div>
+            ))}
+          </div>
         </div>
 
-        <div aria-live="polite" className="min-h-48">
-          <h1 className="text-3xl font-semibold sm:text-4xl">
+        <div
+          aria-live="polite"
+          className="flex flex-1 flex-col justify-center px-6 py-12 sm:px-14 sm:py-16 lg:px-20"
+        >
+          <h1 className="max-w-4xl text-4xl leading-[1.08] font-semibold tracking-[-0.035em] text-balance sm:text-5xl lg:text-6xl">
             {currentItem.Title}
           </h1>
           <p
-            className="mt-5 text-base leading-7 whitespace-pre-line sm:text-lg"
+            className="mt-6 max-w-3xl text-base leading-7 whitespace-pre-line sm:mt-8 sm:text-xl sm:leading-8"
             style={{ color: workshop.txt_secondary_color }}
           >
             {currentItem.Description}
           </p>
         </div>
 
-        <div className="mt-8 flex gap-2" aria-label="Walkthrough progress">
-          {items.map((item, index) => (
-            <span
-              key={item.ID}
-              className="h-1.5 flex-1"
+        <div
+          className="flex min-h-16 items-center justify-end gap-3 border-t px-6 sm:px-10"
+          style={{ borderColor: workshop.card_primary_border_color }}
+        >
+          {!isFirstItem && (
+            <button
+              type="button"
+              className="min-w-28 rounded-md border px-5 py-2 text-sm font-medium transition-transform focus-visible:outline-2 focus-visible:outline-offset-2"
               style={{
-                backgroundColor:
-                  index <= currentIndex
-                    ? workshop.btn_primary_bg_color
-                    : workshop.btn_secondary_bg_color,
+                backgroundColor: workshop.btn_secondary_bg_color,
+                borderColor: workshop.btn_secondary_border_color,
+                color: workshop.btn_secondary_txt_color,
+                outlineColor: workshop.btn_secondary_border_color,
               }}
-            />
-          ))}
-        </div>
-
-        <div className="mt-8 flex items-center justify-between gap-3">
-          <button
-            type="button"
-            disabled={isFirstItem}
-            className="border px-5 py-2.5 disabled:cursor-not-allowed disabled:opacity-40"
-            style={{
-              backgroundColor: workshop.btn_secondary_bg_color,
-              borderColor: workshop.btn_secondary_border_color,
-              color: workshop.btn_secondary_txt_color,
-            }}
-            onClick={() => setCurrentIndex((index) => index - 1)}
-          >
-            Previous
-          </button>
+              onClick={() => setCurrentIndex((index) => index - 1)}
+            >
+              Previous
+            </button>
+          )}
 
           <button
             type="button"
-            className="border px-5 py-2.5 font-medium"
+            className="min-w-28 rounded-md border px-5 py-2 text-sm font-medium transition-transform focus-visible:outline-2 focus-visible:outline-offset-2"
             style={{
               backgroundColor: workshop.btn_primary_bg_color,
               borderColor: workshop.btn_primary_bg_color,
               color: workshop.btn_primary_txt_color,
+              outlineColor: workshop.btn_primary_bg_color,
             }}
             onClick={() => {
               if (isLastItem) {
