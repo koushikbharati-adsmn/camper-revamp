@@ -919,26 +919,33 @@ function ScoutDialog({
     <dialog
       ref={dialogRef}
       aria-labelledby="scout-dialog-title"
-      className="fixed inset-0 m-auto max-h-[calc(100dvh-2rem)] w-[calc(100%-2rem)] max-w-xl overflow-hidden rounded-lg border bg-transparent p-0 shadow-xl backdrop:bg-black/50"
+      className="fixed inset-0 m-0 h-dvh max-h-dvh w-full max-w-none overflow-hidden border-0 bg-transparent p-0 backdrop:bg-black/50 sm:m-auto sm:h-fit sm:max-h-[calc(100dvh-2rem)] sm:w-[min(40rem,calc(100%-2rem))]"
       onClose={onClose}
     >
       <div
-        className="flex max-h-[calc(100dvh-2rem)] flex-col"
+        className="flex h-full max-h-dvh flex-col overflow-hidden sm:h-auto sm:max-h-[calc(100dvh-2rem)] sm:rounded-lg sm:border sm:shadow-lg"
         style={{
           backgroundColor: workshop.card_primary_bg_color,
+          borderColor: workshop.card_primary_border_color,
           color: workshop.txt_primary_color,
         }}
       >
-        <header className="flex items-start justify-between gap-4 px-5 pt-5 sm:px-6 sm:pt-6">
-          <div>
+        <header
+          className="flex shrink-0 items-center justify-between gap-3 border-b px-4 py-3 sm:px-6 sm:py-4"
+          style={{
+            backgroundColor: workshop.card_primary_bg_color,
+            borderColor: workshop.card_primary_border_color,
+          }}
+        >
+          <div className="min-w-0">
             <h2
               id="scout-dialog-title"
-              className="text-xl font-semibold tracking-[-0.02em]"
+              className="text-lg font-semibold tracking-[-0.02em] sm:text-xl"
             >
               Scout Suggests
             </h2>
             <p
-              className="mt-1 text-sm"
+              className="mt-0.5 text-xs sm:mt-1 sm:text-sm"
               style={{ color: workshop.txt_secondary_color }}
             >
               Three fresh directions inspired by your team&apos;s ideas.
@@ -947,10 +954,9 @@ function ScoutDialog({
 
           <button
             type="button"
-            className="grid size-8 shrink-0 place-items-center rounded-full transition-colors focus-visible:outline-2 focus-visible:outline-offset-2"
+            className="grid size-9 shrink-0 place-items-center rounded-md border transition-colors focus-visible:outline-2 focus-visible:outline-offset-2"
             style={{
-              backgroundColor: workshop.btn_secondary_bg_color,
-              color: workshop.btn_secondary_txt_color,
+              borderColor: workshop.card_primary_border_color,
               outlineColor: workshop.btn_primary_bg_color,
             }}
             aria-label="Close Scout suggestions"
@@ -960,51 +966,56 @@ function ScoutDialog({
           </button>
         </header>
 
-        <div
-          className="min-h-0 flex-1 overflow-y-auto px-5 py-5 sm:px-6"
-          aria-busy={isPending}
-        >
-          <div
-            className="rounded-lg border p-4 sm:p-5"
-            style={{
-              backgroundColor: workshop.card_secondary_bg_color,
-              borderColor: workshop.card_primary_border_color,
-              color: workshop.card_secondary_txt_color,
-            }}
-          >
-            <p className="mb-4 text-xs font-semibold tracking-[0.14em] uppercase">
-              {pillarTitle}
-            </p>
-
-            {isPending ? (
-              <div className="grid gap-5" aria-label="Loading suggestions">
-                {Array.from({ length: 3 }, (_, index) => (
-                  <div key={index} className="flex gap-3" aria-hidden="true">
-                    <span className="h-4 w-4 shrink-0 animate-pulse rounded bg-current opacity-10" />
-                    <div className="grid flex-1 gap-2">
-                      <span className="h-3 w-full animate-pulse rounded bg-current opacity-10" />
-                      <span className="h-3 w-5/6 animate-pulse rounded bg-current opacity-10" />
-                      <span className="h-3 w-2/3 animate-pulse rounded bg-current opacity-10" />
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : isError ? (
-              <p className="text-sm leading-6">
-                Scout couldn&apos;t generate suggestions. Close this dialog and
-                try again.
+        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain sm:flex-none">
+          <div className="px-4 py-4 sm:px-6 sm:py-6" aria-busy={isPending}>
+            <div
+              className="rounded-lg border p-4 sm:p-5"
+              style={{
+                backgroundColor: workshop.card_secondary_bg_color,
+                borderColor: workshop.card_primary_border_color,
+                color: workshop.card_secondary_txt_color,
+              }}
+            >
+              <p className="mb-4 text-xs font-semibold tracking-[0.14em] uppercase">
+                {pillarTitle}
               </p>
-            ) : (
-              <ol className="grid list-decimal gap-4 pl-6 text-sm leading-6 sm:text-base sm:leading-7">
-                {suggestions.map((suggestion, index) => (
-                  <li key={`${index}-${suggestion}`}>{suggestion}</li>
-                ))}
-              </ol>
-            )}
+
+              {isPending ? (
+                <div className="grid gap-5" aria-label="Loading suggestions">
+                  {Array.from({ length: 3 }, (_, index) => (
+                    <div key={index} className="flex gap-3" aria-hidden="true">
+                      <span className="h-4 w-4 shrink-0 animate-pulse rounded bg-current opacity-10" />
+                      <div className="grid flex-1 gap-2">
+                        <span className="h-3 w-full animate-pulse rounded bg-current opacity-10" />
+                        <span className="h-3 w-5/6 animate-pulse rounded bg-current opacity-10" />
+                        <span className="h-3 w-2/3 animate-pulse rounded bg-current opacity-10" />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : isError ? (
+                <p className="text-sm leading-6">
+                  Scout couldn&apos;t generate suggestions. Close this dialog
+                  and try again.
+                </p>
+              ) : (
+                <ol className="grid list-decimal gap-4 pl-6 text-sm leading-6 sm:text-base sm:leading-7">
+                  {suggestions.map((suggestion, index) => (
+                    <li key={`${index}-${suggestion}`}>{suggestion}</li>
+                  ))}
+                </ol>
+              )}
+            </div>
           </div>
         </div>
 
-        <footer className="px-5 pb-5 sm:px-6 sm:pb-6">
+        <footer
+          className="shrink-0 border-t px-4 py-3 sm:px-6 sm:py-4"
+          style={{
+            backgroundColor: workshop.card_primary_bg_color,
+            borderColor: workshop.card_primary_border_color,
+          }}
+        >
           <ExperienceButton
             variant="primary"
             workshop={workshop}
