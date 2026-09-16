@@ -6,6 +6,7 @@ import {
   getParticipantIdeasOptions,
   getParticipantWorkshopOptions,
   useSaveIdea,
+  useShortlistIdea,
 } from "@/services/participants"
 import {
   queryOptions,
@@ -513,6 +514,8 @@ function IdeasScreen({
 }) {
   const [isAddIdeaOpen, setIsAddIdeaOpen] = useState(false)
   const [editingIdea, setEditingIdea] = useState<ParticipantIdea | null>(null)
+  const queryClient = useQueryClient()
+  const shortlistIdeaMutation = useShortlistIdea()
 
   const closeIdeaDialog = () => {
     setIsAddIdeaOpen(false)
@@ -656,8 +659,40 @@ function IdeasScreen({
                 <div className="flex flex-1 flex-col gap-4 p-4">
                   <div className="flex items-center justify-between gap-3">
                     <div className="flex items-center gap-3">
-                      <button type="button">
-                        <StarIcon className="size-5" aria-hidden="true" />
+                      <button
+                        type="button"
+                        aria-label={
+                          idea.flgTeam
+                            ? `Remove ${idea.title || "idea"} from shortlist`
+                            : `Shortlist ${idea.title || "idea"}`
+                        }
+                        aria-pressed={idea.flgTeam}
+                        disabled={
+                          shortlistIdeaMutation.isPending &&
+                          shortlistIdeaMutation.variables.idea_id === idea.ID
+                        }
+                        className="disabled:cursor-wait disabled:opacity-50"
+                        onClick={async () => {
+                          try {
+                            await shortlistIdeaMutation.mutateAsync({
+                              workshop_code: code,
+                              idea_id: idea.ID,
+                              flag: !idea.flgTeam,
+                            })
+
+                            await queryClient.invalidateQueries({
+                              queryKey: ["PARTICIPANT_IDEAS"],
+                            })
+                          } catch {
+                            return
+                          }
+                        }}
+                      >
+                        <StarIcon
+                          className="size-5"
+                          fill={idea.flgTeam ? "currentColor" : "none"}
+                          aria-hidden="true"
+                        />
                       </button>
                       {idea.flgSelf && (
                         <button
