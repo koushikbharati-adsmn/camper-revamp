@@ -653,10 +653,21 @@ function WorkshopStats({
   totalIdeas: number
 }) {
   const stats = [
-    { label: "Teams", value: totalTeams, icon: UsersIcon },
-    { label: "Pillars", value: totalPillars, icon: FolderKanbanIcon },
     {
-      label: "Ideas Submitted",
+      label: "Teams",
+      description: "Bifurcation of all participants",
+      value: totalTeams,
+      icon: UsersIcon,
+    },
+    {
+      label: "Pillars",
+      description: "Broad interaction buckets",
+      value: totalPillars,
+      icon: FolderKanbanIcon,
+    },
+    {
+      label: "Ideas",
+      description: "Ready for shortlist",
       value: totalIdeas,
       icon: LightbulbIcon,
     },
@@ -670,14 +681,17 @@ function WorkshopStats({
       <div className="grid gap-3 sm:grid-cols-3">
         {stats.map((stat) => (
           <Card key={stat.label} size="sm">
-            <CardContent className="flex items-center justify-between gap-4">
-              <div>
-                <p className="text-xs text-muted-foreground">{stat.label}</p>
-                <p className="mt-1 text-2xl font-semibold tabular-nums">
-                  {stat.value}
+            <CardContent className="flex items-start justify-between gap-4">
+              <div className="min-w-0">
+                <p className="text-sm font-medium">{stat.label}</p>
+                <p className="mt-2 text-3xl leading-none font-semibold tabular-nums">
+                  {String(stat.value).padStart(2, "0")}
+                </p>
+                <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
+                  {stat.description}
                 </p>
               </div>
-              <div className="flex size-10 shrink-0 items-center justify-center bg-muted text-muted-foreground">
+              <div className="flex size-10 shrink-0 items-center justify-center rounded-md bg-muted text-muted-foreground">
                 <stat.icon className="size-5" />
               </div>
             </CardContent>
@@ -965,7 +979,7 @@ function IdeaPreviewDialog({
               </Badge>
               {idea.flgTeam && (
                 <Badge>
-                  <FlagIcon />
+                  <StarIcon fill="currentColor" />
                   Shortlisted
                 </Badge>
               )}
