@@ -1,5 +1,6 @@
 import { toast } from "@/components/ui/toast"
 import apiClient from "@/lib/api-client"
+import { socket } from "@/lib/socket"
 import type {
   WorkshopLifecycleStatus,
   WorkshopStatus,
@@ -124,27 +125,35 @@ export const useUpdateWorkshopStatus = () => {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: (payload: UpdateWorkshopStatusPayload) =>
-      updateWorkshopStatus(payload),
-    onSuccess: (_response, payload) => {
+    mutationFn: updateWorkshopStatus,
+
+    onSuccess: (response, { code, status }) => {
       queryClient.setQueryData<GetManageWorkshopResponse>(
-        ["MANAGE_WORKSHOP", payload.code],
+        ["MANAGE_WORKSHOP", code],
         (current) =>
           current
             ? {
                 ...current,
-                data: { ...current.data, status: payload.status },
+                data: {
+                  ...current.data,
+                  status,
+                },
               }
             : current
       )
 
-      return Promise.all([
-        queryClient.invalidateQueries({
-          queryKey: ["MANAGE_WORKSHOP", payload.code],
-        }),
-        queryClient.invalidateQueries({ queryKey: ["WORKSHOPS"] }),
-      ])
+      socket.emit("workshop_status", {
+        roomId: code,
+        status,
+      })
+
+      toast.add({
+        type: "success",
+        title: "Workshop status updated",
+        description: response.message,
+      })
     },
+
     onError: (error) => {
       toast.add({
         type: "error",

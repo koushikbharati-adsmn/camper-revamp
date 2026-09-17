@@ -147,23 +147,15 @@ function RouteComponent() {
     reset: resetTimer,
   } = useWorkshopTimer(code)
 
-  const transitionWorkshop = async (targetStatus: WorkshopStatus) => {
-    if (!canTransitionWorkshop(workshop.status, targetStatus)) return false
+  const updateWorkshopStatus = (status: WorkshopStatus) => {
+    if (!canTransitionWorkshop(workshop.status, status)) return
 
-    try {
-      const response = await updateStatusMutation.mutateAsync({
-        code,
-        status: targetStatus,
-      })
-      toast.add({
-        type: "success",
-        title: "Workshop status updated",
-        description: response.message,
-      })
-      return true
-    } catch {
-      return false
-    }
+    updateStatusMutation.mutate(
+      { code, status },
+      {
+        onSuccess: () => setPendingTransition(null),
+      }
+    )
   }
 
   const exportReport = async () => {
@@ -202,7 +194,7 @@ function RouteComponent() {
           status={workshop.status}
           isUpdating={updateStatusMutation.isPending}
           isExporting={exportPptMutation.isPending}
-          onStart={() => void transitionWorkshop("Ideate")}
+          onStart={() => updateWorkshopStatus("Ideate")}
           onRequestTransition={setPendingTransition}
           onExport={() => void exportReport()}
         />
@@ -261,12 +253,9 @@ function RouteComponent() {
             setPendingTransition(null)
           }
         }}
-        onConfirm={async () => {
-          if (
-            pendingTransition &&
-            (await transitionWorkshop(pendingTransition))
-          ) {
-            setPendingTransition(null)
+        onConfirm={() => {
+          if (pendingTransition) {
+            updateWorkshopStatus(pendingTransition)
           }
         }}
       />
@@ -1033,7 +1022,7 @@ function LifecycleDialog({
   targetStatus: WorkshopStatus | null
   isPending: boolean
   onOpenChange: (open: boolean) => void
-  onConfirm: () => Promise<void>
+  onConfirm: () => void
 }) {
   const isEnding = targetStatus === "Completed"
 
@@ -1060,7 +1049,7 @@ function LifecycleDialog({
           <AlertDialogAction
             variant={isEnding ? "destructive" : "default"}
             disabled={isPending}
-            onClick={() => void onConfirm()}
+            onClick={onConfirm}
           >
             {isPending && <Spinner />}
             {isPending
