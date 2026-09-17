@@ -141,11 +141,7 @@ function ParticipantExperience({
         }}
       >
         <nav className="flex items-center justify-between px-4 sm:px-6">
-          <img
-            className="h-10 w-auto invert"
-            src={workshop.logoFileName}
-            alt="logo"
-          />
+          <img className="h-10 w-auto" src={workshop.logoFileName} alt="logo" />
 
           <ul className="flex gap-6 sm:gap-10">
             <li className="font-medium">The Newsroom</li>
@@ -923,7 +919,7 @@ function ScoutDialog({
       onClose={onClose}
     >
       <div
-        className="flex h-full max-h-dvh flex-col overflow-hidden sm:h-auto sm:max-h-[calc(100dvh-2rem)] sm:rounded-lg sm:border sm:shadow-lg"
+        className="flex h-full max-h-dvh min-h-0 flex-col overflow-hidden sm:h-auto sm:max-h-[calc(100dvh-2rem)] sm:rounded-lg sm:border sm:shadow-lg"
         style={{
           backgroundColor: workshop.card_primary_bg_color,
           borderColor: workshop.card_primary_border_color,
@@ -966,7 +962,7 @@ function ScoutDialog({
           </button>
         </header>
 
-        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain sm:flex-none">
+        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
           <div className="px-4 py-4 sm:px-6 sm:py-6" aria-busy={isPending}>
             <div
               className="rounded-lg border p-4 sm:p-5"
@@ -1089,7 +1085,7 @@ function IdeaDialog({
     <dialog
       ref={dialogRef}
       aria-labelledby="idea-dialog-title"
-      className="fixed inset-0 m-0 h-dvh max-h-dvh w-full max-w-none overflow-hidden border-0 bg-transparent p-0 backdrop:bg-black/50 sm:m-auto sm:h-fit sm:max-h-[calc(100dvh-2rem)] sm:w-[min(40rem,calc(100%-2rem))]"
+      className="fixed inset-0 m-0 h-dvh max-h-dvh w-full max-w-none overflow-hidden border-0 bg-transparent p-0 backdrop:bg-black/50 sm:m-auto sm:h-fit sm:max-h-[calc(100dvh-4rem)] sm:w-[min(40rem,calc(100%-2rem))]"
       onCancel={(event) => {
         if (saveIdeaMutation.isPending) {
           event.preventDefault()
@@ -1099,7 +1095,7 @@ function IdeaDialog({
     >
       <form
         ref={formRef}
-        className="flex h-full max-h-dvh flex-col overflow-hidden sm:h-auto sm:max-h-[calc(100dvh-2rem)] sm:rounded-lg sm:border sm:shadow-lg"
+        className="flex h-full max-h-dvh flex-col overflow-hidden sm:h-auto sm:max-h-[calc(100dvh-4rem)] sm:rounded-lg sm:border sm:shadow-lg"
         style={{
           backgroundColor: workshop.card_primary_bg_color,
           borderColor: workshop.card_primary_border_color,
@@ -1181,7 +1177,7 @@ function IdeaDialog({
         </div>
 
         {/* Scrollable content */}
-        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain sm:flex-none">
+        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
           <div className="grid gap-4 px-4 py-4 sm:gap-5 sm:px-6 sm:py-6">
             {/* Pillar */}
             <label className="grid gap-1.5 sm:gap-2">
