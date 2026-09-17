@@ -45,7 +45,7 @@ import {
   getWorkshopPhase,
   getWorkshopPhaseIndex,
 } from "@/lib/workshop-lifecycle"
-import { cn } from "@/lib/utils"
+import { cn, getDurationParts } from "@/lib/utils"
 import {
   type ManageIdea,
   type ManageWorkshop,
@@ -402,7 +402,9 @@ function LifecycleCard({
 
         <div className="mt-auto flex flex-col gap-4 border-t border-border pt-5 sm:flex-row sm:items-center sm:justify-between">
           <div aria-live="polite">
-            <p className="text-sm font-medium">{getLifecycleMessage(status)}</p>
+            <p className="text-sm font-medium">
+              {getWorkshopPhase(status).message}
+            </p>
             <p className="text-xs text-muted-foreground">
               Lifecycle changes do not affect the workshop timer.
             </p>
@@ -538,9 +540,6 @@ function TimerCard({
             onChange={(value) => updateDurationPart("seconds", value)}
           />
         </div>
-        <span className="sr-only" aria-live="polite">
-          {formatDuration(timer.remainingSeconds)} remaining
-        </span>
         <div className="mt-5 flex w-full flex-wrap justify-center gap-2">
           {timer.status === "idle" && (
             <Button disabled={timer.remainingSeconds === 0} onClick={onStart}>
@@ -831,7 +830,7 @@ function IdeaCard({
       </div>
       <CardHeader className="gap-3 py-4">
         <div className="flex min-w-0 items-start justify-between gap-3">
-          <CardTitle>{idea.Title}</CardTitle>
+          <CardTitle>{idea.title ?? "Untitled"}</CardTitle>
           {idea.flgTeam && (
             <Badge className="shrink-0">
               <FlagIcon />
@@ -930,7 +929,7 @@ function IdeaPreviewDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-3xl">
         <DialogHeader>
-          <DialogTitle>{idea.Title}</DialogTitle>
+          <DialogTitle>{idea.title ?? "Untitled"}</DialogTitle>
           <DialogDescription>
             Full idea submission from {idea.TeamName || "Unknown team"}.
           </DialogDescription>
@@ -981,7 +980,7 @@ function IdeaThumbnail({ idea }: { idea: ManageIdea }) {
     return (
       <div
         className="flex size-full items-center justify-center text-muted-foreground"
-        aria-label={`${idea.Title} thumbnail unavailable`}
+        aria-label={`${idea.title ?? "Untitled"} thumbnail unavailable`}
       >
         <ImageIcon className="size-8" />
       </div>
@@ -991,7 +990,7 @@ function IdeaThumbnail({ idea }: { idea: ManageIdea }) {
   return (
     <img
       src={idea.imageFileName}
-      alt={`${idea.Title} submission thumbnail`}
+      alt={`${idea.title ?? "Untitled"} submission thumbnail`}
       className="size-full object-contain"
       onError={() => setHasError(true)}
     />
@@ -1080,26 +1079,6 @@ function TimerStatusBadge({ status }: { status: TimerStatus }) {
       {labels[status]}
     </Badge>
   )
-}
-
-function getLifecycleMessage(status: WorkshopLifecycleStatus) {
-  return getWorkshopPhase(status).message
-}
-
-function getDurationParts(totalSeconds: number) {
-  return {
-    hours: Math.floor(totalSeconds / 3600),
-    minutes: Math.floor((totalSeconds % 3600) / 60),
-    seconds: totalSeconds % 60,
-  }
-}
-
-function formatDuration(totalSeconds: number) {
-  const duration = getDurationParts(totalSeconds)
-
-  return [duration.hours, duration.minutes, duration.seconds]
-    .map((value) => String(value).padStart(2, "0"))
-    .join(":")
 }
 
 function ManageWorkshopPending() {

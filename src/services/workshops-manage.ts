@@ -64,12 +64,13 @@ export interface ManageIdea {
   TeamName: string
   CategoryID: number // pillar id
   CategoryName: string // pillar name
-  Title: string // idea title
+  title: string | null // idea title
   Desc: string // idea description
   imageFileName: string | null // idea thumbnail url
   CreatedDttm: string
   TotalVote: number // total number of votes received
   flgTeam: boolean // shortlisted flag
+  flgCoach: boolean // coached flag
 }
 
 export interface GetManageIdeasResponse {

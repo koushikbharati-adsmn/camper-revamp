@@ -47,3 +47,11 @@ export async function urlToFile(url: string, fileName?: string): Promise<File> {
     type: blob.type || "application/octet-stream",
   })
 }
+
+export function getDurationParts(totalSeconds: number) {
+  return {
+    hours: Math.floor(totalSeconds / 3600),
+    minutes: Math.floor((totalSeconds % 3600) / 60),
+    seconds: totalSeconds % 60,
+  }
+}
