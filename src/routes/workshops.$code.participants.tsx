@@ -40,10 +40,12 @@ import {
   ExperienceSelectOption,
 } from "@/components/experience/experience-select"
 import { ExperienceSegmentedControl } from "@/components/experience/experience-segmented-control"
+import { ExperienceStatsCard } from "@/components/experience/experience-stats-card"
+import { getDashboardOptions } from "@/services/big-screen"
 import { cn } from "@/lib/utils"
 
 type IdeaFilter = "all" | "shortlisted" | "sharpened"
-type ParticipantScreen = "home" | "stage"
+type ParticipantScreen = "home" | "stage" | "newsroom"
 
 const tickerItems = [
   "Lorem Ipsum is simply dummy text",
@@ -81,8 +83,8 @@ function RouteComponent() {
       visitor_id: visitorId,
     }),
     select: (response) => response.data,
-    // refetchOnWindowFocus: true,
-    // refetchOnMount: true,
+    refetchOnWindowFocus: true,
+    refetchOnMount: true,
   })
 
   return (
@@ -118,6 +120,7 @@ function ParticipantExperience({
   const [ideaFilter, setIdeaFilter] = useState<IdeaFilter>("all")
   const [stageTeamId, setStageTeamId] = useState<number | null>(null)
   const [stageCategoryId, setStageCategoryId] = useState<number | null>(null)
+  const isHome = activeScreen === "home"
   const isStage = activeScreen === "stage"
 
   const { data: ideas = [], isPending: areIdeasPending } = useQuery({
@@ -133,7 +136,7 @@ function ParticipantExperience({
           : null,
       is_coached: !isStage && ideaFilter === "sharpened" ? true : null,
     }),
-    enabled: isStage || selectedTeamId !== null,
+    enabled: isStage || (isHome && selectedTeamId !== null),
     select: (response) => response.data,
   })
   const selectedTeam = workshop.teams.find((team) => team.ID === selectedTeamId)
@@ -185,7 +188,23 @@ function ParticipantExperience({
                 The Stage
               </button>
             </li>
-            <li className="hidden font-medium sm:block">The Newsroom</li>
+            <li>
+              <button
+                type="button"
+                className="border-b-2 py-1 font-medium transition-opacity disabled:cursor-not-allowed disabled:opacity-50"
+                style={{
+                  borderColor:
+                    activeScreen === "newsroom"
+                      ? "currentColor"
+                      : "transparent",
+                }}
+                aria-current={activeScreen === "newsroom" ? "page" : undefined}
+                disabled={shouldShowWalkthrough}
+                onClick={() => setActiveScreen("newsroom")}
+              >
+                The Newsroom
+              </button>
+            </li>
           </ul>
         </nav>
       </header>
@@ -197,6 +216,8 @@ function ParticipantExperience({
             workshop={workshop}
             onBegin={completeWalkthrough}
           />
+        ) : activeScreen === "newsroom" ? (
+          <NewsroomScreen workshop={workshop} code={code} />
         ) : isStage ? (
           <StageScreen
             workshop={workshop}
@@ -278,6 +299,113 @@ function ParticipantExperience({
         </div>
       </footer>
     </div>
+  )
+}
+
+function NewsroomScreen({
+  workshop,
+  code,
+}: {
+  workshop: ParticipantWorkshop
+  code: string
+}) {
+  const {
+    data: dashboard,
+    isPending,
+    isError,
+    refetch,
+  } = useQuery({
+    ...getDashboardOptions(code),
+    select: (response) => response.data,
+  })
+
+  const summary = [
+    {
+      label: "Total Ideas",
+      value: dashboard?.overall.TotalIdeas ?? 0,
+    },
+    {
+      label: "Drafts",
+      value: dashboard?.overall.Draft ?? 0,
+    },
+    {
+      label: "Shortlisted",
+      value: dashboard?.overall.Shortlisted ?? 0,
+    },
+    {
+      label: "Sharpened",
+      value: dashboard?.overall.Sharpened ?? 0,
+    },
+  ]
+
+  return (
+    <section
+      className="min-h-full px-4 py-6 sm:px-6 sm:py-8 lg:px-8"
+      style={{
+        backgroundColor: workshop.page_bg_color,
+        color: workshop.txt_primary_color,
+      }}
+    >
+      <div className="mx-auto w-full max-w-6xl">
+        {isPending ? (
+          <div aria-label="Loading newsroom statistics" aria-busy="true">
+            <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+              {Array.from({ length: 4 }, (_, index) => (
+                <div
+                  key={index}
+                  className="min-h-28 animate-pulse rounded-md bg-black/10"
+                  aria-hidden="true"
+                />
+              ))}
+            </div>
+            <div className="mt-8 grid gap-3">
+              {Array.from({ length: 4 }, (_, index) => (
+                <div
+                  key={index}
+                  className="h-20 animate-pulse border-b bg-black/5"
+                  aria-hidden="true"
+                />
+              ))}
+            </div>
+          </div>
+        ) : isError ? (
+          <div className="grid min-h-64 place-content-center gap-4 text-center">
+            <div>
+              <h2 className="text-lg font-semibold">
+                Unable to load newsroom statistics
+              </h2>
+              <p
+                className="mt-1 text-sm"
+                style={{ color: workshop.txt_secondary_color }}
+              >
+                Check the connection and try again.
+              </p>
+            </div>
+            <ExperienceButton
+              workshop={workshop}
+              variant="secondary"
+              onClick={() => void refetch()}
+            >
+              Try again
+            </ExperienceButton>
+          </div>
+        ) : (
+          <>
+            <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+              {summary.map((stat) => (
+                <ExperienceStatsCard
+                  key={stat.label}
+                  value={stat.value}
+                  label={stat.label}
+                  backgroundColor={workshop.header_bg_color}
+                  color={workshop.header_txt_color}
+                />
+              ))}
+            </div>
+          </>
+        )}
+      </div>
+    </section>
   )
 }
 
