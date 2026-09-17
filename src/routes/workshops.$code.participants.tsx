@@ -346,7 +346,7 @@ function NewsroomScreen({
         color: workshop.txt_primary_color,
       }}
     >
-      <div className="mx-auto w-full max-w-6xl">
+      <div className="container mx-auto w-full">
         {isPending ? (
           <div aria-label="Loading newsroom statistics" aria-busy="true">
             <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
