@@ -321,10 +321,6 @@ function NewsroomScreen({
 
   const summary = [
     {
-      label: "Total Ideas",
-      value: dashboard?.overall.TotalIdeas ?? 0,
-    },
-    {
       label: "Drafts",
       value: dashboard?.overall.Draft ?? 0,
     },
@@ -335,6 +331,10 @@ function NewsroomScreen({
     {
       label: "Sharpened",
       value: dashboard?.overall.Sharpened ?? 0,
+    },
+    {
+      label: "Total Ideas",
+      value: dashboard?.overall.TotalIdeas ?? 0,
     },
   ]
 
