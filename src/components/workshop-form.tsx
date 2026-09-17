@@ -1805,7 +1805,7 @@ function FileField({
   const describedBy = `${id}-description${error ? ` ${id}-error` : ""}`
 
   return (
-    <Field data-invalid={!!error} data-error-key={errorKey}>
+    <Field className="min-w-0" data-invalid={!!error} data-error-key={errorKey}>
       <div className="space-y-1">
         <FieldLabel htmlFor={id}>{label}</FieldLabel>
         <FieldDescription id={`${id}-description`}>
@@ -1825,7 +1825,7 @@ function FileField({
         onChange={(event) => onChange(event.target.files?.[0] ?? null)}
       />
       {value ? (
-        <div className="relative flex min-h-24 items-center gap-3 border border-input p-3 pr-12">
+        <div className="relative flex min-h-24 w-full min-w-0 items-center gap-3 border border-input p-3 pr-12">
           <div className="flex size-16 shrink-0 items-center justify-center bg-muted p-1">
             {preview === "image" ? (
               <FilePreview
