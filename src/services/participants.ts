@@ -124,9 +124,13 @@ export interface ParticipantIdea {
   TeamName: string
   Category: string
   Desc: string
+  title: string | null
+  Context: string | null
   imageFileName: string // image url
-  flgSelf: boolean // self idea or not
+  flgSelf: boolean // self idea
   flgTeam: boolean // shortlisted or not
+  flgCoach: boolean // isSharpened
+  CreatedDttm: string
 }
 
 interface GetParticipantIdeasResponse {
@@ -167,7 +171,8 @@ interface SaveIdeaPayload {
   team_id: number
   category_id: number
   desc: string
-  title: string
+  title: string | null
+  context: string | null
 }
 
 interface SaveIdeaResponse {
@@ -233,20 +238,18 @@ export const useShortlistIdea = () => {
 }
 
 interface GenerateIdeaImagePayload {
+  idea_id: number
   workshop_code: string
   pillar_context: string
   workshop_context: string
-  user_idea: string
-  branding_guidelines: string
+  user_idea: string // idea description
+  brand_guidelines: string
 }
 
 interface GenerateIdeaImageResponse {
   success: boolean
   data: {
-    status: string
-    image: string
-    ref_id: string
-    workshop_code: string
+    image: string // image url
   }
 }
 
@@ -262,6 +265,38 @@ export const useGenerateIdeaImage = () => {
   return useMutation({
     mutationFn: (payload: GenerateIdeaImagePayload) =>
       generateIdeaImage(payload),
+    onError: (error) => {
+      toast.add({
+        type: "error",
+        title: "Oops! Something went wrong",
+        description: error.message,
+      })
+    },
+  })
+}
+
+interface ScoutIdeaPayload {
+  workshop_code: string
+  pillar_title: string
+  user_ideas: string[]
+}
+
+interface ScoutIdeaResponse {
+  success: boolean
+  data: {
+    status: string
+    text: string[]
+  }
+}
+
+const scoutIdea = async (payload: ScoutIdeaPayload) => {
+  const res = await apiClient.post<ScoutIdeaResponse>("/ai/scout", payload)
+  return res.data
+}
+
+export const useScoutIdea = () => {
+  return useMutation({
+    mutationFn: (payload: ScoutIdeaPayload) => scoutIdea(payload),
     onError: (error) => {
       toast.add({
         type: "error",
