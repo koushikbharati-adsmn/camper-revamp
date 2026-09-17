@@ -4,7 +4,11 @@ import { useQuery } from "@tanstack/react-query"
 import { createFileRoute } from "@tanstack/react-router"
 
 import { formatRelativeDate } from "@/lib/date"
-import { getIdeasOptions, getWorkshopOptions } from "@/services/bigscreen"
+import {
+  getDashboardOptions,
+  getIdeasOptions,
+  getWorkshopOptions,
+} from "@/services/bigscreen"
 
 import ActivityList from "@/components/website/ActivityList"
 import Button from "@/components/website/Button"
@@ -27,14 +31,6 @@ export const Route = createFileRoute("/workshops/$id/big-screen")({
 // --------------------------------------------------
 
 const teams = ["Draft", "Shortlisted", "Sharpened", "Total Ideas"]
-
-const teamStats = ["Team 1", "Team 2", "Team 3", "Team 4"].map((title) => ({
-  title,
-  submitted: 0,
-  shortlisted: 0,
-  sharpened: 0,
-  total: 0,
-}))
 
 const activities = [1, 2, 3, 4].map((id) => ({
   id,
@@ -82,6 +78,32 @@ function RouteComponent() {
   const { data: workshopResponse } = useQuery(getWorkshopOptions(workshopId))
   const workshop = workshopResponse?.data
 
+  // --------------------------------------------------
+  // Dashboard
+  // --------------------------------------------------
+
+  const { data: dashboardResponse } = useQuery(getDashboardOptions(workshopId))
+  const overall = dashboardResponse?.data.overall
+
+  const summaryValues = [
+    overall?.Draft ?? 0,
+    overall?.Shortlisted ?? 0,
+    overall?.Sharpened ?? 0,
+    overall?.TotalIdeas ?? 0,
+  ]
+
+  const teamStats = useMemo(
+    () =>
+      (dashboardResponse?.data.teams ?? []).map((team) => ({
+        title: team.TeamName,
+        submitted: team.Drafts,
+        shortlisted: team.Shortlisted,
+        sharpened: team.Sharpened,
+        total: team.TotalIdeas,
+      })),
+    [dashboardResponse]
+  )
+
   const teamOptions = useMemo(
     () => [
       { label: "All teams", value: "all" },
@@ -123,11 +145,16 @@ function RouteComponent() {
   const ideas = useMemo(
     () =>
       (ideasResponse?.data ?? []).map((idea) => ({
-        title: idea.TeamName,
+        title: idea.title || "Untitled",
         description: idea.Desc,
         age: idea.CreatedDttm ? formatRelativeDate(idea.CreatedDttm) : undefined,
         votes: idea.Votes ?? 0,
-        image: idea.imageFileName ?? undefined,
+        image:
+          idea.imageFileName ??
+          "https://images.unsplash.com/photo-1497366754035-f200968a6e72?auto=format&fit=crop&w=800&q=80",
+        showSparkles: idea.flgCoach,
+        team: idea.TeamName,
+        category: idea.Category,
       })),
     [ideasResponse]
   )
@@ -241,7 +268,7 @@ function RouteComponent() {
                   </div>
                 </div>
                 <div className="grid">
-                  <NewsroomStatsSummary metrics={teams} values={[0, 0, 0, 0]} />
+                  <NewsroomStatsSummary metrics={teams} values={summaryValues} />
                 </div>
               </div>
 
@@ -325,13 +352,8 @@ function RouteComponent() {
                               className="min-w-0 overflow-hidden rounded-2xl border border-theme7 bg-theme2 transition-all duration-300 hover:-translate-y-1"
                             >
                               <IdeaVoteCard
-                                showSparkles={false}
                                 showEdit={false}
                                 {...idea}
-                                image={
-                                  idea.image ??
-                                  "https://images.unsplash.com/photo-1497366754035-f200968a6e72?auto=format&fit=crop&w=800&q=80"
-                                }
                                 viewLabel="Present"
                                 onView={() => setSelectedIdeaIndex(index)}
                                 onEdit={() => handleEditIdea(index)}
@@ -416,7 +438,6 @@ function RouteComponent() {
         isOpen={selectedIdea !== undefined}
         onClose={() => setSelectedIdeaIndex(null)}
         idea={selectedIdea}
-        pillarLabel={selectedPillar?.label}
         className="w-full max-w-5xl rounded-2xl"
         onNext={() =>
           setSelectedIdeaIndex(((selectedIdeaIndex ?? 0) + 1) % ideas.length)

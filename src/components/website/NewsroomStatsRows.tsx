@@ -31,11 +31,11 @@ export default function NewsroomStatsRows({
             key={team.title}
           >
             <div className="border-theme1 col-span-2 min-w-0 border-b-2 px-2 py-3 lg:col-span-1">
-              <strong className="font-phudu-b text-2xl text-theme8 leading-none">
-                TEAM NAME
+              <strong className="font-phudu-b text-2xl text-theme8 block truncate leading-none">
+                {team.title}
               </strong>
               <small className="font-ogilvy-r text-base text-theme1 mt-2 block leading-tight uppercase">
-                {team.title}
+                TEAM NAME
               </small>
             </div>
             {values.map((value, index) => (

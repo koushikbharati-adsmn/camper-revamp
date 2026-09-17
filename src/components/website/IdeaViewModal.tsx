@@ -1,11 +1,16 @@
 import Button from "./Button"
 import ModalOverlay from "./ModalOverlay"
 
-type Idea = { title: string; description: string }
+type Idea = {
+  title: string
+  description: string
+  image?: string
+  team?: string
+  category?: string
+}
 type IdeaViewModalProps = {
   isOpen: boolean
   idea?: Idea
-  pillarLabel?: string
   className?: string
   onClose: () => void
   onNext: () => void
@@ -14,7 +19,6 @@ type IdeaViewModalProps = {
 export default function IdeaViewModal({
   isOpen,
   idea,
-  pillarLabel,
   className = "",
   onClose,
   onNext,
@@ -31,16 +35,12 @@ export default function IdeaViewModal({
       {idea && (
         <div className="grid items-center gap-8 md:grid-cols-2">
           <div className="aspect-4/3 w-full overflow-hidden rounded-2xl">
-            <img
-              className="h-full w-full object-cover"
-              src="https://images.unsplash.com/photo-1497366754035-f200968a6e72?auto=format&fit=crop&w=1000&q=80"
-              alt=""
-            />
+            <img className="h-full w-full object-cover" src={idea.image} alt="" />
           </div>
           <div className="flex h-full flex-col gap-4">
             <div className="font-phudu-b text-base flex gap-6 uppercase">
-              <span>Team A</span>
-              <span>{pillarLabel}</span>
+              {idea.team && <span>{idea.team}</span>}
+              {idea.category && <span>{idea.category}</span>}
             </div>
             <div className="grid gap-4 overflow-y-auto pe-5">
               <h2 className="font-phudu-b text-2xl m-0 uppercase">{idea.title}</h2>

@@ -15,7 +15,6 @@ type IdeaVoteCardProps = {
   onView?: () => void
   onEdit?: () => void
   viewLabel?: string
-  onSparkles?: () => void
   showEdit?: boolean
   showSparkles?: boolean
 }
@@ -33,13 +32,11 @@ export default function IdeaVoteCard({
   onView,
   onEdit,
   viewLabel = "View",
-  onSparkles,
   showEdit = true,
   showSparkles = true,
 }: IdeaVoteCardProps) {
   const [isFavorite, setIsFavorite] = useState(false)
   const [showConfetti, setShowConfetti] = useState(false)
-  const [, setShowSparklesConfetti] = useState(false)
 
   const handleFavorite = () => {
     setIsFavorite((favorite) => {
@@ -50,21 +47,6 @@ export default function IdeaVoteCard({
       }
       return nextFavorite
     })
-  }
-
-  const handleSparkles = () => {
-    setShowSparklesConfetti(false)
-
-    // Allows animation to restart on every click
-    window.requestAnimationFrame(() => {
-      setShowSparklesConfetti(true)
-
-      window.setTimeout(() => {
-        setShowSparklesConfetti(false)
-      }, 700)
-    })
-
-    onSparkles?.()
   }
 
   return (
@@ -82,10 +64,6 @@ export default function IdeaVoteCard({
             alt=""
           />
         )}
-        <div
-          className="from-theme1/85 via-theme1/15 absolute inset-0 z-999 bg-linear-to-t to-transparent"
-          aria-hidden="true"
-        />
         <div className="relative z-999 flex flex-col text-center">
           <h2 className="font-phudu-b text-4xl text-theme2 m-0 leading-normal">
             {String(votes).padStart(2, "0")}
@@ -136,14 +114,12 @@ export default function IdeaVoteCard({
           </div>
           <div>
             {showSparkles && (
-              <button
-                type="button"
-                onClick={handleSparkles}
-                className={actionButtonClassName}
-                aria-label="AI suggestions"
+              <span
+                className="text-theme1 relative -m-1.5 flex size-8 cursor-default items-center justify-center"
+                aria-label="Sharpened idea"
               >
                 <IconSparkles size={20} stroke={1.8} />
-              </button>
+              </span>
             )}
           </div>
         </div>

@@ -38,11 +38,13 @@ export interface Idea {
   TeamName: string
   Category: string
   Desc: string
+  title: string | null
   imageFileName: string | null
   flgSelf: boolean
   flgScout: boolean
   flgTeam: boolean | null
   flgAdmin: boolean | null
+  flgCoach: boolean // isSharpened
   Votes?: number
   CreatedDttm?: string
 }
@@ -65,6 +67,30 @@ export interface GetWorkshopResponse {
   data: Workshop
 }
 
+export interface DashboardOverall {
+  Draft: number
+  Shortlisted: number
+  Sharpened: number
+  TotalIdeas: number
+}
+
+export interface DashboardTeamStat {
+  TeamID: number
+  TeamName: string
+  Drafts: number
+  Shortlisted: number
+  Sharpened: number
+  TotalIdeas: number
+}
+
+export interface GetDashboardResponse {
+  success: boolean
+  data: {
+    overall: DashboardOverall
+    teams: DashboardTeamStat[]
+  }
+}
+
 // ---------------------------------------------
 // QUERY KEYS
 // ---------------------------------------------
@@ -77,6 +103,10 @@ export const ideaKeys = {
 
 export const workshopKeys = {
   detail: (code: string) => ["BIG_SCREEN_WORKSHOP", code] as const,
+}
+
+export const dashboardKeys = {
+  detail: (code: string) => ["BIG_SCREEN_DASHBOARD", code] as const,
 }
 
 // ---------------------------------------------
@@ -113,4 +143,22 @@ export const getWorkshopOptions = (code: string) =>
   queryOptions({
     queryKey: workshopKeys.detail(code),
     queryFn: () => getWorkshop(code),
+  })
+
+// ---------------------------------------------
+// GET DASHBOARD
+// ---------------------------------------------
+
+const getDashboard = async (code: string): Promise<GetDashboardResponse> => {
+  const res = await apiClient.get<GetDashboardResponse>("/api/big/dashboard", {
+    params: { code },
+  })
+
+  return res.data
+}
+
+export const getDashboardOptions = (code: string) =>
+  queryOptions({
+    queryKey: dashboardKeys.detail(code),
+    queryFn: () => getDashboard(code),
   })
