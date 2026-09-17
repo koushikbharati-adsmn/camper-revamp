@@ -23,6 +23,7 @@ import {
   ChevronLeftIcon,
   ChevronRightIcon,
   ClockIcon,
+  EyeIcon,
   ImagePlusIcon,
   PlusIcon,
   RefreshCwIcon,
@@ -42,6 +43,7 @@ import { ExperienceSegmentedControl } from "@/components/experience/experience-s
 import { cn } from "@/lib/utils"
 
 type IdeaFilter = "all" | "shortlisted" | "sharpened"
+type ParticipantScreen = "home" | "stage"
 
 const tickerItems = [
   "Lorem Ipsum is simply dummy text",
@@ -108,22 +110,30 @@ function ParticipantExperience({
   const [shouldShowWalkthrough, setShouldShowWalkthrough] = useState(
     walkthroughItems.length > 0
   )
+  const [activeScreen, setActiveScreen] = useState<ParticipantScreen>("home")
   const [selectedTeamId, setSelectedTeamId] = useState<number | null>(null)
   const [selectedCategoryId, setSelectedCategoryId] = useState<number | null>(
     null
   )
   const [ideaFilter, setIdeaFilter] = useState<IdeaFilter>("all")
+  const [stageTeamId, setStageTeamId] = useState<number | null>(null)
+  const [stageCategoryId, setStageCategoryId] = useState<number | null>(null)
+  const isStage = activeScreen === "stage"
 
   const { data: ideas = [], isPending: areIdeasPending } = useQuery({
     ...getParticipantIdeasOptions({
       visitor_id: visitorId,
       workshop_code: code,
-      category_id: selectedCategoryId,
-      team_id: selectedTeamId,
-      is_shortlisted: ideaFilter === "shortlisted" ? true : null,
-      is_coached: ideaFilter === "sharpened" ? true : null,
+      category_id: isStage ? stageCategoryId : selectedCategoryId,
+      team_id: isStage ? stageTeamId : selectedTeamId,
+      is_shortlisted: isStage
+        ? true
+        : ideaFilter === "shortlisted"
+          ? true
+          : null,
+      is_coached: !isStage && ideaFilter === "sharpened" ? true : null,
     }),
-    enabled: selectedTeamId !== null,
+    enabled: isStage || selectedTeamId !== null,
     select: (response) => response.data,
   })
   const selectedTeam = workshop.teams.find((team) => team.ID === selectedTeamId)
@@ -144,9 +154,38 @@ function ParticipantExperience({
         <nav className="flex items-center justify-between px-4 sm:px-6">
           <img className="h-10 w-auto" src={workshop.logoFileName} alt="logo" />
 
-          <ul className="flex gap-6 sm:gap-10">
-            <li className="font-medium">The Newsroom</li>
-            <li className="font-medium">The Stage</li>
+          <ul className="flex items-center gap-4 text-sm sm:gap-10 sm:text-base">
+            <li>
+              <button
+                type="button"
+                className="border-b-2 py-1 font-medium transition-opacity disabled:cursor-not-allowed disabled:opacity-50"
+                style={{
+                  borderColor:
+                    activeScreen === "home" ? "currentColor" : "transparent",
+                }}
+                aria-current={activeScreen === "home" ? "page" : undefined}
+                disabled={shouldShowWalkthrough}
+                onClick={() => setActiveScreen("home")}
+              >
+                Home
+              </button>
+            </li>
+            <li>
+              <button
+                type="button"
+                className="border-b-2 py-1 font-medium transition-opacity disabled:cursor-not-allowed disabled:opacity-50"
+                style={{
+                  borderColor:
+                    activeScreen === "stage" ? "currentColor" : "transparent",
+                }}
+                aria-current={activeScreen === "stage" ? "page" : undefined}
+                disabled={shouldShowWalkthrough}
+                onClick={() => setActiveScreen("stage")}
+              >
+                The Stage
+              </button>
+            </li>
+            <li className="hidden font-medium sm:block">The Newsroom</li>
           </ul>
         </nav>
       </header>
@@ -157,6 +196,19 @@ function ParticipantExperience({
             items={walkthroughItems}
             workshop={workshop}
             onBegin={completeWalkthrough}
+          />
+        ) : isStage ? (
+          <StageScreen
+            workshop={workshop}
+            code={code}
+            teams={workshop.teams}
+            categories={workshop.category}
+            ideas={ideas}
+            selectedTeamId={stageTeamId}
+            selectedCategoryId={stageCategoryId}
+            isPending={areIdeasPending}
+            onTeamChange={setStageTeamId}
+            onCategoryChange={setStageCategoryId}
           />
         ) : selectedTeam ? (
           <IdeasScreen
@@ -553,6 +605,22 @@ function IdeasScreen({
     }
   }
 
+  const toggleShortlist = async (idea: ParticipantIdea) => {
+    try {
+      await shortlistIdeaMutation.mutateAsync({
+        workshop_code: code,
+        idea_id: idea.ID,
+        flag: !idea.flgTeam,
+      })
+
+      await queryClient.invalidateQueries({
+        queryKey: ["PARTICIPANT_IDEAS"],
+      })
+    } catch {
+      return
+    }
+  }
+
   const scoutIdeas = async () => {
     if (!selectedCategory || ideas.length === 0) return
 
@@ -701,146 +769,31 @@ function IdeasScreen({
                 </div>
               </li>
             ))
-          : ideas.map((idea) => (
-              <li
-                key={idea.ID}
-                className="flex flex-col overflow-hidden rounded-lg border bg-white shadow-xs"
-              >
-                <div className="relative aspect-4/3 w-full overflow-hidden bg-neutral-100">
-                  {idea.imageFileName ? (
-                    <>
-                      <img
-                        src={idea.imageFileName}
-                        alt={idea.title || "idea"}
-                        className="size-full object-contain"
-                      />
-                      <button
-                        type="button"
-                        className="absolute right-2 bottom-2 grid size-8 place-content-center rounded-md bg-neutral-950 text-white disabled:cursor-wait disabled:opacity-50"
-                        aria-label={`Regenerate the image for ${idea.title || "idea"}`}
-                        aria-busy={
-                          generateIdeaImageMutation.isPending &&
-                          generateIdeaImageMutation.variables.idea_id ===
-                            idea.ID
-                        }
-                        disabled={generateIdeaImageMutation.isPending}
-                        onClick={() => void generateIdeaImage(idea)}
-                      >
-                        <RefreshCwIcon
-                          className={`size-4 ${
-                            generateIdeaImageMutation.isPending &&
-                            generateIdeaImageMutation.variables.idea_id ===
-                              idea.ID
-                              ? "animate-spin"
-                              : ""
-                          }`}
-                          aria-hidden="true"
-                        />
-                      </button>
-                    </>
-                  ) : (
-                    <button
-                      type="button"
-                      className="flex h-full w-full flex-col items-center justify-center gap-2 text-neutral-400 disabled:cursor-wait disabled:opacity-50"
-                      aria-label={`Generate an image for ${idea.title || "idea"}`}
-                      aria-busy={
-                        generateIdeaImageMutation.isPending &&
-                        generateIdeaImageMutation.variables.idea_id === idea.ID
-                      }
-                      disabled={generateIdeaImageMutation.isPending}
-                      onClick={() => void generateIdeaImage(idea)}
-                    >
-                      <ImagePlusIcon className="size-9" aria-hidden="true" />
-                      <span>
-                        {generateIdeaImageMutation.isPending &&
-                        generateIdeaImageMutation.variables.idea_id === idea.ID
-                          ? "Generating Idea Card..."
-                          : "Click to Generate Idea Card"}
-                      </span>
-                    </button>
-                  )}
-                </div>
+          : ideas.map((idea) => {
+              const isGeneratingImage =
+                generateIdeaImageMutation.isPending &&
+                generateIdeaImageMutation.variables.idea_id === idea.ID
+              const isShortlistPending =
+                shortlistIdeaMutation.isPending &&
+                shortlistIdeaMutation.variables.idea_id === idea.ID
 
-                <div className="flex flex-1 flex-col gap-4 p-4">
-                  <div className="flex items-center justify-between gap-3">
-                    <div className="flex items-center gap-3">
-                      <button
-                        type="button"
-                        aria-label={
-                          idea.flgTeam
-                            ? `Remove ${idea.title || "idea"} from shortlist`
-                            : `Shortlist ${idea.title || "idea"}`
-                        }
-                        aria-pressed={idea.flgTeam}
-                        disabled={
-                          shortlistIdeaMutation.isPending &&
-                          shortlistIdeaMutation.variables.idea_id === idea.ID
-                        }
-                        className="disabled:cursor-wait disabled:opacity-50"
-                        onClick={async () => {
-                          try {
-                            await shortlistIdeaMutation.mutateAsync({
-                              workshop_code: code,
-                              idea_id: idea.ID,
-                              flag: !idea.flgTeam,
-                            })
-
-                            await queryClient.invalidateQueries({
-                              queryKey: ["PARTICIPANT_IDEAS"],
-                            })
-                          } catch {
-                            return
-                          }
-                        }}
-                      >
-                        <StarIcon
-                          className="size-5"
-                          fill={idea.flgTeam ? "currentColor" : "none"}
-                          aria-hidden="true"
-                        />
-                      </button>
-                      {idea.flgSelf && (
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setEditingIdea(idea)
-                            setIsAddIdeaOpen(true)
-                          }}
-                        >
-                          <SquarePenIcon
-                            className="size-5"
-                            aria-hidden="true"
-                          />
-                        </button>
-                      )}
-                    </div>
-                    {idea.flgCoach && (
-                      <SparklesIcon className="size-5" aria-hidden="true" />
-                    )}
-                  </div>
-                  <div>
-                    <h2 className="text-xl leading-tight font-semibold">
-                      {idea.title || "Untitled"}
-                    </h2>
-                    <p className="flex items-center gap-2 text-sm text-neutral-600">
-                      <ClockIcon className="size-3.5" />
-                      {formatRelativeDate(idea.CreatedDttm)}
-                    </p>
-                  </div>
-                  <p className="line-clamp-3 text-sm text-neutral-600">
-                    {idea.Desc}
-                  </p>
-
-                  <ExperienceButton
-                    variant="primary"
-                    workshop={workshop}
-                    className="w-28"
-                  >
-                    Sharpen
-                  </ExperienceButton>
-                </div>
-              </li>
-            ))}
+              return (
+                <IdeateIdeaCard
+                  key={idea.ID}
+                  idea={idea}
+                  workshop={workshop}
+                  isGeneratingImage={isGeneratingImage}
+                  isImageActionPending={generateIdeaImageMutation.isPending}
+                  isShortlistPending={isShortlistPending}
+                  onGenerateImage={() => void generateIdeaImage(idea)}
+                  onToggleShortlist={() => void toggleShortlist(idea)}
+                  onEdit={() => {
+                    setEditingIdea(idea)
+                    setIsAddIdeaOpen(true)
+                  }}
+                />
+              )
+            })}
       </ul>
 
       {!isPending && ideas.length === 0 && (
@@ -868,6 +821,498 @@ function IdeasScreen({
         <img className="size-12 sm:size-20" src="/scout.svg" alt="scout" />
       </button>
     </section>
+  )
+}
+
+function IdeateIdeaCard({
+  idea,
+  workshop,
+  isGeneratingImage,
+  isImageActionPending,
+  isShortlistPending,
+  onGenerateImage,
+  onToggleShortlist,
+  onEdit,
+}: {
+  idea: ParticipantIdea
+  workshop: ParticipantWorkshop
+  isGeneratingImage: boolean
+  isImageActionPending: boolean
+  isShortlistPending: boolean
+  onGenerateImage: () => void
+  onToggleShortlist: () => void
+  onEdit: () => void
+}) {
+  return (
+    <li className="flex flex-col overflow-hidden rounded-lg border bg-white shadow-xs">
+      <div className="relative aspect-4/3 w-full overflow-hidden bg-neutral-100">
+        {idea.imageFileName ? (
+          <>
+            <img
+              src={idea.imageFileName}
+              alt={idea.title || "idea"}
+              className="size-full object-contain"
+            />
+            <button
+              type="button"
+              className="absolute right-2 bottom-2 grid size-8 place-content-center rounded-md bg-neutral-950 text-white disabled:cursor-wait disabled:opacity-50"
+              aria-label={`Regenerate the image for ${idea.title || "idea"}`}
+              aria-busy={isGeneratingImage}
+              disabled={isImageActionPending}
+              onClick={onGenerateImage}
+            >
+              <RefreshCwIcon
+                className={cn("size-4", isGeneratingImage && "animate-spin")}
+                aria-hidden="true"
+              />
+            </button>
+          </>
+        ) : (
+          <button
+            type="button"
+            className="flex h-full w-full flex-col items-center justify-center gap-2 text-neutral-400 disabled:cursor-wait disabled:opacity-50"
+            aria-label={`Generate an image for ${idea.title || "idea"}`}
+            aria-busy={isGeneratingImage}
+            disabled={isImageActionPending}
+            onClick={onGenerateImage}
+          >
+            <ImagePlusIcon className="size-9" aria-hidden="true" />
+            <span>
+              {isGeneratingImage
+                ? "Generating Idea Card..."
+                : "Click to Generate Idea Card"}
+            </span>
+          </button>
+        )}
+      </div>
+
+      <div className="flex flex-1 flex-col gap-4 p-4">
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              aria-label={
+                idea.flgTeam
+                  ? `Remove ${idea.title || "idea"} from shortlist`
+                  : `Shortlist ${idea.title || "idea"}`
+              }
+              aria-pressed={idea.flgTeam}
+              disabled={isShortlistPending}
+              className="disabled:cursor-wait disabled:opacity-50"
+              onClick={onToggleShortlist}
+            >
+              <StarIcon
+                className="size-5"
+                fill={idea.flgTeam ? "currentColor" : "none"}
+                aria-hidden="true"
+              />
+            </button>
+            {idea.flgSelf && (
+              <button type="button" onClick={onEdit}>
+                <SquarePenIcon className="size-5" aria-hidden="true" />
+              </button>
+            )}
+          </div>
+          {idea.flgCoach && (
+            <SparklesIcon className="size-5" aria-hidden="true" />
+          )}
+        </div>
+        <div>
+          <h2 className="text-xl leading-tight font-semibold">
+            {idea.title || "Untitled"}
+          </h2>
+          <p className="flex items-center gap-2 text-sm text-neutral-600">
+            <ClockIcon className="size-3.5" />
+            {formatRelativeDate(idea.CreatedDttm)}
+          </p>
+        </div>
+        <p className="line-clamp-3 text-sm text-neutral-600">{idea.Desc}</p>
+
+        <ExperienceButton
+          variant="primary"
+          workshop={workshop}
+          className="w-28"
+        >
+          Sharpen
+        </ExperienceButton>
+      </div>
+    </li>
+  )
+}
+
+function StageScreen({
+  workshop,
+  code,
+  teams,
+  categories,
+  ideas,
+  selectedTeamId,
+  selectedCategoryId,
+  isPending,
+  onTeamChange,
+  onCategoryChange,
+}: {
+  workshop: ParticipantWorkshop
+  code: string
+  teams: ParticipantWorkshop["teams"]
+  categories: ParticipantWorkshop["category"]
+  ideas: ParticipantIdea[]
+  selectedTeamId: number | null
+  selectedCategoryId: number | null
+  isPending: boolean
+  onTeamChange: (teamId: number | null) => void
+  onCategoryChange: (categoryId: number | null) => void
+}) {
+  const [previewIdea, setPreviewIdea] = useState<ParticipantIdea | null>(null)
+  const queryClient = useQueryClient()
+  const shortlistIdeaMutation = useShortlistIdea()
+
+  const removeFromShortlist = async (idea: ParticipantIdea) => {
+    try {
+      await shortlistIdeaMutation.mutateAsync({
+        workshop_code: code,
+        idea_id: idea.ID,
+        flag: false,
+      })
+
+      await queryClient.invalidateQueries({
+        queryKey: ["PARTICIPANT_IDEAS"],
+      })
+    } catch {
+      return
+    }
+  }
+
+  return (
+    <section className="container mx-auto w-full p-4 sm:p-6 lg:p-8">
+      {previewIdea && (
+        <IdeaPreviewDialog
+          idea={previewIdea}
+          workshop={workshop}
+          open
+          onClose={() => setPreviewIdea(null)}
+        />
+      )}
+
+      <div className="mb-6 flex flex-col items-stretch justify-end gap-3 sm:flex-row sm:items-center">
+        <label>
+          <span className="sr-only">Team</span>
+          <ExperienceSelect
+            workshop={workshop}
+            value={selectedTeamId ?? "all"}
+            onChange={(event) =>
+              onTeamChange(
+                event.target.value === "all" ? null : Number(event.target.value)
+              )
+            }
+            className="w-full sm:w-auto"
+          >
+            <ExperienceSelectOption value="all">
+              All teams
+            </ExperienceSelectOption>
+            {teams.map((team) => (
+              <ExperienceSelectOption key={team.ID} value={team.ID}>
+                {team.TeamName}
+              </ExperienceSelectOption>
+            ))}
+          </ExperienceSelect>
+        </label>
+
+        <label>
+          <span className="sr-only">Pillar</span>
+          <ExperienceSelect
+            workshop={workshop}
+            value={selectedCategoryId ?? "all"}
+            onChange={(event) =>
+              onCategoryChange(
+                event.target.value === "all" ? null : Number(event.target.value)
+              )
+            }
+            className="w-full sm:w-auto"
+          >
+            <ExperienceSelectOption value="all">
+              All pillars
+            </ExperienceSelectOption>
+            {categories.map((category) => (
+              <ExperienceSelectOption key={category.ID} value={category.ID}>
+                {category.Name}
+              </ExperienceSelectOption>
+            ))}
+          </ExperienceSelect>
+        </label>
+      </div>
+
+      <ul
+        className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
+        aria-busy={isPending}
+      >
+        {isPending
+          ? Array.from({ length: 4 }, (_, index) => (
+              <li
+                key={index}
+                className="min-h-96 animate-pulse overflow-hidden rounded-lg border bg-white shadow-xs sm:min-h-112"
+                aria-hidden="true"
+              >
+                <div className="aspect-4/3 bg-neutral-100" />
+                <div className="space-y-4 p-5">
+                  <div className="h-3 w-20 rounded bg-neutral-100" />
+                  <div className="h-6 w-3/4 rounded bg-neutral-100" />
+                  <div className="h-16 rounded bg-neutral-100" />
+                </div>
+              </li>
+            ))
+          : ideas.map((idea) => (
+              <StageIdeaCard
+                key={idea.ID}
+                idea={idea}
+                workshop={workshop}
+                isShortlistPending={shortlistIdeaMutation.isPending}
+                onRemoveFromShortlist={() => void removeFromShortlist(idea)}
+                onPreview={() => setPreviewIdea(idea)}
+              />
+            ))}
+      </ul>
+
+      {!isPending && ideas.length === 0 && (
+        <p className="mt-6 text-center text-sm text-neutral-500">
+          No shortlisted ideas match the selected filters.
+        </p>
+      )}
+    </section>
+  )
+}
+
+function StageIdeaCard({
+  idea,
+  workshop,
+  isShortlistPending,
+  onRemoveFromShortlist,
+  onPreview,
+}: {
+  idea: ParticipantIdea
+  workshop: ParticipantWorkshop
+  isShortlistPending: boolean
+  onRemoveFromShortlist: () => void
+  onPreview: () => void
+}) {
+  return (
+    <li className="flex flex-col overflow-hidden rounded-lg border bg-white shadow-xs">
+      <div className="aspect-4/3 w-full overflow-hidden bg-neutral-100">
+        {idea.imageFileName?.trim() ? (
+          <img
+            src={idea.imageFileName}
+            alt={idea.title || "Idea"}
+            className="size-full object-contain"
+          />
+        ) : (
+          <div className="flex size-full flex-col items-center justify-center gap-2 text-neutral-400">
+            <ImagePlusIcon className="size-9" aria-hidden="true" />
+            <span>No image available</span>
+          </div>
+        )}
+      </div>
+
+      <div className="flex flex-1 flex-col gap-4 p-4">
+        <div className="flex items-center justify-between gap-3">
+          <button
+            type="button"
+            aria-label={`Remove ${idea.title || "idea"} from shortlist`}
+            aria-pressed="true"
+            disabled={isShortlistPending}
+            className="disabled:cursor-wait disabled:opacity-50"
+            onClick={onRemoveFromShortlist}
+          >
+            <StarIcon
+              className="size-5"
+              fill="currentColor"
+              aria-hidden="true"
+            />
+          </button>
+          {idea.flgCoach && (
+            <SparklesIcon className="size-5" aria-hidden="true" />
+          )}
+        </div>
+
+        <div>
+          <h2 className="text-xl leading-tight font-semibold">
+            {idea.title || "Untitled"}
+          </h2>
+          <p className="flex items-center gap-2 text-sm text-neutral-600">
+            <ClockIcon className="size-3.5" aria-hidden="true" />
+            {formatRelativeDate(idea.CreatedDttm)}
+          </p>
+        </div>
+
+        <div className="flex flex-wrap gap-2 text-xs">
+          <span className="rounded-full bg-neutral-100 px-2.5 py-1">
+            {idea.TeamName || "Unknown team"}
+          </span>
+          <span className="rounded-full border px-2.5 py-1">
+            {idea.Category || "Unknown pillar"}
+          </span>
+        </div>
+
+        <p className="line-clamp-3 text-sm text-neutral-600">{idea.Desc}</p>
+
+        <ExperienceButton
+          variant="primary"
+          workshop={workshop}
+          className="mt-auto flex w-28 items-center justify-center gap-2"
+          onClick={onPreview}
+        >
+          <EyeIcon className="size-4" aria-hidden="true" />
+          View
+        </ExperienceButton>
+      </div>
+    </li>
+  )
+}
+
+function IdeaPreviewDialog({
+  idea,
+  workshop,
+  open,
+  onClose,
+}: {
+  idea: ParticipantIdea
+  workshop: ParticipantWorkshop
+  open: boolean
+  onClose: () => void
+}) {
+  const dialogRef = useRef<HTMLDialogElement>(null)
+
+  useEffect(() => {
+    const dialog = dialogRef.current
+
+    if (!dialog) return
+
+    if (open && !dialog.open) {
+      dialog.showModal()
+    }
+
+    if (!open && dialog.open) {
+      dialog.close()
+    }
+  }, [open])
+
+  return (
+    <dialog
+      ref={dialogRef}
+      aria-labelledby="idea-preview-title"
+      aria-describedby="idea-preview-description"
+      className={cn(
+        "fixed inset-0 m-0 h-dvh max-h-dvh w-full max-w-none",
+        "overflow-hidden border-0 bg-transparent p-0 backdrop:bg-black/50",
+        "sm:m-auto sm:h-fit sm:max-h-[calc(100dvh-2rem)]",
+        "sm:w-[min(48rem,calc(100%-2rem))]"
+      )}
+      onClose={onClose}
+    >
+      <div
+        className={cn(
+          "flex h-full max-h-dvh min-h-0 flex-col overflow-hidden",
+          "sm:h-auto sm:max-h-[calc(100dvh-2rem)] sm:rounded-lg sm:border sm:shadow-lg"
+        )}
+        style={{
+          backgroundColor: workshop.card_primary_bg_color,
+          borderColor: workshop.card_primary_border_color,
+          color: workshop.txt_primary_color,
+        }}
+      >
+        <header
+          className="flex shrink-0 items-start justify-between gap-3 border-b px-4 py-3 sm:px-6 sm:py-4"
+          style={{ borderColor: workshop.card_primary_border_color }}
+        >
+          <div className="min-w-0">
+            <h2
+              id="idea-preview-title"
+              className="text-xl leading-tight font-semibold tracking-[-0.02em]"
+            >
+              {idea.title || "Untitled"}
+            </h2>
+            <p
+              id="idea-preview-description"
+              className="mt-1 text-sm"
+              style={{ color: workshop.txt_secondary_color }}
+            >
+              Full idea submission from {idea.TeamName || "Unknown team"}.
+            </p>
+          </div>
+
+          <button
+            type="button"
+            className="grid size-9 shrink-0 place-items-center rounded-md border transition-colors focus-visible:outline-2 focus-visible:outline-offset-2"
+            style={{
+              borderColor: workshop.card_primary_border_color,
+              outlineColor: workshop.btn_primary_bg_color,
+            }}
+            aria-label="Close idea preview"
+            onClick={() => dialogRef.current?.close()}
+          >
+            <XIcon className="size-4" aria-hidden="true" />
+          </button>
+        </header>
+
+        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-4 sm:p-6">
+          <div className="grid gap-5 md:grid-cols-[minmax(0,1.15fr)_minmax(15rem,0.85fr)]">
+            <div
+              className="aspect-4/3 overflow-hidden border bg-neutral-100"
+              style={{ borderColor: workshop.card_primary_border_color }}
+            >
+              {idea.imageFileName?.trim() ? (
+                <img
+                  src={idea.imageFileName}
+                  alt={idea.title || "Idea"}
+                  className="size-full object-contain"
+                />
+              ) : (
+                <div className="flex size-full flex-col items-center justify-center gap-2 text-neutral-400">
+                  <ImagePlusIcon className="size-9" aria-hidden="true" />
+                  <span>No image available</span>
+                </div>
+              )}
+            </div>
+
+            <div className="min-w-0 space-y-5">
+              <div className="flex flex-wrap gap-2 text-xs">
+                <span className="rounded-full bg-neutral-100 px-2.5 py-1 text-neutral-900">
+                  {idea.TeamName || "Unknown team"}
+                </span>
+                <span
+                  className="rounded-full border px-2.5 py-1"
+                  style={{ borderColor: workshop.card_primary_border_color }}
+                >
+                  {idea.Category || "Unknown pillar"}
+                </span>
+                <span className="rounded-full bg-neutral-900 px-2.5 py-1 text-white">
+                  Shortlisted
+                </span>
+              </div>
+
+              <div>
+                <p className="font-medium">Submitted</p>
+                <p
+                  className="mt-1"
+                  style={{ color: workshop.txt_secondary_color }}
+                >
+                  {formatRelativeDate(idea.CreatedDttm)}
+                </p>
+              </div>
+
+              <div>
+                <p className="font-medium">Description</p>
+                <p
+                  className="mt-1 text-sm leading-relaxed whitespace-pre-line"
+                  style={{ color: workshop.txt_secondary_color }}
+                >
+                  {idea.Desc}
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </dialog>
   )
 }
 
