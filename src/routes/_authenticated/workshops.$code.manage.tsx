@@ -76,11 +76,13 @@ import {
   PlayIcon,
   RotateCcwIcon,
   ShieldAlertIcon,
+  StarIcon,
   TagsIcon,
   UsersIcon,
 } from "lucide-react"
 import { useEffect, useRef, useState } from "react"
 import { useWorkshopTimer } from "@/hooks/use-workshop-timer"
+import { z } from "zod"
 
 type TimerStatus = "idle" | "running" | "paused"
 type TimerState = {
@@ -89,7 +91,13 @@ type TimerState = {
   remainingSeconds: number
 }
 
+const manageWorkshopSearchSchema = z.object({
+  team: z.coerce.number().int().positive().optional(),
+  pillar: z.coerce.number().int().positive().optional(),
+})
+
 export const Route = createFileRoute("/_authenticated/workshops/$code/manage")({
+  validateSearch: manageWorkshopSearchSchema,
   loader: ({ context, params }) =>
     context.queryClient.query(getManageWorkshopOptions(params.code)),
   pendingMs: 150,
@@ -101,18 +109,21 @@ export const Route = createFileRoute("/_authenticated/workshops/$code/manage")({
 
 function RouteComponent() {
   const { code } = Route.useParams()
+  const { team, pillar } = Route.useSearch()
+  const navigate = Route.useNavigate()
+
   const { data: workshop } = useSuspenseQuery({
     ...getManageWorkshopOptions(code),
     select: (response) => response.data,
   })
+
   const updateStatusMutation = useUpdateWorkshopStatus()
   const exportPptMutation = useExportPpt()
+
   const [pendingTransition, setPendingTransition] =
     useState<WorkshopStatus | null>(null)
-
-  const [teamFilter, setTeamFilter] = useState("all")
-  const [pillarFilter, setPillarFilter] = useState("all")
   const [previewIdea, setPreviewIdea] = useState<ManageIdea | null>(null)
+
   const {
     data: ideas = [],
     isPending: isIdeasPending,
@@ -121,8 +132,8 @@ function RouteComponent() {
   } = useQuery({
     ...getManageIdeasOptions({
       code,
-      team_id: teamFilter === "all" ? null : Number(teamFilter),
-      category_id: pillarFilter === "all" ? null : Number(pillarFilter),
+      team_id: team ?? null,
+      category_id: pillar ?? null,
     }),
     select: (data) => data.data,
   })
@@ -216,12 +227,28 @@ function RouteComponent() {
         teams={workshop.teams}
         pillars={workshop.categories}
         totalIdeas={workshop.TotalIdea}
-        teamFilter={teamFilter}
-        pillarFilter={pillarFilter}
+        teamId={team}
+        pillarId={pillar}
         isLoading={isIdeasPending}
         errorMessage={ideasError?.message ?? null}
-        onTeamFilterChange={setTeamFilter}
-        onPillarFilterChange={setPillarFilter}
+        onTeamFilterChange={(team) => {
+          void navigate({
+            search: (prev) => ({
+              ...prev,
+              team,
+            }),
+            replace: true,
+          })
+        }}
+        onPillarFilterChange={(pillar) => {
+          void navigate({
+            search: (prev) => ({
+              ...prev,
+              pillar,
+            }),
+            replace: true,
+          })
+        }}
         onPreview={setPreviewIdea}
         onRetry={() => void refetchIdeas()}
       />
@@ -677,8 +704,8 @@ function IdeaTracker({
   teams,
   pillars,
   totalIdeas,
-  teamFilter,
-  pillarFilter,
+  teamId,
+  pillarId,
   isLoading,
   errorMessage,
   onTeamFilterChange,
@@ -690,12 +717,12 @@ function IdeaTracker({
   teams: ManageWorkshop["teams"]
   pillars: ManageWorkshop["categories"]
   totalIdeas: number
-  teamFilter: string
-  pillarFilter: string
+  teamId?: number
+  pillarId?: number
   isLoading: boolean
   errorMessage: string | null
-  onTeamFilterChange: (value: string) => void
-  onPillarFilterChange: (value: string) => void
+  onTeamFilterChange: (value?: number) => void
+  onPillarFilterChange: (value?: number) => void
   onPreview: (idea: ManageIdea) => void
   onRetry: () => void
 }) {
@@ -713,10 +740,14 @@ function IdeaTracker({
       label: pillar.Category,
     })),
   ]
-  const isFiltered = teamFilter !== "all" || pillarFilter !== "all"
+  const isFiltered = teamId !== undefined || pillarId !== undefined
 
   return (
-    <section aria-labelledby="idea-tracker-heading" aria-busy={isLoading}>
+    <section
+      className="space-y-0.5"
+      aria-labelledby="idea-tracker-heading"
+      aria-busy={isLoading}
+    >
       <div className="flex flex-col gap-3 bg-background/90 py-4 backdrop-blur-md lg:flex-row lg:items-end lg:justify-between">
         <div>
           <div className="flex items-center gap-2">
@@ -741,9 +772,10 @@ function IdeaTracker({
             Team
             <Select
               items={teamItems}
-              value={teamFilter}
+              value={teamId ? String(teamId) : "all"}
               onValueChange={(value) => {
-                if (typeof value === "string") onTeamFilterChange(value)
+                if (typeof value !== "string") return
+                onTeamFilterChange(value === "all" ? undefined : Number(value))
               }}
             >
               <SelectTrigger
@@ -765,9 +797,13 @@ function IdeaTracker({
             Pillar
             <Select
               items={pillarItems}
-              value={pillarFilter}
+              value={pillarId ? String(pillarId) : "all"}
               onValueChange={(value) => {
-                if (typeof value === "string") onPillarFilterChange(value)
+                if (typeof value !== "string") return
+
+                onPillarFilterChange(
+                  value === "all" ? undefined : Number(value)
+                )
               }}
             >
               <SelectTrigger
@@ -824,7 +860,7 @@ function IdeaCard({
           <CardTitle>{idea.title ?? "Untitled"}</CardTitle>
           {idea.flgTeam && (
             <Badge className="shrink-0">
-              <FlagIcon />
+              <StarIcon fill="currentColor" />
               Shortlisted
             </Badge>
           )}
@@ -841,13 +877,13 @@ function IdeaCard({
         </div>
       </CardHeader>
       <CardContent className="flex flex-1 flex-col pb-4">
-        <p className="line-clamp-3 text-sm text-muted-foreground">
+        <p className="mb-4 line-clamp-3 text-sm text-muted-foreground">
           {idea.Desc}
         </p>
         <Button
           variant="outline"
           size="sm"
-          className="mt-4 w-full"
+          className="mt-auto w-full"
           onClick={() => onPreview(idea)}
         >
           <EyeIcon />
