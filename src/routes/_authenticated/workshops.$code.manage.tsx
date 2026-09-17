@@ -79,7 +79,8 @@ import {
   TagsIcon,
   UsersIcon,
 } from "lucide-react"
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
+import { useWorkshopTimer } from "@/hooks/use-workshop-timer"
 
 type TimerStatus = "idle" | "running" | "paused"
 type TimerState = {
@@ -117,11 +118,7 @@ function RouteComponent() {
   const exportPptMutation = useExportPpt()
   const [pendingTransition, setPendingTransition] =
     useState<WorkshopStatus | null>(null)
-  const [timer, setTimer] = useState<TimerState>({
-    status: "idle",
-    durationSeconds: 0,
-    remainingSeconds: 0,
-  })
+
   const [teamFilter, setTeamFilter] = useState("all")
   const [pillarFilter, setPillarFilter] = useState("all")
   const [previewIdea, setPreviewIdea] = useState<ManageIdea | null>(null)
@@ -139,34 +136,14 @@ function RouteComponent() {
     select: (data) => data.data,
   })
 
-  useEffect(() => {
-    if (timer.status !== "running") return
-
-    const intervalId = window.setInterval(() => {
-      setTimer((current) => {
-        if (current.status !== "running") return current
-
-        if (current.remainingSeconds <= 1) {
-          return { ...current, status: "idle", remainingSeconds: 0 }
-        }
-
-        return {
-          ...current,
-          remainingSeconds: current.remainingSeconds - 1,
-        }
-      })
-    }, 1000)
-
-    return () => window.clearInterval(intervalId)
-  }, [timer.status])
-
-  const resetTimer = () => {
-    setTimer((current) => ({
-      ...current,
-      status: "idle",
-      remainingSeconds: current.durationSeconds,
-    }))
-  }
+  const {
+    timer,
+    setDuration,
+    start: startTimer,
+    pause: pauseTimer,
+    resume: resumeTimer,
+    reset: resetTimer,
+  } = useWorkshopTimer(code)
 
   const transitionWorkshop = async (targetStatus: WorkshopStatus) => {
     if (!canTransitionWorkshop(workshop.status, targetStatus)) return false
@@ -229,20 +206,10 @@ function RouteComponent() {
         />
         <TimerCard
           timer={timer}
-          onStatusChange={(status) =>
-            setTimer((current) => ({ ...current, status }))
-          }
-          onDurationChange={(durationSeconds) =>
-            setTimer((current) =>
-              current.status === "running"
-                ? current
-                : {
-                    ...current,
-                    durationSeconds,
-                    remainingSeconds: durationSeconds,
-                  }
-            )
-          }
+          onStart={startTimer}
+          onPause={pauseTimer}
+          onResume={resumeTimer}
+          onDurationChange={setDuration}
           onReset={resetTimer}
         />
       </div>
@@ -490,17 +457,23 @@ function LifecycleCard({
 
 function TimerCard({
   timer,
-  onStatusChange,
+  onStart,
+  onPause,
+  onResume,
   onDurationChange,
   onReset,
 }: {
   timer: TimerState
-  onStatusChange: (status: TimerStatus) => void
+  onStart: () => void
+  onPause: () => void
+  onResume: () => void
   onDurationChange: (durationSeconds: number) => void
   onReset: () => void
 }) {
   const duration = getDurationParts(timer.remainingSeconds)
+
   const isEditable = timer.status !== "running"
+
   const canReset =
     timer.status !== "idle" ||
     (timer.durationSeconds > 0 &&
@@ -511,10 +484,11 @@ function TimerCard({
     rawValue: string
   ) => {
     const max = part === "hours" ? 99 : 59
-    const parsedValue = Number(rawValue.replace(/\D/g, "").slice(0, 2)) || 0
+    const value = Math.min(Number(rawValue) || 0, max)
+
     const nextDuration = {
       ...duration,
-      [part]: Math.min(parsedValue, max),
+      [part]: value,
     }
 
     onDurationChange(
@@ -545,24 +519,17 @@ function TimerCard({
             disabled={!isEditable}
             onChange={(value) => updateDurationPart("hours", value)}
           />
-          <span
-            className="pt-2 font-mono text-5xl font-semibold text-muted-foreground sm:text-6xl lg:text-7xl"
-            aria-hidden="true"
-          >
-            :
-          </span>
+
+          <TimerSeparator />
+
           <TimerDurationInput
             label="Minutes"
             value={duration.minutes}
             disabled={!isEditable}
             onChange={(value) => updateDurationPart("minutes", value)}
           />
-          <span
-            className="pt-2 font-mono text-5xl font-semibold text-muted-foreground sm:text-6xl lg:text-7xl"
-            aria-hidden="true"
-          >
-            :
-          </span>
+
+          <TimerSeparator />
 
           <TimerDurationInput
             label="Seconds"
@@ -576,25 +543,19 @@ function TimerCard({
         </span>
         <div className="mt-5 flex w-full flex-wrap justify-center gap-2">
           {timer.status === "idle" && (
-            <Button
-              disabled={timer.remainingSeconds === 0}
-              onClick={() => onStatusChange("running")}
-            >
+            <Button disabled={timer.remainingSeconds === 0} onClick={onStart}>
               <PlayIcon />
               Start
             </Button>
           )}
           {timer.status === "running" && (
-            <Button onClick={() => onStatusChange("paused")}>
+            <Button onClick={onPause}>
               <PauseIcon />
               Pause
             </Button>
           )}
           {timer.status === "paused" && (
-            <Button
-              disabled={timer.remainingSeconds === 0}
-              onClick={() => onStatusChange("running")}
-            >
+            <Button disabled={timer.remainingSeconds === 0} onClick={onResume}>
               <PlayIcon />
               Resume
             </Button>
@@ -611,6 +572,17 @@ function TimerCard({
   )
 }
 
+function TimerSeparator() {
+  return (
+    <span
+      aria-hidden="true"
+      className="pt-2 font-mono text-5xl font-semibold text-muted-foreground sm:text-6xl lg:text-7xl"
+    >
+      :
+    </span>
+  )
+}
+
 function TimerDurationInput({
   label,
   value,
@@ -622,19 +594,42 @@ function TimerDurationInput({
   disabled: boolean
   onChange: (value: string) => void
 }) {
+  const [inputValue, setInputValue] = useState(String(value).padStart(2, "0"))
+  const isEditing = useRef(false)
+
+  useEffect(() => {
+    if (!isEditing.current) {
+      setInputValue(String(value).padStart(2, "0"))
+    }
+  }, [value])
+
   return (
     <label className="grid min-w-0 gap-1.5 text-center">
       <Input
         type="number"
         inputMode="numeric"
-        pattern="[0-9]*"
-        maxLength={2}
-        value={String(value).padStart(2, "0")}
+        min={0}
+        value={inputValue}
         disabled={disabled}
         aria-label={label}
         className="h-auto w-20 [appearance:textfield] border-0 border-b bg-transparent px-0 py-2 text-center font-mono text-5xl font-semibold tracking-tight tabular-nums focus-visible:ring-0 disabled:bg-transparent disabled:opacity-100 sm:w-24 sm:text-6xl md:text-6xl lg:w-28 lg:text-7xl [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
-        onFocus={(event) => event.currentTarget.select()}
-        onChange={(event) => onChange(event.target.value)}
+        onFocus={(event) => {
+          isEditing.current = true
+          event.currentTarget.select()
+        }}
+        onChange={(event) => {
+          const rawValue = event.target.value
+
+          // Allow empty value while editing, otherwise maximum 2 digits.
+          if (!/^\d{0,2}$/.test(rawValue)) return
+
+          setInputValue(rawValue)
+          onChange(rawValue)
+        }}
+        onBlur={() => {
+          isEditing.current = false
+          setInputValue(String(value).padStart(2, "0"))
+        }}
       />
 
       <span className="text-xs font-medium text-muted-foreground">{label}</span>
