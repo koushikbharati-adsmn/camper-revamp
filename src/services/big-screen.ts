@@ -1,0 +1,151 @@
+import apiClient from "@/lib/api-client"
+import { queryOptions } from "@tanstack/react-query"
+
+export interface WorkshopScreenTeam {
+  ID: string
+  WorkshopID: string
+  TeamName: string
+  TeamColorCode: string | null
+  ThumbnailFileName: string | null
+}
+
+export interface WorkshopScreenCategory {
+  ID: string
+  WorkshopID: string
+  Name: string
+  Context: string | null
+}
+
+export interface WorkshopScreen {
+  ID: string
+  Name: string
+  Desc: string | null
+  WorkshopCode: string
+  logoFileName: string | null
+  page_bg_image: string | null
+  font_primary_name: string | null
+  font_secondary_name: string | null
+  teams: WorkshopScreenTeam[]
+  categories: WorkshopScreenCategory[]
+}
+
+export interface IdeaScreen {
+  ID: number
+  TeamName: string
+  Category: string
+  Desc: string
+  title: string | null
+  imageFileName: string | null
+  flgSelf: boolean
+  flgScout: boolean
+  flgTeam: boolean | null
+  flgAdmin: boolean | null
+  flgCoach: boolean // isSharpened
+  Votes?: number
+  CreatedDttm?: string
+}
+
+export interface GetIdeasScreenResponse {
+  success: boolean
+  data: IdeaScreen[]
+}
+
+export interface GetIdeasScreenParams {
+  workshop_code: string
+  // The encrypted team/category ID from Workshop["teams"]/["categories"],
+  // as returned by getWorkshopOptions — the API decrypts it server-side.
+  category_id?: string | null
+  team_id?: string | null
+}
+
+export interface GetWorkshopScreenResponse {
+  success: boolean
+  data: WorkshopScreen
+}
+
+export interface DashboardOverall {
+  Draft: number
+  Shortlisted: number
+  Sharpened: number
+  TotalIdeas: number
+}
+
+export interface DashboardTeamStat {
+  TeamID: number
+  TeamName: string
+  Drafts: number
+  Shortlisted: number
+  Sharpened: number
+  TotalIdeas: number
+}
+
+export interface GetDashboardResponse {
+  success: boolean
+  data: {
+    overall: DashboardOverall
+    teams: DashboardTeamStat[]
+  }
+}
+
+export const ideScreenKeys = {
+  all: ["BIG_SCREEN_IDEAS"] as const,
+
+  list: (params: GetIdeasScreenParams) => ["BIG_SCREEN_IDEAS", params] as const,
+}
+
+export const workshopScreenKeys = {
+  detail: (code: string) => ["BIG_SCREEN_WORKSHOP", code] as const,
+}
+
+export const dashboardKeys = {
+  detail: (code: string) => ["BIG_SCREEN_DASHBOARD", code] as const,
+}
+
+const getIdeasScreen = async (
+  params: GetIdeasScreenParams
+): Promise<GetIdeasScreenResponse> => {
+  const res = await apiClient.get<GetIdeasScreenResponse>("/api/big/idea", {
+    params,
+  })
+
+  return res.data
+}
+
+export const getIdeasScreenOptions = (params: GetIdeasScreenParams) =>
+  queryOptions({
+    queryKey: ideScreenKeys.list(params),
+    queryFn: () => getIdeasScreen(params),
+  })
+
+const getWorkshopScreen = async (
+  code: string
+): Promise<GetWorkshopScreenResponse> => {
+  const res = await apiClient.get<GetWorkshopScreenResponse>(
+    "/api/big/workshop",
+    {
+      params: { code },
+    }
+  )
+
+  return res.data
+}
+
+export const getWorkshopScreenOptions = (code: string) =>
+  queryOptions({
+    queryKey: workshopScreenKeys.detail(code),
+    queryFn: () => getWorkshopScreen(code),
+  })
+
+const getDashboard = async (code: string): Promise<GetDashboardResponse> => {
+  const res = await apiClient.get<GetDashboardResponse>("/api/big/dashboard", {
+    params: { code },
+  })
+
+  return res.data
+}
+
+export const getDashboardOptions = (code: string) =>
+  queryOptions({
+    queryKey: dashboardKeys.detail(code),
+    queryFn: () => getDashboard(code),
+  })
