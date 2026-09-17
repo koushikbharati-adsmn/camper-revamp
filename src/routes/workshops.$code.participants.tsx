@@ -39,6 +39,7 @@ import {
   ExperienceSelectOption,
 } from "@/components/experience/experience-select"
 import { ExperienceSegmentedControl } from "@/components/experience/experience-segmented-control"
+import { cn } from "@/lib/utils"
 
 type IdeaFilter = "all" | "shortlisted" | "sharpened"
 
@@ -847,14 +848,15 @@ function IdeasScreen({
           No ideas available for these filters.
         </p>
       )}
-
-      <ExperienceButton
-        variant="primary"
-        workshop={workshop}
-        className="fixed right-4 bottom-16 z-20 flex items-center justify-center gap-2 shadow-lg sm:right-6"
+      <button
+        className="fixed right-4 bottom-16 z-20 flex items-center justify-center gap-2 drop-shadow-sm disabled:opacity-70 sm:right-6"
+        type="button"
         disabled={
           !selectedCategory || ideas.length === 0 || scoutIdeaMutation.isPending
         }
+        aria-label="Scout Ideas"
+        aria-busy={scoutIdeaMutation.isPending}
+        onClick={() => void scoutIdeas()}
         title={
           selectedCategory
             ? ideas.length === 0
@@ -862,14 +864,9 @@ function IdeasScreen({
               : undefined
             : "Select a pillar to use Scout"
         }
-        onClick={() => void scoutIdeas()}
       >
-        <SparklesIcon
-          className={`size-4 ${scoutIdeaMutation.isPending ? "animate-pulse" : ""}`}
-          aria-hidden="true"
-        />
-        {scoutIdeaMutation.isPending ? "Scouting..." : "Scout"}
-      </ExperienceButton>
+        <img className="size-12 sm:size-20" src="/scout.svg" alt="scout" />
+      </button>
     </section>
   )
 }
@@ -908,41 +905,61 @@ function ScoutDialog({
   }, [open])
 
   const closeDialog = () => {
-    dialogRef.current?.close()
+    onClose()
   }
 
   return (
     <dialog
       ref={dialogRef}
       aria-labelledby="scout-dialog-title"
-      className="fixed inset-0 m-0 h-dvh max-h-dvh w-full max-w-none overflow-hidden border-0 bg-transparent p-0 backdrop:bg-black/50 sm:m-auto sm:h-fit sm:max-h-[calc(100dvh-2rem)] sm:w-[min(40rem,calc(100%-2rem))]"
+      className={cn(
+        "fixed inset-0 m-0 h-dvh max-h-dvh w-full max-w-none",
+        "overflow-hidden border-0 bg-transparent p-0",
+        "backdrop:bg-black/50",
+        "sm:m-auto sm:h-fit sm:max-h-[calc(100dvh-2rem)]",
+        "sm:w-[min(40rem,calc(100%-2rem))]"
+      )}
       onClose={onClose}
     >
       <div
-        className="flex h-full max-h-dvh min-h-0 flex-col overflow-hidden sm:h-auto sm:max-h-[calc(100dvh-2rem)] sm:rounded-lg sm:border sm:shadow-lg"
+        className={cn(
+          "flex h-full max-h-dvh min-h-0 flex-col overflow-hidden",
+          "sm:h-auto sm:max-h-[calc(100dvh-2rem)]",
+          "sm:rounded-lg sm:border sm:shadow-lg"
+        )}
         style={{
           backgroundColor: workshop.card_primary_bg_color,
           borderColor: workshop.card_primary_border_color,
           color: workshop.txt_primary_color,
         }}
       >
+        {/* Header */}
         <header
-          className="flex shrink-0 items-center justify-between gap-3 border-b px-4 py-3 sm:px-6 sm:py-4"
+          className={cn(
+            "flex shrink-0 items-center justify-between gap-3",
+            "border-b px-4 py-3 sm:px-6 sm:py-4"
+          )}
           style={{
             backgroundColor: workshop.card_primary_bg_color,
             borderColor: workshop.card_primary_border_color,
           }}
         >
-          <div className="min-w-0">
+          <div className={cn("min-w-0")}>
             <h2
               id="scout-dialog-title"
-              className="text-lg font-semibold tracking-[-0.02em] sm:text-xl"
+              className={cn(
+                "text-lg font-semibold tracking-[-0.02em]",
+                "sm:text-xl"
+              )}
             >
               Scout Suggests
             </h2>
+
             <p
-              className="mt-0.5 text-xs sm:mt-1 sm:text-sm"
-              style={{ color: workshop.txt_secondary_color }}
+              className={cn("mt-0.5 text-xs", "sm:mt-1 sm:text-sm")}
+              style={{
+                color: workshop.txt_secondary_color,
+              }}
             >
               Three fresh directions inspired by your team&apos;s ideas.
             </p>
@@ -950,7 +967,11 @@ function ScoutDialog({
 
           <button
             type="button"
-            className="grid size-9 shrink-0 place-items-center rounded-md border transition-colors focus-visible:outline-2 focus-visible:outline-offset-2"
+            className={cn(
+              "grid size-9 shrink-0 place-items-center rounded-md border",
+              "transition-colors",
+              "focus-visible:outline-2 focus-visible:outline-offset-2"
+            )}
             style={{
               borderColor: workshop.card_primary_border_color,
               outlineColor: workshop.btn_primary_bg_color,
@@ -958,44 +979,89 @@ function ScoutDialog({
             aria-label="Close Scout suggestions"
             onClick={closeDialog}
           >
-            <XIcon className="size-4" aria-hidden="true" />
+            <XIcon className={cn("size-4")} aria-hidden="true" />
           </button>
         </header>
 
-        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
-          <div className="px-4 py-4 sm:px-6 sm:py-6" aria-busy={isPending}>
+        {/* Scrollable content */}
+        <div
+          className={cn("min-h-0 flex-1 overflow-y-auto overscroll-contain")}
+        >
+          <div
+            className={cn("px-4 py-4", "sm:px-6 sm:py-6")}
+            aria-busy={isPending}
+          >
             <div
-              className="rounded-lg border p-4 sm:p-5"
+              className={cn("rounded-lg border p-4", "sm:p-5")}
               style={{
                 backgroundColor: workshop.card_secondary_bg_color,
                 borderColor: workshop.card_primary_border_color,
                 color: workshop.card_secondary_txt_color,
               }}
             >
-              <p className="mb-4 text-xs font-semibold tracking-[0.14em] uppercase">
+              <p
+                className={cn(
+                  "mb-4 text-xs font-semibold tracking-[0.14em] uppercase"
+                )}
+              >
                 {pillarTitle}
               </p>
 
               {isPending ? (
-                <div className="grid gap-5" aria-label="Loading suggestions">
+                <div
+                  className={cn("grid gap-5")}
+                  aria-label="Loading suggestions"
+                >
                   {Array.from({ length: 3 }, (_, index) => (
-                    <div key={index} className="flex gap-3" aria-hidden="true">
-                      <span className="h-4 w-4 shrink-0 animate-pulse rounded bg-current opacity-10" />
-                      <div className="grid flex-1 gap-2">
-                        <span className="h-3 w-full animate-pulse rounded bg-current opacity-10" />
-                        <span className="h-3 w-5/6 animate-pulse rounded bg-current opacity-10" />
-                        <span className="h-3 w-2/3 animate-pulse rounded bg-current opacity-10" />
+                    <div
+                      key={index}
+                      className={cn("flex gap-3")}
+                      aria-hidden="true"
+                    >
+                      <span
+                        className={cn(
+                          "h-4 w-4 shrink-0 animate-pulse rounded",
+                          "bg-current opacity-10"
+                        )}
+                      />
+
+                      <div className={cn("grid flex-1 gap-2")}>
+                        <span
+                          className={cn(
+                            "h-3 w-full animate-pulse rounded",
+                            "bg-current opacity-10"
+                          )}
+                        />
+
+                        <span
+                          className={cn(
+                            "h-3 w-5/6 animate-pulse rounded",
+                            "bg-current opacity-10"
+                          )}
+                        />
+
+                        <span
+                          className={cn(
+                            "h-3 w-2/3 animate-pulse rounded",
+                            "bg-current opacity-10"
+                          )}
+                        />
                       </div>
                     </div>
                   ))}
                 </div>
               ) : isError ? (
-                <p className="text-sm leading-6">
+                <p className={cn("text-sm leading-6")}>
                   Scout couldn&apos;t generate suggestions. Close this dialog
                   and try again.
                 </p>
               ) : (
-                <ol className="grid list-decimal gap-4 pl-6 text-sm leading-6 sm:text-base sm:leading-7">
+                <ol
+                  className={cn(
+                    "grid list-decimal gap-4 pl-6 text-sm leading-6",
+                    "sm:text-base sm:leading-7"
+                  )}
+                >
                   {suggestions.map((suggestion, index) => (
                     <li key={`${index}-${suggestion}`}>{suggestion}</li>
                   ))}
@@ -1005,8 +1071,9 @@ function ScoutDialog({
           </div>
         </div>
 
+        {/* Footer */}
         <footer
-          className="shrink-0 border-t px-4 py-3 sm:px-6 sm:py-4"
+          className={cn("shrink-0 border-t px-4 py-3", "sm:px-6 sm:py-4")}
           style={{
             backgroundColor: workshop.card_primary_bg_color,
             borderColor: workshop.card_primary_border_color,
@@ -1015,7 +1082,7 @@ function ScoutDialog({
           <ExperienceButton
             variant="primary"
             workshop={workshop}
-            className="w-full"
+            className={cn("w-full")}
             onClick={closeDialog}
           >
             Back
@@ -1085,7 +1152,13 @@ function IdeaDialog({
     <dialog
       ref={dialogRef}
       aria-labelledby="idea-dialog-title"
-      className="fixed inset-0 m-0 h-dvh max-h-dvh w-full max-w-none overflow-hidden border-0 bg-transparent p-0 backdrop:bg-black/50 sm:m-auto sm:h-fit sm:max-h-[calc(100dvh-4rem)] sm:w-[min(40rem,calc(100%-2rem))]"
+      className={cn(
+        "fixed inset-0 m-0 h-dvh max-h-dvh w-full max-w-none",
+        "overflow-hidden border-0 bg-transparent p-0",
+        "backdrop:bg-black/50",
+        "sm:m-auto sm:h-fit sm:max-h-[calc(100dvh-2rem)]",
+        "sm:w-[min(40rem,calc(100%-2rem))]"
+      )}
       onCancel={(event) => {
         if (saveIdeaMutation.isPending) {
           event.preventDefault()
@@ -1095,7 +1168,11 @@ function IdeaDialog({
     >
       <form
         ref={formRef}
-        className="flex h-full max-h-dvh flex-col overflow-hidden sm:h-auto sm:max-h-[calc(100dvh-4rem)] sm:rounded-lg sm:border sm:shadow-lg"
+        className={cn(
+          "flex h-full max-h-dvh min-h-0 flex-col overflow-hidden",
+          "sm:h-auto sm:max-h-[calc(100dvh-2rem)]",
+          "sm:rounded-lg sm:border sm:shadow-lg"
+        )}
         style={{
           backgroundColor: workshop.card_primary_bg_color,
           borderColor: workshop.card_primary_border_color,
@@ -1136,23 +1213,29 @@ function IdeaDialog({
         }}
       >
         {/* Header */}
-        <div
-          className="flex shrink-0 items-center justify-between gap-3 border-b px-4 py-3 sm:px-6 sm:py-4"
+        <header
+          className={cn(
+            "flex shrink-0 items-center justify-between gap-3",
+            "border-b px-4 py-3 sm:px-6 sm:py-4"
+          )}
           style={{
             backgroundColor: workshop.card_primary_bg_color,
             borderColor: workshop.card_primary_border_color,
           }}
         >
-          <div className="min-w-0">
+          <div className={cn("min-w-0")}>
             <h2
               id="idea-dialog-title"
-              className="text-lg font-semibold tracking-[-0.02em] sm:text-xl"
+              className={cn(
+                "text-lg font-semibold tracking-[-0.02em]",
+                "sm:text-xl"
+              )}
             >
               {idea ? "Edit idea" : "Add an idea"}
             </h2>
 
             <p
-              className="mt-0.5 text-xs sm:mt-1 sm:text-sm"
+              className={cn("mt-0.5 text-xs", "sm:mt-1 sm:text-sm")}
               style={{
                 color: workshop.txt_secondary_color,
               }}
@@ -1163,7 +1246,12 @@ function IdeaDialog({
 
           <button
             type="button"
-            className="grid size-9 shrink-0 place-items-center rounded-md border transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 disabled:pointer-events-none disabled:opacity-50"
+            className={cn(
+              "grid size-9 shrink-0 place-items-center rounded-md border",
+              "transition-colors",
+              "focus-visible:outline-2 focus-visible:outline-offset-2",
+              "disabled:pointer-events-none disabled:opacity-50"
+            )}
             style={{
               borderColor: workshop.card_primary_border_color,
               outlineColor: workshop.btn_primary_bg_color,
@@ -1172,16 +1260,20 @@ function IdeaDialog({
             disabled={saveIdeaMutation.isPending}
             onClick={closeDialog}
           >
-            <XIcon className="size-4" aria-hidden="true" />
+            <XIcon className={cn("size-4")} aria-hidden="true" />
           </button>
-        </div>
+        </header>
 
         {/* Scrollable content */}
-        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
-          <div className="grid gap-4 px-4 py-4 sm:gap-5 sm:px-6 sm:py-6">
+        <div
+          className={cn("min-h-0 flex-1 overflow-y-auto overscroll-contain")}
+        >
+          <div
+            className={cn("grid gap-4 px-4 py-4", "sm:gap-5 sm:px-6 sm:py-6")}
+          >
             {/* Pillar */}
-            <label className="grid gap-1.5 sm:gap-2">
-              <span className="text-sm font-medium">Pillar</span>
+            <label className={cn("grid gap-1.5", "sm:gap-2")}>
+              <span className={cn("text-sm font-medium")}>Pillar</span>
 
               <ExperienceSelect
                 workshop={workshop}
@@ -1189,7 +1281,7 @@ function IdeaDialog({
                 required
                 defaultValue={defaultCategoryId}
                 disabled={saveIdeaMutation.isPending}
-                className="w-full"
+                className={cn("w-full")}
               >
                 {categories.length === 0 && (
                   <ExperienceSelectOption value="">
@@ -1206,8 +1298,8 @@ function IdeaDialog({
             </label>
 
             {/* Description */}
-            <label className="grid gap-1.5 sm:gap-2">
-              <span className="text-sm font-medium">Description</span>
+            <label className={cn("grid gap-1.5", "sm:gap-2")}>
+              <span className={cn("text-sm font-medium")}>Description</span>
 
               <textarea
                 name="description"
@@ -1217,7 +1309,13 @@ function IdeaDialog({
                 defaultValue={idea?.Desc ?? ""}
                 disabled={saveIdeaMutation.isPending}
                 placeholder="Describe the idea, the problem it solves, and its impact"
-                className="min-h-24 w-full resize-none rounded-md border bg-transparent px-3 py-2 text-sm leading-6 transition-colors outline-none focus-visible:outline-2 focus-visible:outline-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                className={cn(
+                  "min-h-24 w-full resize-none rounded-md border",
+                  "bg-transparent px-3 py-2 text-sm leading-6",
+                  "transition-colors outline-none",
+                  "focus-visible:outline-2 focus-visible:outline-offset-2",
+                  "disabled:cursor-not-allowed disabled:opacity-50"
+                )}
                 style={{
                   borderColor: workshop.card_primary_border_color,
                   outlineColor: workshop.btn_primary_bg_color,
@@ -1226,12 +1324,12 @@ function IdeaDialog({
             </label>
 
             {/* Title */}
-            <label className="grid gap-1.5 sm:gap-2">
-              <div className="flex items-center gap-2">
-                <span className="text-sm font-medium">Title</span>
+            <label className={cn("grid gap-1.5", "sm:gap-2")}>
+              <div className={cn("flex items-center gap-2")}>
+                <span className={cn("text-sm font-medium")}>Title</span>
 
                 <span
-                  className="text-sm"
+                  className={cn("text-sm")}
                   style={{
                     color: workshop.txt_secondary_color,
                   }}
@@ -1246,7 +1344,12 @@ function IdeaDialog({
                 defaultValue={idea?.title ?? ""}
                 disabled={saveIdeaMutation.isPending}
                 placeholder="Give your idea a clear title"
-                className="h-10 w-full rounded-md border bg-transparent px-3 text-sm transition-colors outline-none focus-visible:outline-2 focus-visible:outline-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                className={cn(
+                  "h-10 w-full rounded-md border bg-transparent px-3",
+                  "text-sm transition-colors outline-none",
+                  "focus-visible:outline-2 focus-visible:outline-offset-2",
+                  "disabled:cursor-not-allowed disabled:opacity-50"
+                )}
                 style={{
                   borderColor: workshop.card_primary_border_color,
                   outlineColor: workshop.btn_primary_bg_color,
@@ -1255,12 +1358,12 @@ function IdeaDialog({
             </label>
 
             {/* Context */}
-            <label className="grid gap-1.5 sm:gap-2">
-              <div className="flex items-center gap-2">
-                <span className="text-sm font-medium">Context</span>
+            <label className={cn("grid gap-1.5", "sm:gap-2")}>
+              <div className={cn("flex items-center gap-2")}>
+                <span className={cn("text-sm font-medium")}>Context</span>
 
                 <span
-                  className="text-sm"
+                  className={cn("text-sm")}
                   style={{
                     color: workshop.txt_secondary_color,
                   }}
@@ -1275,7 +1378,13 @@ function IdeaDialog({
                 defaultValue={idea?.Context ?? ""}
                 disabled={saveIdeaMutation.isPending}
                 placeholder="Describe the context in which this idea will be used"
-                className="min-h-24 w-full resize-none rounded-md border bg-transparent px-3 py-2 text-sm leading-6 transition-colors outline-none focus-visible:outline-2 focus-visible:outline-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                className={cn(
+                  "min-h-24 w-full resize-none rounded-md border",
+                  "bg-transparent px-3 py-2 text-sm leading-6",
+                  "transition-colors outline-none",
+                  "focus-visible:outline-2 focus-visible:outline-offset-2",
+                  "disabled:cursor-not-allowed disabled:opacity-50"
+                )}
                 style={{
                   borderColor: workshop.card_primary_border_color,
                   outlineColor: workshop.btn_primary_bg_color,
@@ -1286,8 +1395,12 @@ function IdeaDialog({
         </div>
 
         {/* Footer */}
-        <div
-          className="flex shrink-0 items-center justify-end gap-2 border-t px-4 py-3 sm:gap-3 sm:px-6 sm:py-4"
+        <footer
+          className={cn(
+            "flex shrink-0 items-center justify-end gap-2",
+            "border-t px-4 py-3",
+            "sm:gap-3 sm:px-6 sm:py-4"
+          )}
           style={{
             backgroundColor: workshop.card_primary_bg_color,
             borderColor: workshop.card_primary_border_color,
@@ -1315,7 +1428,7 @@ function IdeaDialog({
                 ? "Save changes"
                 : "Add idea"}
           </ExperienceButton>
-        </div>
+        </footer>
       </form>
     </dialog>
   )
