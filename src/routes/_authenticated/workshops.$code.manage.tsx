@@ -91,16 +91,7 @@ type TimerState = {
 
 export const Route = createFileRoute("/_authenticated/workshops/$code/manage")({
   loader: ({ context, params }) =>
-    Promise.all([
-      context.queryClient.query(getManageWorkshopOptions(params.code)),
-      context.queryClient.query(
-        getManageIdeasOptions({
-          code: params.code,
-          team_id: null,
-          category_id: null,
-        })
-      ),
-    ]),
+    context.queryClient.query(getManageWorkshopOptions(params.code)),
   pendingMs: 150,
   pendingMinMs: 250,
   pendingComponent: ManageWorkshopPending,
