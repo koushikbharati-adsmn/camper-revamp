@@ -192,8 +192,8 @@ function ParticipantExperience({
           <span
             className="px-3 py-1.5 text-xs font-semibold"
             style={{
-              backgroundColor: workshop.ticker_bg_color,
-              color: workshop.ticker_txt_color,
+              backgroundColor: workshop.ticker_live_bg_color,
+              color: workshop.ticker_live_txt_color,
             }}
           >
             LIVE
