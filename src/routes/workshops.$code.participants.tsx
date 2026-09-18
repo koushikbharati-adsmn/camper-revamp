@@ -5,12 +5,19 @@ import {
   type ParticipantWorkshop,
   getParticipantIdeasOptions,
   getParticipantWorkshopOptions,
+  type IdeaShortlistSocketPayload,
+  updateParticipantIdeaShortlistCache,
   useGenerateIdeaImage,
   useSaveIdea,
   useScoutIdea,
   useShortlistIdea,
 } from "@/services/participants"
-import { queryOptions, useQuery, useSuspenseQuery } from "@tanstack/react-query"
+import {
+  queryOptions,
+  useQuery,
+  useQueryClient,
+  useSuspenseQuery,
+} from "@tanstack/react-query"
 import { createFileRoute } from "@tanstack/react-router"
 import {
   createContext,
@@ -54,6 +61,7 @@ import {
 import { cn } from "@/lib/utils"
 import { NewsroomStatsRows } from "@/components/experience/experience-stats-rows"
 import { ExperienceFooter } from "@/components/experience/experience-footer"
+import { socket } from "@/lib/socket"
 
 /* -------------------------------------------------------------------------- */
 /* Types                                                                      */
@@ -224,6 +232,7 @@ function RouteComponent() {
 
 function ParticipantExperience() {
   const { workshop, workshopCode, visitorId } = useParticipantExperience()
+  const queryClient = useQueryClient()
 
   const walkthroughSteps = useMemo(
     () =>
@@ -248,6 +257,30 @@ function ParticipantExperience() {
   const [activeView, setActiveView] = useState<ParticipantView>("home")
 
   const [selectedTeamId, setSelectedTeamId] = useState<number | null>(null)
+
+  useEffect(() => {
+    const joinWorkshopRoom = () => {
+      socket.emit("join_room", { roomId: workshopCode })
+    }
+
+    const handleIdeaShortlistUpdate = (payload: IdeaShortlistSocketPayload) => {
+      if (payload.roomId !== workshopCode) return
+
+      updateParticipantIdeaShortlistCache(queryClient, payload)
+    }
+
+    socket.on("connect", joinWorkshopRoom)
+    socket.on("idea_shortlist_updated", handleIdeaShortlistUpdate)
+
+    if (socket.connected) {
+      joinWorkshopRoom()
+    }
+
+    return () => {
+      socket.off("connect", joinWorkshopRoom)
+      socket.off("idea_shortlist_updated", handleIdeaShortlistUpdate)
+    }
+  }, [queryClient, workshopCode])
 
   const {
     data: activities = [],
