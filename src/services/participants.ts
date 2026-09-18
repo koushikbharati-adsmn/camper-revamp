@@ -1,6 +1,10 @@
 import apiClient from "@/lib/api-client"
 import type { WorkshopLifecycleStatus } from "@/lib/workshop-lifecycle"
-import { queryOptions, useMutation } from "@tanstack/react-query"
+import {
+  queryOptions,
+  useMutation,
+  useQueryClient,
+} from "@tanstack/react-query"
 import type { VotingScope } from "./workshops-panel"
 import { toast } from "@/components/ui/toast"
 
@@ -43,7 +47,7 @@ export interface ParticipantWorkshop {
   Name: string
   WorkshopContext: string
   Desc: string
-  logoFileName: string // logo url
+  logoFileName: string
   page_bg_image: string | null
   GuidelineFileName: string
   shortUrl: string | null
@@ -94,14 +98,21 @@ interface GetParticipantWorkshopResponse {
   data: ParticipantWorkshop
 }
 
-interface GetParticipantWorkshopParams {
+export interface GetParticipantWorkshopParams {
   code: string
   visitor_id: string
 }
 
+export const participantWorkshopKeys = {
+  all: ["PARTICIPANT_WORKSHOP"] as const,
+
+  detail: (params: GetParticipantWorkshopParams) =>
+    [...participantWorkshopKeys.all, params] as const,
+}
+
 const getParticipantWorkshop = async (params: GetParticipantWorkshopParams) => {
   const res = await apiClient.get<GetParticipantWorkshopResponse>(
-    `/api/participant/workshop`,
+    "/api/participant/workshop",
     {
       params,
     }
@@ -114,7 +125,7 @@ export function getParticipantWorkshopOptions(
   params: GetParticipantWorkshopParams
 ) {
   return queryOptions({
-    queryKey: ["PARTICIPANT_WORKSHOP", params],
+    queryKey: participantWorkshopKeys.detail(params),
     queryFn: () => getParticipantWorkshop(params),
   })
 }
@@ -126,10 +137,10 @@ export interface ParticipantIdea {
   Desc: string
   title: string | null
   Context: string | null
-  imageFileName: string // image url
-  flgSelf: boolean // self idea
-  flgTeam: boolean // shortlisted or not
-  flgCoach: boolean // isSharpened
+  imageFileName: string
+  flgSelf: boolean
+  flgTeam: boolean
+  flgCoach: boolean
   CreatedDttm: string
 }
 
@@ -138,13 +149,20 @@ interface GetParticipantIdeasResponse {
   data: ParticipantIdea[]
 }
 
-interface GetParticipantIdeasParams {
+export interface GetParticipantIdeasParams {
   visitor_id: string
   workshop_code: string
   category_id: number | null
   team_id: number | null
   is_shortlisted: boolean | null
-  is_coached: boolean | null // isSharpened
+  is_coached: boolean | null
+}
+
+export const participantIdeaKeys = {
+  all: ["PARTICIPANT_IDEAS"] as const,
+
+  list: (params: GetParticipantIdeasParams) =>
+    [...participantIdeaKeys.all, params] as const,
 }
 
 const getParticipantIdeas = async (params: GetParticipantIdeasParams) => {
@@ -154,17 +172,18 @@ const getParticipantIdeas = async (params: GetParticipantIdeasParams) => {
       params,
     }
   )
+
   return res.data
 }
 
 export function getParticipantIdeasOptions(params: GetParticipantIdeasParams) {
   return queryOptions({
-    queryKey: ["PARTICIPANT_IDEAS", params],
+    queryKey: participantIdeaKeys.list(params),
     queryFn: () => getParticipantIdeas(params),
   })
 }
 
-interface SaveIdeaPayload {
+export interface SaveIdeaPayload {
   idea_id?: number
   visitor_id: string
   workshop_code: string
@@ -193,8 +212,17 @@ const saveIdea = async (payload: SaveIdeaPayload) => {
 }
 
 export const useSaveIdea = () => {
+  const queryClient = useQueryClient()
+
   return useMutation({
-    mutationFn: (payload: SaveIdeaPayload) => saveIdea(payload),
+    mutationFn: saveIdea,
+
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({
+        queryKey: participantIdeaKeys.all,
+      })
+    },
+
     onError: (error) => {
       toast.add({
         type: "error",
@@ -205,7 +233,7 @@ export const useSaveIdea = () => {
   })
 }
 
-interface ShortlistIdeaPayload {
+export interface ShortlistIdeaPayload {
   workshop_code: string
   idea_id: number
   flag: boolean
@@ -221,12 +249,22 @@ const shortlistIdea = async (payload: ShortlistIdeaPayload) => {
     "/api/participant/idea/shortlist",
     payload
   )
+
   return res.data
 }
 
 export const useShortlistIdea = () => {
+  const queryClient = useQueryClient()
+
   return useMutation({
-    mutationFn: (payload: ShortlistIdeaPayload) => shortlistIdea(payload),
+    mutationFn: shortlistIdea,
+
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({
+        queryKey: participantIdeaKeys.all,
+      })
+    },
+
     onError: (error) => {
       toast.add({
         type: "error",
@@ -237,19 +275,19 @@ export const useShortlistIdea = () => {
   })
 }
 
-interface GenerateIdeaImagePayload {
+export interface GenerateIdeaImagePayload {
   idea_id: number
   workshop_code: string
   pillar_context: string
   workshop_context: string
-  user_idea: string // idea description
+  user_idea: string
   brand_guidelines: string
 }
 
 interface GenerateIdeaImageResponse {
   success: boolean
   data: {
-    image: string // image url
+    image: string
   }
 }
 
@@ -258,13 +296,22 @@ const generateIdeaImage = async (payload: GenerateIdeaImagePayload) => {
     "/ai/generate",
     payload
   )
+
   return res.data
 }
 
 export const useGenerateIdeaImage = () => {
+  const queryClient = useQueryClient()
+
   return useMutation({
-    mutationFn: (payload: GenerateIdeaImagePayload) =>
-      generateIdeaImage(payload),
+    mutationFn: generateIdeaImage,
+
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({
+        queryKey: participantIdeaKeys.all,
+      })
+    },
+
     onError: (error) => {
       toast.add({
         type: "error",
@@ -275,7 +322,7 @@ export const useGenerateIdeaImage = () => {
   })
 }
 
-interface ScoutIdeaPayload {
+export interface ScoutIdeaPayload {
   workshop_code: string
   pillar_title: string
   user_ideas: string[]
@@ -291,12 +338,14 @@ interface ScoutIdeaResponse {
 
 const scoutIdea = async (payload: ScoutIdeaPayload) => {
   const res = await apiClient.post<ScoutIdeaResponse>("/ai/scout", payload)
+
   return res.data
 }
 
 export const useScoutIdea = () => {
   return useMutation({
-    mutationFn: (payload: ScoutIdeaPayload) => scoutIdea(payload),
+    mutationFn: scoutIdea,
+
     onError: (error) => {
       toast.add({
         type: "error",

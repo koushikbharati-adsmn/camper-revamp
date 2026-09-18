@@ -52,8 +52,6 @@ export interface GetIdeasScreenResponse {
 
 export interface GetIdeasScreenParams {
   workshop_code: string
-  // The encrypted team/category ID from Workshop["teams"]/["categories"],
-  // as returned by getWorkshopOptions — the API decrypts it server-side.
   category_id?: string | null
   team_id?: string | null
 }
@@ -87,18 +85,26 @@ export interface GetDashboardResponse {
   }
 }
 
-export const ideScreenKeys = {
+export const ideaScreenKeys = {
   all: ["BIG_SCREEN_IDEAS"] as const,
 
-  list: (params: GetIdeasScreenParams) => ["BIG_SCREEN_IDEAS", params] as const,
+  list: (params: GetIdeasScreenParams) =>
+    [...ideaScreenKeys.all, params] as const,
 }
 
+// Temporary backwards-compatible alias. Remove after updating any older imports.
+export const ideScreenKeys = ideaScreenKeys
+
 export const workshopScreenKeys = {
-  detail: (code: string) => ["BIG_SCREEN_WORKSHOP", code] as const,
+  all: ["BIG_SCREEN_WORKSHOP"] as const,
+
+  detail: (code: string) => [...workshopScreenKeys.all, code] as const,
 }
 
 export const dashboardKeys = {
-  detail: (code: string) => ["BIG_SCREEN_DASHBOARD", code] as const,
+  all: ["BIG_SCREEN_DASHBOARD"] as const,
+
+  detail: (code: string) => [...dashboardKeys.all, code] as const,
 }
 
 const getIdeasScreen = async (
@@ -113,7 +119,7 @@ const getIdeasScreen = async (
 
 export const getIdeasScreenOptions = (params: GetIdeasScreenParams) =>
   queryOptions({
-    queryKey: ideScreenKeys.list(params),
+    queryKey: ideaScreenKeys.list(params),
     queryFn: () => getIdeasScreen(params),
   })
 
@@ -160,7 +166,7 @@ export interface WorkshopActivity {
   Type: ActivityType
 }
 
-interface GetActivitiesParams {
+export interface GetActivitiesParams {
   code: string
   type: ActivityType | null
 }
@@ -168,6 +174,12 @@ interface GetActivitiesParams {
 interface GetActivitiesResponse {
   success: boolean
   data: WorkshopActivity[]
+}
+
+export const activityKeys = {
+  all: ["ACTIVITIES"] as const,
+
+  list: (params: GetActivitiesParams) => [...activityKeys.all, params] as const,
 }
 
 const getActivities = async (params: GetActivitiesParams) => {
@@ -183,6 +195,6 @@ const getActivities = async (params: GetActivitiesParams) => {
 
 export const getActivitiesOptions = (params: GetActivitiesParams) =>
   queryOptions({
-    queryKey: ["ACTIVITIES", params],
+    queryKey: activityKeys.list(params),
     queryFn: () => getActivities(params),
   })
