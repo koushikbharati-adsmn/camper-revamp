@@ -1,14 +1,8 @@
 import { useState } from "react"
-import { useQuery, useQueryClient } from "@tanstack/react-query"
+import { useQuery } from "@tanstack/react-query"
 import { createFileRoute } from "@tanstack/react-router"
 import { QRCodeSVG } from "qrcode.react"
-import {
-  EyeIcon,
-  ImageIcon,
-  InfoIcon,
-  SparklesIcon,
-  StarIcon,
-} from "lucide-react"
+import { EyeIcon, ImageIcon, InfoIcon, SparklesIcon } from "lucide-react"
 
 import { formatRelativeDate } from "@/lib/date"
 import { getDurationParts } from "@/lib/utils"
@@ -19,12 +13,8 @@ import {
   getDashboardOptions,
   getIdeasScreenOptions,
   getWorkshopScreenOptions,
-  ideScreenKeys,
 } from "@/services/big-screen"
-import {
-  type ParticipantWorkshop,
-  useShortlistIdea,
-} from "@/services/participants"
+import type { ParticipantWorkshop } from "@/services/participants"
 
 import {
   ExperienceSelect,
@@ -140,27 +130,6 @@ function RouteComponent() {
 
   const selectedIdea =
     selectedIdeaIndex === null ? undefined : ideas[selectedIdeaIndex]
-
-  // --------------------------------------------------
-  // Shortlist (same endpoint/behavior as the participant stage screen)
-  // --------------------------------------------------
-
-  const queryClient = useQueryClient()
-  const shortlistIdeaMutation = useShortlistIdea()
-
-  const toggleShortlist = async (idea: IdeaScreen) => {
-    try {
-      await shortlistIdeaMutation.mutateAsync({
-        workshop_code: workshopId,
-        idea_id: idea.ID,
-        flag: !idea.flgTeam,
-      })
-
-      await queryClient.invalidateQueries({ queryKey: ideScreenKeys.all })
-    } catch {
-      return
-    }
-  }
 
   // --------------------------------------------------
   // Latest Activity (also feeds the ticker)
@@ -320,14 +289,12 @@ function RouteComponent() {
                   </p>
                 )}
 
-                <div className="grid w-full grid-cols-1 gap-5 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                <div className="grid w-full grid-cols-1 gap-5 md:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">
                   {ideas.map((idea, index) => (
                     <IdeaCard
                       key={`${idea.title}-${index}`}
                       idea={idea}
-                      isShortlistPending={shortlistIdeaMutation.isPending}
                       onView={() => setSelectedIdeaIndex(index)}
-                      onToggleShortlist={() => void toggleShortlist(idea)}
                     />
                   ))}
                 </div>
@@ -414,6 +381,9 @@ function RouteComponent() {
                                 <p className="text-xs text-neutral-500">
                                   {activity.Message}
                                 </p>
+                                <time className="mt-1 block text-right text-[10px] text-neutral-400">
+                                  {formatRelativeDate(activity.CreatedDttm)}
+                                </time>
                               </div>
                             </li>
                           ))}
@@ -471,17 +441,7 @@ function RouteComponent() {
   )
 }
 
-function IdeaCard({
-  idea,
-  isShortlistPending,
-  onView,
-  onToggleShortlist,
-}: {
-  idea: IdeaScreen
-  isShortlistPending: boolean
-  onView: () => void
-  onToggleShortlist: () => void
-}) {
+function IdeaCard({ idea, onView }: { idea: IdeaScreen; onView: () => void }) {
   return (
     <div
       className="flex flex-col overflow-hidden rounded-lg border bg-white shadow-xs"
@@ -501,29 +461,11 @@ function IdeaCard({
       </div>
 
       <div className="flex flex-1 flex-col gap-4 p-4">
-        <div className="flex items-center justify-between gap-3">
-          <button
-            type="button"
-            aria-label={
-              idea.flgTeam
-                ? `Remove ${idea.title || "idea"} from shortlist`
-                : `Shortlist ${idea.title || "idea"}`
-            }
-            aria-pressed={Boolean(idea.flgTeam)}
-            disabled={isShortlistPending}
-            className="disabled:cursor-wait disabled:opacity-50"
-            onClick={onToggleShortlist}
-          >
-            <StarIcon
-              className="size-5"
-              fill={idea.flgTeam ? "currentColor" : "none"}
-              aria-hidden="true"
-            />
-          </button>
-          {idea.flgCoach && (
+        {idea.flgCoach && (
+          <div className="flex justify-end">
             <SparklesIcon className="size-5" aria-hidden="true" />
-          )}
-        </div>
+          </div>
+        )}
 
         <div>
           <h2 className="text-xl leading-tight font-bold uppercase">
