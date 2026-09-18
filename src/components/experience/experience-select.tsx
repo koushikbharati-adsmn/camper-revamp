@@ -30,7 +30,7 @@ function ExperienceSelect({
         data-slot="experience-select"
         data-size={size}
         className={cn(
-          "w-full min-w-0 appearance-none rounded-md border bg-transparent",
+          "w-full min-w-0 appearance-none rounded-md border bg-white",
           "pr-9 pl-3 text-sm font-medium",
           "transition-colors outline-none",
           "focus-visible:outline-2 focus-visible:outline-offset-2",

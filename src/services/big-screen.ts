@@ -149,3 +149,40 @@ export const getDashboardOptions = (code: string) =>
     queryKey: dashboardKeys.detail(code),
     queryFn: () => getDashboard(code),
   })
+
+export type ActivityType = "added" | "shortlisted" | "sharpened"
+
+export interface WorkshopActivity {
+  ID: number
+  TeamName: string
+  Message: string
+  CreatedDttm: string
+  Type: ActivityType
+}
+
+interface GetActivitiesParams {
+  code: string
+  type: ActivityType | null
+}
+
+interface GetActivitiesResponse {
+  success: boolean
+  data: WorkshopActivity[]
+}
+
+const getActivities = async (params: GetActivitiesParams) => {
+  const res = await apiClient.get<GetActivitiesResponse>(
+    "/api/workshop/activity",
+    {
+      params,
+    }
+  )
+
+  return res.data
+}
+
+export const getActivitiesOptions = (params: GetActivitiesParams) =>
+  queryOptions({
+    queryKey: ["ACTIVITIES", params],
+    queryFn: () => getActivities(params),
+  })

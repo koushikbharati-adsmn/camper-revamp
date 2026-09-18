@@ -41,18 +41,16 @@ import {
 } from "@/components/experience/experience-select"
 import { ExperienceSegmentedControl } from "@/components/experience/experience-segmented-control"
 import { ExperienceStatsCard } from "@/components/experience/experience-stats-card"
-import { getDashboardOptions } from "@/services/big-screen"
+import {
+  getActivitiesOptions,
+  getDashboardOptions,
+  type WorkshopActivity,
+} from "@/services/big-screen"
 import { cn } from "@/lib/utils"
+import { NewsroomStatsRows } from "@/components/experience/experience-stats-rows"
 
 type IdeaFilter = "all" | "shortlisted" | "sharpened"
 type ParticipantScreen = "home" | "stage" | "newsroom"
-
-const tickerItems = [
-  "Lorem Ipsum is simply dummy text",
-  "Lorem Ipsum is simply dummy text",
-  "Lorem Ipsum is simply dummy text",
-  "Lorem Ipsum is simply dummy text",
-]
 
 const visitorIdOptions = queryOptions({
   queryKey: ["PARTICIPANT_VISITOR_ID"],
@@ -122,6 +120,16 @@ function ParticipantExperience({
   const [stageCategoryId, setStageCategoryId] = useState<number | null>(null)
   const isHome = activeScreen === "home"
   const isStage = activeScreen === "stage"
+
+  const {
+    data: activities = [],
+    isPending: areActivitiesPending,
+    isError: areActivitiesError,
+    refetch: refetchActivities,
+  } = useQuery({
+    ...getActivitiesOptions({ code, type: null }),
+    select: (response) => response.data,
+  })
 
   const { data: ideas = [], isPending: areIdeasPending } = useQuery({
     ...getParticipantIdeasOptions({
@@ -217,7 +225,14 @@ function ParticipantExperience({
             onBegin={completeWalkthrough}
           />
         ) : activeScreen === "newsroom" ? (
-          <NewsroomScreen workshop={workshop} code={code} />
+          <NewsroomScreen
+            workshop={workshop}
+            code={code}
+            activities={activities}
+            areActivitiesPending={areActivitiesPending}
+            areActivitiesError={areActivitiesError}
+            onRetryActivities={() => void refetchActivities()}
+          />
         ) : isStage ? (
           <StageScreen
             workshop={workshop}
@@ -276,26 +291,42 @@ function ParticipantExperience({
         </div>
 
         <div className="flex min-w-0 flex-1 items-center overflow-hidden">
-          <div className="flex w-max animate-[ticker-scroll_20s_linear_infinite] whitespace-nowrap hover:paused">
-            {[0, 1].map((group) => (
-              <div
-                key={group}
-                className="pointer-events-none flex shrink-0 items-center select-none"
-                aria-hidden={group === 1}
-              >
-                {tickerItems.map((item, index) => (
-                  <div
-                    key={`${group}-${index}`}
-                    className="flex items-center gap-2 px-8"
-                  >
-                    <BellIcon className="size-4 shrink-0" strokeWidth={1.8} />
+          {activities.length > 0 ? (
+            <div className="flex w-max animate-[ticker-scroll_20s_linear_infinite] whitespace-nowrap hover:paused">
+              {[0, 1].map((group) => (
+                <div
+                  key={group}
+                  className="pointer-events-none flex shrink-0 items-center select-none"
+                  aria-hidden={group === 1}
+                >
+                  {activities.map((activity) => (
+                    <div
+                      key={`${group}-${activity.ID}`}
+                      className="flex items-center gap-2 px-8"
+                    >
+                      <BellIcon
+                        className="size-4 shrink-0"
+                        strokeWidth={1.8}
+                        aria-hidden="true"
+                      />
 
-                    <span className="text-xs font-semibold">{item}</span>
-                  </div>
-                ))}
-              </div>
-            ))}
-          </div>
+                      <span className="text-xs font-semibold">
+                        {activity.TeamName}: {activity.Message}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="px-8 text-xs font-semibold">
+              {areActivitiesPending
+                ? "Loading latest activity..."
+                : areActivitiesError
+                  ? "Activity is temporarily unavailable."
+                  : "No activity yet."}
+            </p>
+          )}
         </div>
       </footer>
     </div>
@@ -305,9 +336,17 @@ function ParticipantExperience({
 function NewsroomScreen({
   workshop,
   code,
+  activities,
+  areActivitiesPending,
+  areActivitiesError,
+  onRetryActivities,
 }: {
   workshop: ParticipantWorkshop
   code: string
+  activities: WorkshopActivity[]
+  areActivitiesPending: boolean
+  areActivitiesError: boolean
+  onRetryActivities: () => void
 }) {
   const {
     data: dashboard,
@@ -390,7 +429,7 @@ function NewsroomScreen({
             </ExperienceButton>
           </div>
         ) : (
-          <>
+          <div className="grid gap-12">
             <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
               {summary.map((stat) => (
                 <ExperienceStatsCard
@@ -402,7 +441,101 @@ function NewsroomScreen({
                 />
               ))}
             </div>
-          </>
+            <NewsroomStatsRows teams={dashboard?.teams ?? []} />
+
+            <div className="grid gap-4">
+              <h2 className="text-2xl font-semibold tracking-[-0.02em]">
+                Latest Activity
+              </h2>
+
+              {areActivitiesPending ? (
+                <div
+                  className="grid gap-3"
+                  aria-label="Loading latest activity"
+                  aria-busy="true"
+                >
+                  {Array.from({ length: 3 }, (_, index) => (
+                    <div
+                      key={index}
+                      className="h-20 animate-pulse rounded-md bg-black/5"
+                      aria-hidden="true"
+                    />
+                  ))}
+                </div>
+              ) : areActivitiesError ? (
+                <div
+                  className="flex flex-col items-start gap-3 border px-4 py-5 sm:flex-row sm:items-center sm:justify-between"
+                  style={{ borderColor: workshop.card_primary_border_color }}
+                >
+                  <div>
+                    <p className="font-semibold">Unable to load activity</p>
+                    <p
+                      className="mt-1 text-sm"
+                      style={{ color: workshop.txt_secondary_color }}
+                    >
+                      Check the connection and try again.
+                    </p>
+                  </div>
+                  <ExperienceButton
+                    workshop={workshop}
+                    variant="secondary"
+                    onClick={onRetryActivities}
+                  >
+                    Try again
+                  </ExperienceButton>
+                </div>
+              ) : activities.length === 0 ? (
+                <p
+                  className="border px-4 py-6 text-sm"
+                  style={{
+                    borderColor: workshop.card_primary_border_color,
+                    color: workshop.txt_secondary_color,
+                  }}
+                >
+                  No activity yet.
+                </p>
+              ) : (
+                <ul
+                  className="divide-y border-y"
+                  style={{
+                    borderColor: workshop.card_primary_border_color,
+                  }}
+                >
+                  {activities.map((activity) => (
+                    <li
+                      key={activity.ID}
+                      className="grid gap-3 py-4 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center"
+                      style={{
+                        borderColor: workshop.card_primary_border_color,
+                      }}
+                    >
+                      <div className="flex min-w-0 items-start gap-3">
+                        <BellIcon className="mt-1 size-5" aria-hidden="true" />
+                        <div>
+                          <strong className="capitalize">
+                            {activity.Type ?? "Notification"}
+                          </strong>
+                          <p
+                            className="text-sm"
+                            style={{ color: workshop.txt_secondary_color }}
+                          >
+                            {activity.TeamName}: {activity.Message}
+                          </p>
+                        </div>
+                      </div>
+                      <time
+                        className="flex items-center gap-1.5 text-xs whitespace-nowrap"
+                        dateTime={activity.CreatedDttm}
+                        style={{ color: workshop.txt_secondary_color }}
+                      >
+                        {formatRelativeDate(activity.CreatedDttm)}
+                      </time>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          </div>
         )}
       </div>
     </section>
