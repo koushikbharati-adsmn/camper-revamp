@@ -63,20 +63,6 @@ type IdeaStatusFilter = "all" | "shortlisted" | "sharpened"
 
 type ParticipantView = "home" | "stage" | "newsroom"
 
-type Idea = {
-  id: number
-  title: string | null
-  description: string
-  context: string | null
-  createdAt: string
-  imageUrl: string | null
-  teamName: string
-  pillarName: string
-  isShortlisted: boolean
-  isOwnedByParticipant: boolean
-  isSharpened: boolean
-}
-
 type ParticipantExperienceContextValue = {
   workshopCode: string
   visitorId: string
@@ -157,22 +143,6 @@ function useParticipantExperience() {
 /* -------------------------------------------------------------------------- */
 /* Utilities                                                                  */
 /* -------------------------------------------------------------------------- */
-
-function mapParticipantIdea(idea: ParticipantIdea): Idea {
-  return {
-    id: idea.ID,
-    title: idea.title,
-    description: idea.Desc,
-    context: idea.Context ?? null,
-    createdAt: idea.CreatedDttm,
-    imageUrl: idea.imageFileName ?? null,
-    teamName: idea.TeamName ?? "",
-    pillarName: idea.Category ?? "",
-    isShortlisted: idea.flgTeam,
-    isOwnedByParticipant: idea.flgSelf,
-    isSharpened: idea.flgCoach,
-  }
-}
 
 function parseOptionalId(value: string) {
   return value === "all" ? null : Number(value)
@@ -1033,7 +1003,7 @@ function IdeasScreen({
 
   const [isScoutDialogOpen, setIsScoutDialogOpen] = useState(false)
 
-  const [editingIdea, setEditingIdea] = useState<Idea | null>(null)
+  const [editingIdea, setEditingIdea] = useState<ParticipantIdea | null>(null)
 
   const selectedPillar = pillars.find(
     (pillar) => pillar.ID === selectedPillarId
@@ -1048,7 +1018,7 @@ function IdeasScreen({
       is_shortlisted: ideaStatusFilter === "shortlisted" ? true : null,
       is_coached: ideaStatusFilter === "sharpened" ? true : null,
     }),
-    select: (response) => response.data.map(mapParticipantIdea),
+    select: (response) => response.data,
   })
 
   const generateIdeaImageMutation = useGenerateIdeaImage()
@@ -1060,7 +1030,7 @@ function IdeasScreen({
     setIsIdeaDialogOpen(true)
   }
 
-  const handleEditIdea = (idea: Idea) => {
+  const handleEditIdea = (idea: ParticipantIdea) => {
     setEditingIdea(idea)
     setIsIdeaDialogOpen(true)
   }
@@ -1082,24 +1052,24 @@ function IdeasScreen({
     setIdeaStatusFilter(filter)
   }
 
-  const handleGenerateIdeaImage = (idea: Idea) => {
-    const pillar = pillars.find((item) => item.Name === idea.pillarName)
+  const handleGenerateIdeaImage = (idea: ParticipantIdea) => {
+    const pillar = pillars.find((item) => item.Name === idea.Category)
 
     generateIdeaImageMutation.mutate({
-      idea_id: idea.id,
+      idea_id: idea.ID,
       workshop_code: workshopCode,
       pillar_context: pillar?.Context ?? "",
       workshop_context: workshop.WorkshopContext,
-      user_idea: idea.description,
+      user_idea: idea.Desc,
       brand_guidelines: workshop.GuidelineFileName,
     })
   }
 
-  const handleToggleShortlist = (idea: Idea) => {
+  const handleToggleShortlist = (idea: ParticipantIdea) => {
     shortlistIdeaMutation.mutate({
       workshop_code: workshopCode,
-      idea_id: idea.id,
-      flag: !idea.isShortlisted,
+      idea_id: idea.ID,
+      flag: !idea.flgTeam,
     })
   }
 
@@ -1112,7 +1082,7 @@ function IdeasScreen({
     scoutIdeaMutation.mutate({
       workshop_code: workshopCode,
       pillar_title: selectedPillar.Name,
-      user_ideas: ideas.map((idea) => idea.description),
+      user_ideas: ideas.map((idea) => idea.Desc),
     })
   }
 
@@ -1123,7 +1093,7 @@ function IdeasScreen({
   return (
     <section className="container mx-auto w-full p-4 sm:p-6 lg:p-8">
       <IdeaDialog
-        key={editingIdea?.id ?? "new"}
+        key={editingIdea?.ID ?? "new"}
         open={isIdeaDialogOpen}
         teamId={selectedTeamId}
         selectedPillarId={selectedPillarId}
@@ -1216,16 +1186,16 @@ function IdeasScreen({
             ))
           : ideas.map((idea) => (
               <IdeateIdeaCard
-                key={idea.id}
+                key={idea.ID}
                 idea={idea}
                 isGeneratingImage={
                   generateIdeaImageMutation.isPending &&
-                  generateIdeaImageMutation.variables?.idea_id === idea.id
+                  generateIdeaImageMutation.variables?.idea_id === idea.ID
                 }
                 isImageActionPending={generateIdeaImageMutation.isPending}
                 isShortlistPending={
                   shortlistIdeaMutation.isPending &&
-                  shortlistIdeaMutation.variables?.idea_id === idea.id
+                  shortlistIdeaMutation.variables?.idea_id === idea.ID
                 }
                 onGenerateImage={() => handleGenerateIdeaImage(idea)}
                 onToggleShortlist={() => handleToggleShortlist(idea)}
@@ -1276,7 +1246,7 @@ function IdeateIdeaCard({
   onToggleShortlist,
   onEdit,
 }: {
-  idea: Idea
+  idea: ParticipantIdea
   isGeneratingImage: boolean
   isImageActionPending: boolean
   isShortlistPending: boolean
@@ -1289,10 +1259,10 @@ function IdeateIdeaCard({
   return (
     <li className="flex flex-col overflow-hidden rounded-lg border bg-white shadow-xs">
       <div className="relative aspect-4/3 w-full overflow-hidden bg-neutral-100">
-        {idea.imageUrl?.trim() ? (
+        {idea.imageFileName?.trim() ? (
           <>
             <img
-              src={idea.imageUrl}
+              src={idea.imageFileName}
               alt={idea.title || "idea"}
               className="size-full object-contain"
             />
@@ -1337,23 +1307,23 @@ function IdeateIdeaCard({
             <button
               type="button"
               aria-label={
-                idea.isShortlisted
+                idea.flgTeam
                   ? `Remove ${idea.title || "idea"} from shortlist`
                   : `Shortlist ${idea.title || "idea"}`
               }
-              aria-pressed={idea.isShortlisted}
+              aria-pressed={idea.flgTeam}
               disabled={isShortlistPending}
               className="disabled:cursor-wait disabled:opacity-50"
               onClick={onToggleShortlist}
             >
               <StarIcon
                 className="size-5"
-                fill={idea.isShortlisted ? "currentColor" : "none"}
+                fill={idea.flgTeam ? "currentColor" : "none"}
                 aria-hidden="true"
               />
             </button>
 
-            {idea.isOwnedByParticipant && (
+            {idea.flgSelf && (
               <button
                 type="button"
                 aria-label={`Edit ${idea.title || "idea"}`}
@@ -1364,7 +1334,7 @@ function IdeateIdeaCard({
             )}
           </div>
 
-          {idea.isSharpened && (
+          {idea.flgCoach && (
             <SparklesIcon className="size-5" aria-hidden="true" />
           )}
         </div>
@@ -1377,13 +1347,11 @@ function IdeateIdeaCard({
           <p className="flex items-center gap-2 text-sm text-neutral-600">
             <ClockIcon className="size-3.5" aria-hidden="true" />
 
-            {formatRelativeDate(idea.createdAt)}
+            {formatRelativeDate(idea.CreatedDttm)}
           </p>
         </div>
 
-        <p className="line-clamp-3 text-sm text-neutral-600">
-          {idea.description}
-        </p>
+        <p className="line-clamp-3 text-sm text-neutral-600">{idea.Desc}</p>
 
         <ExperienceButton
           variant="primary"
@@ -1411,7 +1379,7 @@ function StageScreen() {
 
   const [selectedPillarId, setSelectedPillarId] = useState<number | null>(null)
 
-  const [previewIdea, setPreviewIdea] = useState<Idea | null>(null)
+  const [previewIdea, setPreviewIdea] = useState<ParticipantIdea | null>(null)
 
   const { data: ideas = [], isPending: isIdeasPending } = useQuery({
     ...getParticipantIdeasOptions({
@@ -1422,7 +1390,7 @@ function StageScreen() {
       is_shortlisted: true,
       is_coached: null,
     }),
-    select: (response) => response.data.map(mapParticipantIdea),
+    select: (response) => response.data,
   })
 
   const shortlistIdeaMutation = useShortlistIdea()
@@ -1435,15 +1403,15 @@ function StageScreen() {
     setSelectedPillarId(parseOptionalId(event.target.value))
   }
 
-  const handleRemoveFromShortlist = (idea: Idea) => {
+  const handleRemoveFromShortlist = (idea: ParticipantIdea) => {
     shortlistIdeaMutation.mutate({
       workshop_code: workshopCode,
-      idea_id: idea.id,
+      idea_id: idea.ID,
       flag: false,
     })
   }
 
-  const handlePreviewIdea = (idea: Idea) => {
+  const handlePreviewIdea = (idea: ParticipantIdea) => {
     setPreviewIdea(idea)
   }
 
@@ -1515,11 +1483,11 @@ function StageScreen() {
             ))
           : ideas.map((idea) => (
               <StageIdeaCard
-                key={idea.id}
+                key={idea.ID}
                 idea={idea}
                 isShortlistPending={
                   shortlistIdeaMutation.isPending &&
-                  shortlistIdeaMutation.variables?.idea_id === idea.id
+                  shortlistIdeaMutation.variables?.idea_id === idea.ID
                 }
                 onRemoveFromShortlist={() => handleRemoveFromShortlist(idea)}
                 onPreview={() => handlePreviewIdea(idea)}
@@ -1546,7 +1514,7 @@ function StageIdeaCard({
   onRemoveFromShortlist,
   onPreview,
 }: {
-  idea: Idea
+  idea: ParticipantIdea
   isShortlistPending: boolean
   onRemoveFromShortlist: () => void
   onPreview: () => void
@@ -1556,9 +1524,9 @@ function StageIdeaCard({
   return (
     <li className="flex flex-col overflow-hidden rounded-lg border bg-white shadow-xs">
       <div className="aspect-4/3 w-full overflow-hidden bg-neutral-100">
-        {idea.imageUrl?.trim() ? (
+        {idea.imageFileName?.trim() ? (
           <img
-            src={idea.imageUrl}
+            src={idea.imageFileName}
             alt={idea.title || "Idea"}
             className="size-full object-contain"
           />
@@ -1588,7 +1556,7 @@ function StageIdeaCard({
             />
           </button>
 
-          {idea.isSharpened && (
+          {idea.flgCoach && (
             <SparklesIcon className="size-5" aria-hidden="true" />
           )}
         </div>
@@ -1601,23 +1569,21 @@ function StageIdeaCard({
           <p className="flex items-center gap-2 text-sm text-neutral-600">
             <ClockIcon className="size-3.5" aria-hidden="true" />
 
-            {formatRelativeDate(idea.createdAt)}
+            {formatRelativeDate(idea.CreatedDttm)}
           </p>
         </div>
 
         <div className="flex flex-wrap gap-2 text-xs">
           <span className="rounded-full bg-neutral-100 px-2.5 py-1">
-            {idea.teamName || "Unknown team"}
+            {idea.TeamName || "Unknown team"}
           </span>
 
           <span className="rounded-full border px-2.5 py-1">
-            {idea.pillarName || "Unknown pillar"}
+            {idea.Category || "Unknown pillar"}
           </span>
         </div>
 
-        <p className="line-clamp-3 text-sm text-neutral-600">
-          {idea.description}
-        </p>
+        <p className="line-clamp-3 text-sm text-neutral-600">{idea.Desc}</p>
 
         <ExperienceButton
           variant="primary"
@@ -1663,7 +1629,7 @@ function IdeaPreviewDialog({
   open,
   onClose,
 }: {
-  idea: Idea
+  idea: ParticipantIdea
   open: boolean
   onClose: () => void
 }) {
@@ -1720,7 +1686,7 @@ function IdeaPreviewDialog({
                 color: workshop.txt_secondary_color,
               }}
             >
-              Full idea submission from {idea.teamName || "Unknown team"}.
+              Full idea submission from {idea.TeamName || "Unknown team"}.
             </p>
           </div>
 
@@ -1746,9 +1712,9 @@ function IdeaPreviewDialog({
                 borderColor: workshop.card_primary_border_color,
               }}
             >
-              {idea.imageUrl?.trim() ? (
+              {idea.imageFileName?.trim() ? (
                 <img
-                  src={idea.imageUrl}
+                  src={idea.imageFileName}
                   alt={idea.title || "Idea"}
                   className="size-full object-contain"
                 />
@@ -1764,7 +1730,7 @@ function IdeaPreviewDialog({
             <div className="min-w-0 space-y-5">
               <div className="flex flex-wrap gap-2 text-xs">
                 <span className="rounded-full bg-neutral-100 px-2.5 py-1 text-neutral-900">
-                  {idea.teamName || "Unknown team"}
+                  {idea.TeamName || "Unknown team"}
                 </span>
 
                 <span
@@ -1773,7 +1739,7 @@ function IdeaPreviewDialog({
                     borderColor: workshop.card_primary_border_color,
                   }}
                 >
-                  {idea.pillarName || "Unknown pillar"}
+                  {idea.Category || "Unknown pillar"}
                 </span>
 
                 <span className="rounded-full bg-neutral-900 px-2.5 py-1 text-white">
@@ -1790,7 +1756,7 @@ function IdeaPreviewDialog({
                     color: workshop.txt_secondary_color,
                   }}
                 >
-                  {formatRelativeDate(idea.createdAt)}
+                  {formatRelativeDate(idea.CreatedDttm)}
                 </p>
               </div>
 
@@ -1803,7 +1769,7 @@ function IdeaPreviewDialog({
                     color: workshop.txt_secondary_color,
                   }}
                 >
-                  {idea.description}
+                  {idea.Desc}
                 </p>
               </div>
             </div>
@@ -1991,7 +1957,7 @@ function IdeaDialog({
   open: boolean
   teamId: number
   selectedPillarId: number | null
-  idea: Idea | null
+  idea: ParticipantIdea | null
   onClose: () => void
 }) {
   const { workshop, workshopCode, visitorId } = useParticipantExperience()
@@ -2004,7 +1970,7 @@ function IdeaDialog({
   const saveIdeaMutation = useSaveIdea()
 
   const ideaPillarId = idea
-    ? pillars.find((pillar) => pillar.Name === idea.pillarName)?.ID
+    ? pillars.find((pillar) => pillar.Name === idea.Category)?.ID
     : undefined
 
   const defaultPillarId = ideaPillarId ?? selectedPillarId ?? pillars[0]?.ID
@@ -2040,7 +2006,7 @@ function IdeaDialog({
       {
         ...(idea
           ? {
-              idea_id: idea.id,
+              idea_id: idea.ID,
             }
           : {}),
         visitor_id: visitorId,
@@ -2177,7 +2143,7 @@ function IdeaDialog({
                 required
                 autoFocus
                 rows={4}
-                defaultValue={idea?.description ?? ""}
+                defaultValue={idea?.Desc ?? ""}
                 disabled={saveIdeaMutation.isPending}
                 placeholder="Describe the idea, the problem it solves, and its impact"
                 className={cn(
@@ -2244,7 +2210,7 @@ function IdeaDialog({
               <textarea
                 name="context"
                 rows={4}
-                defaultValue={idea?.context ?? ""}
+                defaultValue={idea?.Context ?? ""}
                 disabled={saveIdeaMutation.isPending}
                 placeholder="Describe the context in which this idea will be used"
                 className={cn(
