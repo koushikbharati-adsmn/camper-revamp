@@ -17,7 +17,17 @@ import {
   useSuspenseQuery,
 } from "@tanstack/react-query"
 import { createFileRoute } from "@tanstack/react-router"
-import { useEffect, useRef, useState } from "react"
+import {
+  createContext,
+  type ChangeEvent,
+  type FormEvent,
+  type ReactNode,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react"
 import {
   BellIcon,
   ChevronLeftIcon,
@@ -44,20 +54,305 @@ import { ExperienceStatsCard } from "@/components/experience/experience-stats-ca
 import {
   getActivitiesOptions,
   getDashboardOptions,
-  type WorkshopActivity,
 } from "@/services/big-screen"
 import { cn } from "@/lib/utils"
 import { NewsroomStatsRows } from "@/components/experience/experience-stats-rows"
 import { ExperienceFooter } from "@/components/experience/experience-footer"
 
-type IdeaFilter = "all" | "shortlisted" | "sharpened"
-type ParticipantScreen = "home" | "stage" | "newsroom"
+/* -------------------------------------------------------------------------- */
+/* Types                                                                      */
+/* -------------------------------------------------------------------------- */
+
+type IdeaStatusFilter = "all" | "shortlisted" | "sharpened"
+
+type ParticipantView = "home" | "stage" | "newsroom"
+
+type Idea = {
+  id: number
+  title: string | null
+  description: string
+  context: string | null
+  createdAt: string
+  imageUrl: string | null
+  teamName: string
+  pillarName: string
+  isShortlisted: boolean
+  isOwnedByParticipant: boolean
+  isSharpened: boolean
+}
+
+type ParticipantIdeasQueryParams = {
+  teamId: number | null
+  pillarId: number | null
+  isShortlisted?: boolean | null
+  isSharpened?: boolean | null
+  enabled?: boolean
+}
+
+type ParticipantExperienceContextValue = {
+  workshopCode: string
+  visitorId: string
+  workshop: ParticipantWorkshop
+}
+
+/* -------------------------------------------------------------------------- */
+/* Constants                                                                  */
+/* -------------------------------------------------------------------------- */
+
+const PARTICIPANT_IDEAS_QUERY_KEY = ["PARTICIPANT_IDEAS"] as const
+
+const IDEA_FILTER_OPTIONS = [
+  {
+    value: "all",
+    label: "All Ideas",
+  },
+  {
+    value: "shortlisted",
+    label: "Shortlisted",
+  },
+  {
+    value: "sharpened",
+    label: "Sharpened",
+  },
+] satisfies Array<{
+  value: IdeaStatusFilter
+  label: string
+}>
 
 const visitorIdOptions = queryOptions({
   queryKey: ["PARTICIPANT_VISITOR_ID"],
   queryFn: getVisitorId,
   staleTime: Infinity,
 })
+
+/* -------------------------------------------------------------------------- */
+/* Context                                                                    */
+/* -------------------------------------------------------------------------- */
+
+const ParticipantExperienceContext =
+  createContext<ParticipantExperienceContextValue | null>(null)
+
+function ParticipantExperienceProvider({
+  workshopCode,
+  visitorId,
+  workshop,
+  children,
+}: ParticipantExperienceContextValue & {
+  children: ReactNode
+}) {
+  const value = useMemo(
+    () => ({
+      workshopCode,
+      visitorId,
+      workshop,
+    }),
+    [visitorId, workshop, workshopCode]
+  )
+
+  return (
+    <ParticipantExperienceContext.Provider value={value}>
+      {children}
+    </ParticipantExperienceContext.Provider>
+  )
+}
+
+function useParticipantExperience() {
+  const context = useContext(ParticipantExperienceContext)
+
+  if (!context) {
+    throw new Error(
+      "useParticipantExperience must be used within ParticipantExperienceProvider"
+    )
+  }
+
+  return context
+}
+
+/* -------------------------------------------------------------------------- */
+/* Utilities                                                                  */
+/* -------------------------------------------------------------------------- */
+
+function mapParticipantIdea(idea: ParticipantIdea): Idea {
+  return {
+    id: idea.ID,
+    title: idea.title,
+    description: idea.Desc,
+    context: idea.Context ?? null,
+    createdAt: idea.CreatedDttm,
+    imageUrl: idea.imageFileName ?? null,
+    teamName: idea.TeamName ?? "",
+    pillarName: idea.Category ?? "",
+    isShortlisted: idea.flgTeam,
+    isOwnedByParticipant: idea.flgSelf,
+    isSharpened: idea.flgCoach,
+  }
+}
+
+function parseOptionalId(value: string) {
+  return value === "all" ? null : Number(value)
+}
+
+/* -------------------------------------------------------------------------- */
+/* Shared hooks                                                               */
+/* -------------------------------------------------------------------------- */
+
+function useParticipantIdeas({
+  teamId,
+  pillarId,
+  isShortlisted = null,
+  isSharpened = null,
+  enabled = true,
+}: ParticipantIdeasQueryParams) {
+  const { workshopCode, visitorId } = useParticipantExperience()
+
+  return useQuery({
+    ...getParticipantIdeasOptions({
+      visitor_id: visitorId,
+      workshop_code: workshopCode,
+      team_id: teamId,
+      category_id: pillarId,
+      is_shortlisted: isShortlisted,
+      is_coached: isSharpened,
+    }),
+    enabled,
+    select: (response) => response.data.map(mapParticipantIdea),
+  })
+}
+
+function useWorkshopActivities() {
+  const { workshopCode } = useParticipantExperience()
+
+  return useQuery({
+    ...getActivitiesOptions({
+      code: workshopCode,
+      type: null,
+    }),
+    select: (response) => response.data,
+  })
+}
+
+function useNativeDialog(open: boolean) {
+  const dialogRef = useRef<HTMLDialogElement>(null)
+
+  useEffect(() => {
+    const dialog = dialogRef.current
+
+    if (!dialog) return
+
+    if (open && !dialog.open) {
+      dialog.showModal()
+      return
+    }
+
+    if (!open && dialog.open) {
+      dialog.close()
+    }
+  }, [open])
+
+  return dialogRef
+}
+
+function useIdeaActions() {
+  const { workshop, workshopCode } = useParticipantExperience()
+
+  const queryClient = useQueryClient()
+
+  const generateImageMutation = useGenerateIdeaImage()
+  const shortlistMutation = useShortlistIdea()
+  const scoutMutation = useScoutIdea()
+
+  const invalidateParticipantIdeas = async () => {
+    await queryClient.invalidateQueries({
+      queryKey: PARTICIPANT_IDEAS_QUERY_KEY,
+    })
+  }
+
+  const generateIdeaImage = async (idea: Idea) => {
+    const pillar = workshop.category.find(
+      (item) => item.Name === idea.pillarName
+    )
+
+    try {
+      await generateImageMutation.mutateAsync({
+        idea_id: idea.id,
+        workshop_code: workshopCode,
+        pillar_context: pillar?.Context ?? "",
+        workshop_context: workshop.WorkshopContext,
+        user_idea: idea.description,
+        brand_guidelines: workshop.GuidelineFileName,
+      })
+
+      await invalidateParticipantIdeas()
+    } catch {
+      toast.add({
+        type: "error",
+        title: "Unable to generate image",
+        description: "Please try again.",
+      })
+    }
+  }
+
+  const updateIdeaShortlist = async (
+    ideaId: number,
+    shouldShortlist: boolean
+  ) => {
+    try {
+      await shortlistMutation.mutateAsync({
+        workshop_code: workshopCode,
+        idea_id: ideaId,
+        flag: shouldShortlist,
+      })
+
+      await invalidateParticipantIdeas()
+    } catch {
+      toast.add({
+        type: "error",
+        title: "Unable to update shortlist",
+        description: "Please try again.",
+      })
+    }
+  }
+
+  const requestScoutSuggestions = async (
+    pillarTitle: string,
+    ideas: Idea[]
+  ) => {
+    try {
+      await scoutMutation.mutateAsync({
+        workshop_code: workshopCode,
+        pillar_title: pillarTitle,
+        user_ideas: ideas.map((idea) => idea.description),
+      })
+    } catch {
+      return
+    }
+  }
+
+  return {
+    generateIdeaImage,
+    updateIdeaShortlist,
+    requestScoutSuggestions,
+
+    generatingIdeaId: generateImageMutation.isPending
+      ? generateImageMutation.variables?.idea_id
+      : null,
+
+    shortlistingIdeaId: shortlistMutation.isPending
+      ? shortlistMutation.variables?.idea_id
+      : null,
+
+    isImageActionPending: generateImageMutation.isPending,
+
+    scoutSuggestions: scoutMutation.data?.data.text ?? [],
+    isScoutPending: scoutMutation.isPending,
+    isScoutError: scoutMutation.isError,
+    resetScoutSuggestions: scoutMutation.reset,
+  }
+}
+
+/* -------------------------------------------------------------------------- */
+/* Route                                                                      */
+/* -------------------------------------------------------------------------- */
 
 export const Route = createFileRoute("/workshops/$code/participants")({
   loader: async ({ context, params }) => {
@@ -70,12 +365,15 @@ export const Route = createFileRoute("/workshops/$code/participants")({
       })
     )
   },
+
   component: RouteComponent,
 })
 
 function RouteComponent() {
   const { code } = Route.useParams()
+
   const { data: visitorId } = useSuspenseQuery(visitorIdOptions)
+
   const { data: workshop } = useSuspenseQuery({
     ...getParticipantWorkshopOptions({
       code,
@@ -87,226 +385,232 @@ function RouteComponent() {
   })
 
   return (
-    <ParticipantExperience
-      key={workshop.ID}
-      code={code}
+    <ParticipantExperienceProvider
+      workshopCode={code}
       visitorId={visitorId}
       workshop={workshop}
-    />
+    >
+      <ParticipantExperience key={workshop.ID} />
+    </ParticipantExperienceProvider>
   )
 }
 
-function ParticipantExperience({
-  code,
-  visitorId,
-  workshop,
-}: {
-  code: string
-  visitorId: string
-  workshop: ParticipantWorkshop
-}) {
-  const walkthroughItems = [...workshop.walkThrough].sort(
-    (first, second) => first.DisplayOrder - second.DisplayOrder
+/* -------------------------------------------------------------------------- */
+/* Participant experience                                                     */
+/* -------------------------------------------------------------------------- */
+
+function ParticipantExperience() {
+  const { workshop } = useParticipantExperience()
+
+  const walkthroughSteps = useMemo(
+    () =>
+      [...workshop.walkThrough].sort(
+        (first, second) => first.DisplayOrder - second.DisplayOrder
+      ),
+    [workshop.walkThrough]
   )
-  const [shouldShowWalkthrough, setShouldShowWalkthrough] = useState(
-    walkthroughItems.length > 0
+
+  const [isWalkthroughActive, setIsWalkthroughActive] = useState(
+    walkthroughSteps.length > 0
   )
-  const [activeScreen, setActiveScreen] = useState<ParticipantScreen>("home")
+
+  const [activeView, setActiveView] = useState<ParticipantView>("home")
+
   const [selectedTeamId, setSelectedTeamId] = useState<number | null>(null)
-  const [selectedCategoryId, setSelectedCategoryId] = useState<number | null>(
-    null
-  )
-  const [ideaFilter, setIdeaFilter] = useState<IdeaFilter>("all")
-  const [stageTeamId, setStageTeamId] = useState<number | null>(null)
-  const [stageCategoryId, setStageCategoryId] = useState<number | null>(null)
-  const isHome = activeScreen === "home"
-  const isStage = activeScreen === "stage"
 
   const {
     data: activities = [],
-    isPending: areActivitiesPending,
-    isError: areActivitiesError,
-    refetch: refetchActivities,
-  } = useQuery({
-    ...getActivitiesOptions({ code, type: null }),
-    select: (response) => response.data,
-  })
+    isPending: isActivitiesPending,
+    isError: isActivitiesError,
+  } = useWorkshopActivities()
 
-  const { data: ideas = [], isPending: areIdeasPending } = useQuery({
-    ...getParticipantIdeasOptions({
-      visitor_id: visitorId,
-      workshop_code: code,
-      category_id: isStage ? stageCategoryId : selectedCategoryId,
-      team_id: isStage ? stageTeamId : selectedTeamId,
-      is_shortlisted: isStage
-        ? true
-        : ideaFilter === "shortlisted"
-          ? true
-          : null,
-      is_coached: !isStage && ideaFilter === "sharpened" ? true : null,
-    }),
-    enabled: isStage || (isHome && selectedTeamId !== null),
-    select: (response) => response.data,
-  })
-  const selectedTeam = workshop.teams.find((team) => team.ID === selectedTeamId)
+  const handleWalkthroughComplete = () => {
+    setIsWalkthroughActive(false)
+  }
 
-  const completeWalkthrough = () => {
-    setShouldShowWalkthrough(false)
+  const handleNavigateHome = () => {
+    setActiveView("home")
+    setSelectedTeamId(null)
+  }
+
+  const handleNavigateStage = () => {
+    setActiveView("stage")
+  }
+
+  const handleNavigateNewsroom = () => {
+    setActiveView("newsroom")
+  }
+
+  const handleSelectTeam = (teamId: number) => {
+    setSelectedTeamId(teamId)
+  }
+
+  const handleChangeTeam = (teamId: number) => {
+    setSelectedTeamId(teamId)
+  }
+
+  const renderCurrentView = () => {
+    if (isWalkthroughActive) {
+      return (
+        <WalkthroughScreen
+          key={workshop.ID}
+          steps={walkthroughSteps}
+          onComplete={handleWalkthroughComplete}
+        />
+      )
+    }
+
+    if (activeView === "newsroom") {
+      return <NewsroomScreen />
+    }
+
+    if (activeView === "stage") {
+      return <StageScreen />
+    }
+
+    if (selectedTeamId !== null) {
+      return (
+        <IdeasScreen
+          selectedTeamId={selectedTeamId}
+          onTeamChange={handleChangeTeam}
+        />
+      )
+    }
+
+    return (
+      <TeamsScreen teams={workshop.teams} onSelectTeam={handleSelectTeam} />
+    )
   }
 
   return (
     <div className="flex h-dvh flex-col">
-      <header
-        className="grid h-16"
-        style={{
-          backgroundColor: workshop.header_bg_color,
-          color: workshop.header_txt_color,
-        }}
-      >
-        <nav className="flex items-center justify-between px-4 sm:px-6">
-          <img className="h-10 w-auto" src={workshop.logoFileName} alt="logo" />
+      <ParticipantNavigation
+        activeView={activeView}
+        isDisabled={isWalkthroughActive}
+        onNavigateHome={handleNavigateHome}
+        onNavigateStage={handleNavigateStage}
+        onNavigateNewsroom={handleNavigateNewsroom}
+      />
 
-          <ul className="flex items-center gap-4 text-sm sm:gap-10 sm:text-base">
-            <li>
-              <button
-                type="button"
-                className="border-b-2 py-1 font-medium transition-opacity disabled:cursor-not-allowed disabled:opacity-50"
-                style={{
-                  borderColor:
-                    activeScreen === "home" ? "currentColor" : "transparent",
-                }}
-                aria-current={activeScreen === "home" ? "page" : undefined}
-                disabled={shouldShowWalkthrough}
-                onClick={() => {
-                  setActiveScreen("home")
-                  setSelectedTeamId(null)
-                }}
-              >
-                Home
-              </button>
-            </li>
-            <li>
-              <button
-                type="button"
-                className="border-b-2 py-1 font-medium transition-opacity disabled:cursor-not-allowed disabled:opacity-50"
-                style={{
-                  borderColor:
-                    activeScreen === "stage" ? "currentColor" : "transparent",
-                }}
-                aria-current={activeScreen === "stage" ? "page" : undefined}
-                disabled={shouldShowWalkthrough}
-                onClick={() => setActiveScreen("stage")}
-              >
-                The Stage
-              </button>
-            </li>
-            <li>
-              <button
-                type="button"
-                className="border-b-2 py-1 font-medium transition-opacity disabled:cursor-not-allowed disabled:opacity-50"
-                style={{
-                  borderColor:
-                    activeScreen === "newsroom"
-                      ? "currentColor"
-                      : "transparent",
-                }}
-                aria-current={activeScreen === "newsroom" ? "page" : undefined}
-                disabled={shouldShowWalkthrough}
-                onClick={() => setActiveScreen("newsroom")}
-              >
-                The Newsroom
-              </button>
-            </li>
-          </ul>
-        </nav>
-      </header>
-      <main className="flex-1 overflow-y-auto">
-        {shouldShowWalkthrough ? (
-          <WalkthroughScreen
-            key={workshop.ID}
-            items={walkthroughItems}
-            workshop={workshop}
-            onBegin={completeWalkthrough}
-          />
-        ) : activeScreen === "newsroom" ? (
-          <NewsroomScreen
-            workshop={workshop}
-            code={code}
-            activities={activities}
-            areActivitiesPending={areActivitiesPending}
-            areActivitiesError={areActivitiesError}
-            onRetryActivities={() => void refetchActivities()}
-          />
-        ) : isStage ? (
-          <StageScreen
-            workshop={workshop}
-            code={code}
-            teams={workshop.teams}
-            categories={workshop.category}
-            ideas={ideas}
-            selectedTeamId={stageTeamId}
-            selectedCategoryId={stageCategoryId}
-            isPending={areIdeasPending}
-            onTeamChange={setStageTeamId}
-            onCategoryChange={setStageCategoryId}
-          />
-        ) : selectedTeam ? (
-          <IdeasScreen
-            workshop={workshop}
-            code={code}
-            visitorId={visitorId}
-            teams={workshop.teams}
-            categories={workshop.category}
-            ideas={ideas}
-            selectedTeamId={selectedTeam.ID}
-            selectedCategoryId={selectedCategoryId}
-            ideaFilter={ideaFilter}
-            isPending={areIdeasPending}
-            onTeamChange={setSelectedTeamId}
-            onCategoryChange={setSelectedCategoryId}
-            onIdeaFilterChange={setIdeaFilter}
-          />
-        ) : (
-          <TeamsScreen
-            teams={workshop.teams}
-            onSelectTeam={setSelectedTeamId}
-          />
-        )}
-      </main>
+      <main className="flex-1 overflow-y-auto">{renderCurrentView()}</main>
+
       <ExperienceFooter
         activities={activities}
         workshop={workshop}
-        isError={areActivitiesError}
-        isPending={areActivitiesPending}
+        isError={isActivitiesError}
+        isPending={isActivitiesPending}
       />
     </div>
   )
 }
 
-function NewsroomScreen({
-  workshop,
-  code,
-  activities,
-  areActivitiesPending,
-  areActivitiesError,
-  onRetryActivities,
+/* -------------------------------------------------------------------------- */
+/* Navigation                                                                 */
+/* -------------------------------------------------------------------------- */
+
+function ParticipantNavigation({
+  activeView,
+  isDisabled,
+  onNavigateHome,
+  onNavigateStage,
+  onNavigateNewsroom,
 }: {
-  workshop: ParticipantWorkshop
-  code: string
-  activities: WorkshopActivity[]
-  areActivitiesPending: boolean
-  areActivitiesError: boolean
-  onRetryActivities: () => void
+  activeView: ParticipantView
+  isDisabled: boolean
+  onNavigateHome: () => void
+  onNavigateStage: () => void
+  onNavigateNewsroom: () => void
 }) {
+  const { workshop } = useParticipantExperience()
+
+  return (
+    <header
+      className="grid h-16"
+      style={{
+        backgroundColor: workshop.header_bg_color,
+        color: workshop.header_txt_color,
+      }}
+    >
+      <nav className="flex items-center justify-between px-4 sm:px-6">
+        <img className="h-10 w-auto" src={workshop.logoFileName} alt="logo" />
+
+        <ul className="flex items-center gap-4 text-sm sm:gap-10 sm:text-base">
+          <li>
+            <button
+              type="button"
+              className="border-b-2 py-1 font-medium transition-opacity disabled:cursor-not-allowed disabled:opacity-50"
+              style={{
+                borderColor:
+                  activeView === "home" ? "currentColor" : "transparent",
+              }}
+              aria-current={activeView === "home" ? "page" : undefined}
+              disabled={isDisabled}
+              onClick={onNavigateHome}
+            >
+              Home
+            </button>
+          </li>
+
+          <li>
+            <button
+              type="button"
+              className="border-b-2 py-1 font-medium transition-opacity disabled:cursor-not-allowed disabled:opacity-50"
+              style={{
+                borderColor:
+                  activeView === "stage" ? "currentColor" : "transparent",
+              }}
+              aria-current={activeView === "stage" ? "page" : undefined}
+              disabled={isDisabled}
+              onClick={onNavigateStage}
+            >
+              The Stage
+            </button>
+          </li>
+
+          <li>
+            <button
+              type="button"
+              className="border-b-2 py-1 font-medium transition-opacity disabled:cursor-not-allowed disabled:opacity-50"
+              style={{
+                borderColor:
+                  activeView === "newsroom" ? "currentColor" : "transparent",
+              }}
+              aria-current={activeView === "newsroom" ? "page" : undefined}
+              disabled={isDisabled}
+              onClick={onNavigateNewsroom}
+            >
+              The Newsroom
+            </button>
+          </li>
+        </ul>
+      </nav>
+    </header>
+  )
+}
+
+/* -------------------------------------------------------------------------- */
+/* Newsroom                                                                   */
+/* -------------------------------------------------------------------------- */
+
+function NewsroomScreen() {
+  const { workshop, workshopCode } = useParticipantExperience()
+
   const {
     data: dashboard,
-    isPending,
-    isError,
-    refetch,
+    isPending: isDashboardPending,
+    isError: isDashboardError,
+    refetch: refetchDashboard,
   } = useQuery({
-    ...getDashboardOptions(code),
+    ...getDashboardOptions(workshopCode),
     select: (response) => response.data,
   })
+
+  const {
+    data: activities = [],
+    isPending: isActivitiesPending,
+    isError: isActivitiesError,
+    refetch: refetchActivities,
+  } = useWorkshopActivities()
 
   const summary = [
     {
@@ -327,16 +631,18 @@ function NewsroomScreen({
     },
   ]
 
+  const handleRetryDashboard = () => {
+    void refetchDashboard()
+  }
+
+  const handleRetryActivities = () => {
+    void refetchActivities()
+  }
+
   return (
-    <section
-      className="min-h-full px-4 py-6 sm:px-6 sm:py-8 lg:px-8"
-      style={{
-        backgroundColor: workshop.page_bg_color,
-        color: workshop.txt_primary_color,
-      }}
-    >
+    <section className="min-h-full px-4 py-6 sm:px-6 sm:py-8 lg:px-8">
       <div className="container mx-auto w-full">
-        {isPending ? (
+        {isDashboardPending ? (
           <div aria-label="Loading newsroom statistics" aria-busy="true">
             <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
               {Array.from({ length: 4 }, (_, index) => (
@@ -347,6 +653,7 @@ function NewsroomScreen({
                 />
               ))}
             </div>
+
             <div className="mt-8 grid gap-3">
               {Array.from({ length: 4 }, (_, index) => (
                 <div
@@ -357,23 +664,27 @@ function NewsroomScreen({
               ))}
             </div>
           </div>
-        ) : isError ? (
+        ) : isDashboardError ? (
           <div className="grid min-h-64 place-content-center gap-4 text-center">
             <div>
               <h2 className="text-lg font-semibold">
                 Unable to load newsroom statistics
               </h2>
+
               <p
                 className="mt-1 text-sm"
-                style={{ color: workshop.txt_secondary_color }}
+                style={{
+                  color: workshop.txt_secondary_color,
+                }}
               >
                 Check the connection and try again.
               </p>
             </div>
+
             <ExperienceButton
               workshop={workshop}
               variant="secondary"
-              onClick={() => void refetch()}
+              onClick={handleRetryDashboard}
             >
               Try again
             </ExperienceButton>
@@ -391,6 +702,7 @@ function NewsroomScreen({
                 />
               ))}
             </div>
+
             <NewsroomStatsRows teams={dashboard?.teams ?? []} />
 
             <div className="grid gap-4">
@@ -398,7 +710,7 @@ function NewsroomScreen({
                 Latest Activity
               </h2>
 
-              {areActivitiesPending ? (
+              {isActivitiesPending ? (
                 <div
                   className="grid gap-3"
                   aria-label="Loading latest activity"
@@ -412,24 +724,30 @@ function NewsroomScreen({
                     />
                   ))}
                 </div>
-              ) : areActivitiesError ? (
+              ) : isActivitiesError ? (
                 <div
                   className="flex flex-col items-start gap-3 border px-4 py-5 sm:flex-row sm:items-center sm:justify-between"
-                  style={{ borderColor: workshop.card_primary_border_color }}
+                  style={{
+                    borderColor: workshop.card_primary_border_color,
+                  }}
                 >
                   <div>
                     <p className="font-semibold">Unable to load activity</p>
+
                     <p
                       className="mt-1 text-sm"
-                      style={{ color: workshop.txt_secondary_color }}
+                      style={{
+                        color: workshop.txt_secondary_color,
+                      }}
                     >
                       Check the connection and try again.
                     </p>
                   </div>
+
                   <ExperienceButton
                     workshop={workshop}
                     variant="secondary"
-                    onClick={onRetryActivities}
+                    onClick={handleRetryActivities}
                   >
                     Try again
                   </ExperienceButton>
@@ -461,22 +779,29 @@ function NewsroomScreen({
                     >
                       <div className="flex min-w-0 items-start gap-3">
                         <BellIcon className="mt-1 size-5" aria-hidden="true" />
+
                         <div>
                           <strong className="capitalize">
                             {activity.Type ?? "Notification"}
                           </strong>
+
                           <p
                             className="text-sm"
-                            style={{ color: workshop.txt_secondary_color }}
+                            style={{
+                              color: workshop.txt_secondary_color,
+                            }}
                           >
                             {activity.TeamName}: {activity.Message}
                           </p>
                         </div>
                       </div>
+
                       <time
                         className="flex items-center gap-1.5 text-xs whitespace-nowrap"
                         dateTime={activity.CreatedDttm}
-                        style={{ color: workshop.txt_secondary_color }}
+                        style={{
+                          color: workshop.txt_secondary_color,
+                        }}
                       >
                         {formatRelativeDate(activity.CreatedDttm)}
                       </time>
@@ -492,21 +817,40 @@ function NewsroomScreen({
   )
 }
 
-function WalkthroughScreen({
-  items,
-  workshop,
-  onBegin,
-}: {
-  items: ParticipantWorkshop["walkThrough"]
-  workshop: ParticipantWorkshop
-  onBegin: () => void
-}) {
-  const [currentIndex, setCurrentIndex] = useState(0)
-  const currentItem = items[currentIndex]
-  const isFirstItem = currentIndex === 0
-  const isLastItem = currentIndex === items.length - 1
+/* -------------------------------------------------------------------------- */
+/* Walkthrough                                                                */
+/* -------------------------------------------------------------------------- */
 
-  if (!currentItem) return null
+function WalkthroughScreen({
+  steps,
+  onComplete,
+}: {
+  steps: ParticipantWorkshop["walkThrough"]
+  onComplete: () => void
+}) {
+  const { workshop } = useParticipantExperience()
+
+  const [currentStepIndex, setCurrentStepIndex] = useState(0)
+
+  const currentStep = steps[currentStepIndex]
+
+  const isFirstStep = currentStepIndex === 0
+  const isLastStep = currentStepIndex === steps.length - 1
+
+  const handlePreviousStep = () => {
+    setCurrentStepIndex((index) => index - 1)
+  }
+
+  const handleNextStep = () => {
+    if (isLastStep) {
+      onComplete()
+      return
+    }
+
+    setCurrentStepIndex((index) => index + 1)
+  }
+
+  if (!currentStep) return null
 
   return (
     <section className="grid min-h-full place-items-center px-4 py-4 sm:px-6 sm:py-6">
@@ -522,22 +866,24 @@ function WalkthroughScreen({
       >
         <div
           className="grid border-b"
-          style={{ borderColor: workshop.card_primary_border_color }}
+          style={{
+            borderColor: workshop.card_primary_border_color,
+          }}
           role="progressbar"
           aria-label="Walkthrough progress"
           aria-valuemin={1}
-          aria-valuemax={items.length}
-          aria-valuenow={currentIndex + 1}
-          aria-valuetext={`Step ${currentIndex + 1} of ${items.length}`}
+          aria-valuemax={steps.length}
+          aria-valuenow={currentStepIndex + 1}
+          aria-valuetext={`Step ${currentStepIndex + 1} of ${steps.length}`}
         >
           <div className="flex gap-2 px-6 pt-4 sm:gap-3 sm:px-10 sm:pt-6">
-            {items.map((item, index) => (
-              <div key={item.ID} className="min-w-0 flex-1" aria-hidden="true">
+            {steps.map((step, index) => (
+              <div key={step.ID} className="min-w-0 flex-1" aria-hidden="true">
                 <p
                   className="mb-3 truncate text-center text-xs font-semibold tracking-wide uppercase"
                   style={{
                     color:
-                      index === currentIndex
+                      index === currentStepIndex
                         ? workshop.txt_primary_color
                         : workshop.txt_secondary_color,
                   }}
@@ -545,13 +891,15 @@ function WalkthroughScreen({
                   <span className="sm:hidden">
                     {String(index + 1).padStart(2, "0")}
                   </span>
-                  <span className="hidden sm:inline">{item.Title}</span>
+
+                  <span className="hidden sm:inline">{step.Title}</span>
                 </p>
+
                 <span
                   className="block h-1 rounded-full"
                   style={{
                     backgroundColor:
-                      index <= currentIndex
+                      index <= currentStepIndex
                         ? workshop.btn_primary_bg_color
                         : workshop.btn_secondary_bg_color,
                   }}
@@ -566,25 +914,30 @@ function WalkthroughScreen({
           className="flex flex-1 flex-col justify-center px-6 py-12 sm:px-14 sm:py-16 lg:px-20"
         >
           <h1 className="max-w-4xl text-4xl leading-[1.08] font-semibold tracking-[-0.035em] text-balance sm:text-5xl lg:text-6xl">
-            {currentItem.Title}
+            {currentStep.Title}
           </h1>
+
           <p
             className="mt-6 max-w-3xl text-base leading-7 whitespace-pre-line sm:mt-8 sm:text-xl sm:leading-8"
-            style={{ color: workshop.txt_secondary_color }}
+            style={{
+              color: workshop.txt_secondary_color,
+            }}
           >
-            {currentItem.Description}
+            {currentStep.Description}
           </p>
         </div>
 
         <div
           className="flex min-h-16 items-center justify-end gap-3 border-t px-6 sm:px-10"
-          style={{ borderColor: workshop.card_primary_border_color }}
+          style={{
+            borderColor: workshop.card_primary_border_color,
+          }}
         >
-          {!isFirstItem && (
+          {!isFirstStep && (
             <ExperienceButton
               variant="secondary"
               workshop={workshop}
-              onClick={() => setCurrentIndex((index) => index - 1)}
+              onClick={handlePreviousStep}
             >
               Previous
             </ExperienceButton>
@@ -593,22 +946,19 @@ function WalkthroughScreen({
           <ExperienceButton
             variant="primary"
             workshop={workshop}
-            onClick={() => {
-              if (isLastItem) {
-                onBegin()
-                return
-              }
-
-              setCurrentIndex((index) => index + 1)
-            }}
+            onClick={handleNextStep}
           >
-            {isLastItem ? "Begin" : "Next"}
+            {isLastStep ? "Begin" : "Next"}
           </ExperienceButton>
         </div>
       </div>
     </section>
   )
 }
+
+/* -------------------------------------------------------------------------- */
+/* Teams                                                                      */
+/* -------------------------------------------------------------------------- */
 
 function TeamsScreen({
   teams,
@@ -617,10 +967,12 @@ function TeamsScreen({
   teams: ParticipantWorkshop["teams"]
   onSelectTeam: (teamId: number) => void
 }) {
+  const { workshop } = useParticipantExperience()
   const [emblaRef, emblaApi] = useEmblaCarousel({
     align: "center",
     loop: true,
   })
+
   const [selectedIndex, setSelectedIndex] = useState(0)
 
   useEffect(() => {
@@ -631,6 +983,7 @@ function TeamsScreen({
     }
 
     updateCarouselState()
+
     emblaApi.on("select", updateCarouselState)
     emblaApi.on("reInit", updateCarouselState)
 
@@ -640,8 +993,25 @@ function TeamsScreen({
     }
   }, [emblaApi])
 
-  if (teams.length === 0)
+  const handlePreviousTeam = () => {
+    emblaApi?.scrollPrev()
+  }
+
+  const handleNextTeam = () => {
+    emblaApi?.scrollNext()
+  }
+
+  const handleSelectCarouselItem = (index: number) => {
+    emblaApi?.scrollTo(index)
+  }
+
+  const handleSelectTeam = (teamId: number) => {
+    onSelectTeam(teamId)
+  }
+
+  if (teams.length === 0) {
     return <p className="p-4 sm:p-6">No teams available.</p>
+  }
 
   return (
     <section
@@ -666,12 +1036,16 @@ function TeamsScreen({
                   >
                     <button
                       type="button"
-                      className={`flex h-full w-full flex-col overflow-hidden rounded-md border bg-white text-left shadow-xs transition-[transform,opacity] duration-300 focus-visible:outline-2 focus-visible:outline-offset-4 ${
+                      className={cn(
+                        "flex h-full w-full flex-col overflow-hidden rounded-md bg-white text-left shadow-xs transition-[transform,opacity] duration-300 focus-visible:outline-2 focus-visible:outline-offset-4",
                         isSelected
                           ? "scale-100 opacity-100 sm:scale-105"
                           : "scale-[0.90] opacity-55"
-                      }`}
-                      onClick={() => onSelectTeam(team.ID)}
+                      )}
+                      onClick={() => handleSelectTeam(team.ID)}
+                      style={{
+                        borderColor: workshop.card_primary_border_color,
+                      }}
                     >
                       <div className="aspect-4/3 w-full overflow-hidden bg-neutral-100">
                         <img
@@ -685,6 +1059,7 @@ function TeamsScreen({
                         <h2 className="text-center text-xl leading-tight font-semibold tracking-[-0.02em] sm:text-2xl">
                           {team.TeamName}
                         </h2>
+
                         <p className="text-center text-sm leading-6 text-neutral-600 sm:text-base">
                           {team.Description}
                         </p>
@@ -700,18 +1075,24 @@ function TeamsScreen({
             <>
               <button
                 type="button"
-                className="absolute top-1/2 left-2 z-10 grid size-10 -translate-y-1/2 place-items-center rounded-full border bg-white text-neutral-900 shadow-sm transition-colors hover:bg-neutral-100 focus-visible:outline-2 focus-visible:outline-offset-4 sm:-left-16"
+                className="absolute top-1/2 left-2 z-10 grid size-10 -translate-y-1/2 place-items-center rounded-full bg-white text-neutral-900 shadow-sm transition-colors hover:bg-neutral-100 focus-visible:outline-2 focus-visible:outline-offset-4 sm:-left-16"
                 aria-label="Previous team"
-                onClick={() => emblaApi?.scrollPrev()}
+                onClick={handlePreviousTeam}
+                style={{
+                  borderColor: workshop.btn_secondary_border_color,
+                }}
               >
                 <ChevronLeftIcon className="size-5" aria-hidden="true" />
               </button>
 
               <button
                 type="button"
-                className="absolute top-1/2 right-2 z-10 grid size-10 -translate-y-1/2 place-items-center rounded-full border bg-white text-neutral-900 shadow-sm transition-colors hover:bg-neutral-100 focus-visible:outline-2 focus-visible:outline-offset-4 sm:-right-16"
+                className="absolute top-1/2 right-2 z-10 grid size-10 -translate-y-1/2 place-items-center rounded-full bg-white text-neutral-900 shadow-sm transition-colors hover:bg-neutral-100 focus-visible:outline-2 focus-visible:outline-offset-4 sm:-right-16"
                 aria-label="Next team"
-                onClick={() => emblaApi?.scrollNext()}
+                onClick={handleNextTeam}
+                style={{
+                  borderColor: workshop.btn_secondary_border_color,
+                }}
               >
                 <ChevronRightIcon className="size-5" aria-hidden="true" />
               </button>
@@ -729,14 +1110,15 @@ function TeamsScreen({
                 <button
                   key={team.ID}
                   type="button"
-                  className={`size-2.5 rounded-full transition-transform focus-visible:outline-2 focus-visible:outline-offset-4 ${
+                  className={cn(
+                    "size-2.5 rounded-full transition-transform focus-visible:outline-2 focus-visible:outline-offset-4",
                     index === selectedIndex
                       ? "scale-135 bg-neutral-900"
                       : "bg-neutral-300"
-                  }`}
+                  )}
                   aria-label={`Go to ${team.TeamName}`}
                   aria-current={index === selectedIndex ? "true" : undefined}
-                  onClick={() => emblaApi?.scrollTo(index)}
+                  onClick={() => handleSelectCarouselItem(index)}
                 />
               ))}
             </div>
@@ -747,173 +1129,162 @@ function TeamsScreen({
   )
 }
 
+/* -------------------------------------------------------------------------- */
+/* Ideas                                                                      */
+/* -------------------------------------------------------------------------- */
+
 function IdeasScreen({
-  workshop,
-  code,
-  visitorId,
-  teams,
-  categories,
-  ideas,
   selectedTeamId,
-  selectedCategoryId,
-  ideaFilter,
-  isPending,
   onTeamChange,
-  onCategoryChange,
-  onIdeaFilterChange,
 }: {
-  workshop: ParticipantWorkshop
-  code: string
-  visitorId: string
-  teams: ParticipantWorkshop["teams"]
-  categories: ParticipantWorkshop["category"]
-  ideas: ParticipantIdea[]
   selectedTeamId: number
-  selectedCategoryId: number | null
-  ideaFilter: IdeaFilter
-  isPending: boolean
   onTeamChange: (teamId: number) => void
-  onCategoryChange: (categoryId: number | null) => void
-  onIdeaFilterChange: (filter: IdeaFilter) => void
 }) {
-  const [isAddIdeaOpen, setIsAddIdeaOpen] = useState(false)
-  const [isScoutOpen, setIsScoutOpen] = useState(false)
-  const [editingIdea, setEditingIdea] = useState<ParticipantIdea | null>(null)
-  const [scoutSuggestions, setScoutSuggestions] = useState<string[] | null>(
-    null
-  )
-  const queryClient = useQueryClient()
-  const generateIdeaImageMutation = useGenerateIdeaImage()
-  const scoutIdeaMutation = useScoutIdea()
-  const shortlistIdeaMutation = useShortlistIdea()
-  const selectedCategory = categories.find(
-    (category) => category.ID === selectedCategoryId
+  const { workshop } = useParticipantExperience()
+
+  const teams = workshop.teams
+  const pillars = workshop.category
+
+  const [selectedPillarId, setSelectedPillarId] = useState<number | null>(null)
+
+  const [ideaStatusFilter, setIdeaStatusFilter] =
+    useState<IdeaStatusFilter>("all")
+
+  const [isIdeaDialogOpen, setIsIdeaDialogOpen] = useState(false)
+
+  const [isScoutDialogOpen, setIsScoutDialogOpen] = useState(false)
+
+  const [editingIdea, setEditingIdea] = useState<Idea | null>(null)
+
+  const selectedPillar = pillars.find(
+    (pillar) => pillar.ID === selectedPillarId
   )
 
-  const closeIdeaDialog = () => {
-    setIsAddIdeaOpen(false)
+  const { data: ideas = [], isPending: isIdeasPending } = useParticipantIdeas({
+    teamId: selectedTeamId,
+    pillarId: selectedPillarId,
+    isShortlisted: ideaStatusFilter === "shortlisted" ? true : null,
+    isSharpened: ideaStatusFilter === "sharpened" ? true : null,
+  })
+
+  const {
+    generateIdeaImage,
+    updateIdeaShortlist,
+    requestScoutSuggestions,
+
+    generatingIdeaId,
+    shortlistingIdeaId,
+    isImageActionPending,
+
+    scoutSuggestions,
+    isScoutPending,
+    isScoutError,
+    resetScoutSuggestions,
+  } = useIdeaActions()
+
+  const handleOpenNewIdeaDialog = () => {
+    setEditingIdea(null)
+    setIsIdeaDialogOpen(true)
+  }
+
+  const handleEditIdea = (idea: Idea) => {
+    setEditingIdea(idea)
+    setIsIdeaDialogOpen(true)
+  }
+
+  const handleCloseIdeaDialog = () => {
+    setIsIdeaDialogOpen(false)
     setEditingIdea(null)
   }
 
-  const generateIdeaImage = async (idea: ParticipantIdea) => {
-    try {
-      await generateIdeaImageMutation.mutateAsync({
-        idea_id: idea.ID,
-        workshop_code: code,
-        pillar_context:
-          categories.find((category) => category.Name === idea.Category)
-            ?.Context ?? "",
-        workshop_context: workshop.WorkshopContext,
-        user_idea: idea.Desc,
-        brand_guidelines: workshop.GuidelineFileName,
-      })
-
-      await queryClient.invalidateQueries({
-        queryKey: ["PARTICIPANT_IDEAS"],
-      })
-    } catch {
-      return
-    }
+  const handleTeamSelectChange = (event: ChangeEvent<HTMLSelectElement>) => {
+    onTeamChange(Number(event.target.value))
   }
 
-  const toggleShortlist = async (idea: ParticipantIdea) => {
-    try {
-      await shortlistIdeaMutation.mutateAsync({
-        workshop_code: code,
-        idea_id: idea.ID,
-        flag: !idea.flgTeam,
-      })
-
-      await queryClient.invalidateQueries({
-        queryKey: ["PARTICIPANT_IDEAS"],
-      })
-    } catch {
-      return
-    }
+  const handlePillarSelectChange = (event: ChangeEvent<HTMLSelectElement>) => {
+    setSelectedPillarId(parseOptionalId(event.target.value))
   }
 
-  const scoutIdeas = async () => {
-    if (!selectedCategory || ideas.length === 0) return
+  const handleIdeaStatusFilterChange = (filter: IdeaStatusFilter) => {
+    setIdeaStatusFilter(filter)
+  }
 
-    setScoutSuggestions(null)
-    setIsScoutOpen(true)
+  const handleGenerateIdeaImage = (idea: Idea) => {
+    void generateIdeaImage(idea)
+  }
 
-    try {
-      const response = await scoutIdeaMutation.mutateAsync({
-        workshop_code: code,
-        pillar_title: selectedCategory.Name,
-        user_ideas: ideas.map((idea) => idea.Desc),
-      })
+  const handleToggleShortlist = (idea: Idea) => {
+    void updateIdeaShortlist(idea.id, !idea.isShortlisted)
+  }
 
-      setScoutSuggestions(response.data.text)
-    } catch {
-      return
-    }
+  const handleScoutIdeas = () => {
+    if (!selectedPillar || ideas.length === 0) return
+
+    resetScoutSuggestions()
+
+    setIsScoutDialogOpen(true)
+
+    void requestScoutSuggestions(selectedPillar.Name, ideas)
+  }
+
+  const handleCloseScoutDialog = () => {
+    setIsScoutDialogOpen(false)
   }
 
   return (
     <section className="container mx-auto w-full p-4 sm:p-6 lg:p-8">
       <IdeaDialog
-        key={editingIdea?.ID ?? "new"}
-        open={isAddIdeaOpen}
-        workshop={workshop}
-        code={code}
-        visitorId={visitorId}
+        key={editingIdea?.id ?? "new"}
+        open={isIdeaDialogOpen}
         teamId={selectedTeamId}
-        categories={categories}
-        selectedCategoryId={selectedCategoryId}
+        selectedPillarId={selectedPillarId}
         idea={editingIdea}
-        onClose={closeIdeaDialog}
+        onClose={handleCloseIdeaDialog}
       />
 
       <ScoutDialog
-        open={isScoutOpen}
-        workshop={workshop}
-        pillarTitle={selectedCategory?.Name ?? ""}
-        suggestions={scoutSuggestions ?? []}
-        isPending={scoutIdeaMutation.isPending}
-        isError={scoutIdeaMutation.isError}
-        onClose={() => setIsScoutOpen(false)}
+        open={isScoutDialogOpen}
+        pillarTitle={selectedPillar?.Name ?? ""}
+        suggestions={scoutSuggestions}
+        isPending={isScoutPending}
+        isError={isScoutError}
+        onClose={handleCloseScoutDialog}
       />
 
       <div className="mb-6 flex flex-col items-stretch justify-end gap-3 lg:flex-row lg:items-center">
-        {selectedTeamId && (
-          <label>
-            <span className="sr-only">Team</span>
-            <ExperienceSelect
-              workshop={workshop}
-              value={selectedTeamId}
-              onChange={(event) => onTeamChange(Number(event.target.value))}
-              className="w-full lg:w-auto"
-            >
-              {teams.map((team) => (
-                <ExperienceSelectOption key={team.ID} value={team.ID}>
-                  {team.TeamName}
-                </ExperienceSelectOption>
-              ))}
-            </ExperienceSelect>
-          </label>
-        )}
+        <label>
+          <span className="sr-only">Team</span>
+
+          <ExperienceSelect
+            workshop={workshop}
+            value={selectedTeamId}
+            onChange={handleTeamSelectChange}
+            className="w-full lg:w-auto"
+          >
+            {teams.map((team) => (
+              <ExperienceSelectOption key={team.ID} value={team.ID}>
+                {team.TeamName}
+              </ExperienceSelectOption>
+            ))}
+          </ExperienceSelect>
+        </label>
 
         <label>
           <span className="sr-only">Pillar</span>
+
           <ExperienceSelect
             workshop={workshop}
-            value={selectedCategoryId ?? "all"}
-            onChange={(event) =>
-              onCategoryChange(
-                event.target.value === "all" ? null : Number(event.target.value)
-              )
-            }
+            value={selectedPillarId ?? "all"}
+            onChange={handlePillarSelectChange}
             className="w-full lg:w-auto"
           >
             <ExperienceSelectOption value="all">
               All pillars
             </ExperienceSelectOption>
 
-            {categories.map((category) => (
-              <ExperienceSelectOption key={category.ID} value={category.ID}>
-                {category.Name}
+            {pillars.map((pillar) => (
+              <ExperienceSelectOption key={pillar.ID} value={pillar.ID}>
+                {pillar.Name}
               </ExperienceSelectOption>
             ))}
           </ExperienceSelect>
@@ -921,108 +1292,68 @@ function IdeasScreen({
 
         <div className="max-w-full overflow-x-auto">
           <ExperienceSegmentedControl
-            value={ideaFilter}
-            options={[
-              {
-                value: "all",
-                label: "All Ideas",
-              },
-              {
-                value: "shortlisted",
-                label: "Shortlisted",
-              },
-              {
-                value: "sharpened",
-                label: "Sharpened",
-              },
-            ]}
+            value={ideaStatusFilter}
+            options={IDEA_FILTER_OPTIONS}
             workshop={workshop}
             ariaLabel="Filter ideas"
-            onValueChange={onIdeaFilterChange}
+            onValueChange={handleIdeaStatusFilterChange}
           />
         </div>
       </div>
 
       <ul
         className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
-        aria-busy={isPending}
+        aria-busy={isIdeasPending}
       >
         <li>
           <button
             type="button"
             className="flex h-full w-full flex-col overflow-hidden rounded-lg border bg-white text-left shadow-xs transition-transform focus-visible:outline-2 focus-visible:outline-offset-4"
-            onClick={() => {
-              setEditingIdea(null)
-              setIsAddIdeaOpen(true)
-            }}
+            onClick={handleOpenNewIdeaDialog}
           >
             <span className="grid aspect-4/3 w-full place-items-center bg-neutral-100 text-neutral-400">
               <PlusIcon className="size-9" aria-hidden="true" />
             </span>
+
             <span className="grid flex-1 place-items-center px-4 py-6 text-center text-xl font-semibold tracking-[-0.02em] uppercase">
               Add new idea
             </span>
           </button>
         </li>
 
-        {isPending
+        {isIdeasPending
           ? Array.from({ length: 3 }, (_, index) => (
-              <li
-                key={index}
-                className="min-h-96 animate-pulse overflow-hidden rounded-lg border bg-white shadow-xs sm:min-h-112"
-                aria-hidden="true"
-              >
-                <div className="aspect-4/3 bg-neutral-100" />
-                <div className="space-y-4 p-5">
-                  <div className="h-3 w-20 rounded bg-neutral-100" />
-                  <div className="h-6 w-3/4 rounded bg-neutral-100" />
-                  <div className="h-16 rounded bg-neutral-100" />
-                </div>
-              </li>
+              <IdeaCardSkeleton key={index} />
             ))
-          : ideas.map((idea) => {
-              const isGeneratingImage =
-                generateIdeaImageMutation.isPending &&
-                generateIdeaImageMutation.variables.idea_id === idea.ID
-              const isShortlistPending =
-                shortlistIdeaMutation.isPending &&
-                shortlistIdeaMutation.variables.idea_id === idea.ID
-
-              return (
-                <IdeateIdeaCard
-                  key={idea.ID}
-                  idea={idea}
-                  workshop={workshop}
-                  isGeneratingImage={isGeneratingImage}
-                  isImageActionPending={generateIdeaImageMutation.isPending}
-                  isShortlistPending={isShortlistPending}
-                  onGenerateImage={() => void generateIdeaImage(idea)}
-                  onToggleShortlist={() => void toggleShortlist(idea)}
-                  onEdit={() => {
-                    setEditingIdea(idea)
-                    setIsAddIdeaOpen(true)
-                  }}
-                />
-              )
-            })}
+          : ideas.map((idea) => (
+              <IdeateIdeaCard
+                key={idea.id}
+                idea={idea}
+                isGeneratingImage={generatingIdeaId === idea.id}
+                isImageActionPending={isImageActionPending}
+                isShortlistPending={shortlistingIdeaId === idea.id}
+                onGenerateImage={() => handleGenerateIdeaImage(idea)}
+                onToggleShortlist={() => handleToggleShortlist(idea)}
+                onEdit={() => handleEditIdea(idea)}
+              />
+            ))}
       </ul>
 
-      {!isPending && ideas.length === 0 && (
+      {!isIdeasPending && ideas.length === 0 && (
         <p className="mt-6 text-center text-sm text-neutral-500">
           No ideas available for these filters.
         </p>
       )}
+
       <button
         className="fixed right-4 bottom-16 z-20 flex items-center justify-center gap-2 drop-shadow-sm disabled:opacity-70 sm:right-6"
         type="button"
-        disabled={
-          !selectedCategory || ideas.length === 0 || scoutIdeaMutation.isPending
-        }
+        disabled={!selectedPillar || ideas.length === 0 || isScoutPending}
         aria-label="Scout Ideas"
-        aria-busy={scoutIdeaMutation.isPending}
-        onClick={() => void scoutIdeas()}
+        aria-busy={isScoutPending}
+        onClick={handleScoutIdeas}
         title={
-          selectedCategory
+          selectedPillar
             ? ideas.length === 0
               ? "No visible ideas to scout"
               : undefined
@@ -1035,9 +1366,12 @@ function IdeasScreen({
   )
 }
 
+/* -------------------------------------------------------------------------- */
+/* Idea card                                                                  */
+/* -------------------------------------------------------------------------- */
+
 function IdeateIdeaCard({
   idea,
-  workshop,
   isGeneratingImage,
   isImageActionPending,
   isShortlistPending,
@@ -1045,8 +1379,7 @@ function IdeateIdeaCard({
   onToggleShortlist,
   onEdit,
 }: {
-  idea: ParticipantIdea
-  workshop: ParticipantWorkshop
+  idea: Idea
   isGeneratingImage: boolean
   isImageActionPending: boolean
   isShortlistPending: boolean
@@ -1054,16 +1387,19 @@ function IdeateIdeaCard({
   onToggleShortlist: () => void
   onEdit: () => void
 }) {
+  const { workshop } = useParticipantExperience()
+
   return (
     <li className="flex flex-col overflow-hidden rounded-lg border bg-white shadow-xs">
       <div className="relative aspect-4/3 w-full overflow-hidden bg-neutral-100">
-        {idea.imageFileName ? (
+        {idea.imageUrl?.trim() ? (
           <>
             <img
-              src={idea.imageFileName}
+              src={idea.imageUrl}
               alt={idea.title || "idea"}
               className="size-full object-contain"
             />
+
             <button
               type="button"
               className="absolute right-2 bottom-2 grid size-8 place-content-center rounded-md bg-neutral-950 text-white disabled:cursor-wait disabled:opacity-50"
@@ -1088,6 +1424,7 @@ function IdeateIdeaCard({
             onClick={onGenerateImage}
           >
             <ImagePlusIcon className="size-9" aria-hidden="true" />
+
             <span>
               {isGeneratingImage
                 ? "Generating Idea Card..."
@@ -1103,41 +1440,53 @@ function IdeateIdeaCard({
             <button
               type="button"
               aria-label={
-                idea.flgTeam
+                idea.isShortlisted
                   ? `Remove ${idea.title || "idea"} from shortlist`
                   : `Shortlist ${idea.title || "idea"}`
               }
-              aria-pressed={idea.flgTeam}
+              aria-pressed={idea.isShortlisted}
               disabled={isShortlistPending}
               className="disabled:cursor-wait disabled:opacity-50"
               onClick={onToggleShortlist}
             >
               <StarIcon
                 className="size-5"
-                fill={idea.flgTeam ? "currentColor" : "none"}
+                fill={idea.isShortlisted ? "currentColor" : "none"}
                 aria-hidden="true"
               />
             </button>
-            {idea.flgSelf && (
-              <button type="button" onClick={onEdit}>
+
+            {idea.isOwnedByParticipant && (
+              <button
+                type="button"
+                aria-label={`Edit ${idea.title || "idea"}`}
+                onClick={onEdit}
+              >
                 <SquarePenIcon className="size-5" aria-hidden="true" />
               </button>
             )}
           </div>
-          {idea.flgCoach && (
+
+          {idea.isSharpened && (
             <SparklesIcon className="size-5" aria-hidden="true" />
           )}
         </div>
+
         <div>
           <h2 className="text-xl leading-tight font-semibold">
             {idea.title || "Untitled"}
           </h2>
+
           <p className="flex items-center gap-2 text-sm text-neutral-600">
-            <ClockIcon className="size-3.5" />
-            {formatRelativeDate(idea.CreatedDttm)}
+            <ClockIcon className="size-3.5" aria-hidden="true" />
+
+            {formatRelativeDate(idea.createdAt)}
           </p>
         </div>
-        <p className="line-clamp-3 text-sm text-neutral-600">{idea.Desc}</p>
+
+        <p className="line-clamp-3 text-sm text-neutral-600">
+          {idea.description}
+        </p>
 
         <ExperienceButton
           variant="primary"
@@ -1151,47 +1500,48 @@ function IdeateIdeaCard({
   )
 }
 
-function StageScreen({
-  workshop,
-  code,
-  teams,
-  categories,
-  ideas,
-  selectedTeamId,
-  selectedCategoryId,
-  isPending,
-  onTeamChange,
-  onCategoryChange,
-}: {
-  workshop: ParticipantWorkshop
-  code: string
-  teams: ParticipantWorkshop["teams"]
-  categories: ParticipantWorkshop["category"]
-  ideas: ParticipantIdea[]
-  selectedTeamId: number | null
-  selectedCategoryId: number | null
-  isPending: boolean
-  onTeamChange: (teamId: number | null) => void
-  onCategoryChange: (categoryId: number | null) => void
-}) {
-  const [previewIdea, setPreviewIdea] = useState<ParticipantIdea | null>(null)
-  const queryClient = useQueryClient()
-  const shortlistIdeaMutation = useShortlistIdea()
+/* -------------------------------------------------------------------------- */
+/* Stage                                                                      */
+/* -------------------------------------------------------------------------- */
 
-  const removeFromShortlist = async (idea: ParticipantIdea) => {
-    try {
-      await shortlistIdeaMutation.mutateAsync({
-        workshop_code: code,
-        idea_id: idea.ID,
-        flag: false,
-      })
+function StageScreen() {
+  const { workshop } = useParticipantExperience()
 
-      await queryClient.invalidateQueries({
-        queryKey: ["PARTICIPANT_IDEAS"],
-      })
-    } catch {
-      return
-    }
+  const teams = workshop.teams
+  const pillars = workshop.category
+
+  const [selectedTeamId, setSelectedTeamId] = useState<number | null>(null)
+
+  const [selectedPillarId, setSelectedPillarId] = useState<number | null>(null)
+
+  const [previewIdea, setPreviewIdea] = useState<Idea | null>(null)
+
+  const { data: ideas = [], isPending: isIdeasPending } = useParticipantIdeas({
+    teamId: selectedTeamId,
+    pillarId: selectedPillarId,
+    isShortlisted: true,
+  })
+
+  const { updateIdeaShortlist, shortlistingIdeaId } = useIdeaActions()
+
+  const handleTeamChange = (event: ChangeEvent<HTMLSelectElement>) => {
+    setSelectedTeamId(parseOptionalId(event.target.value))
+  }
+
+  const handlePillarChange = (event: ChangeEvent<HTMLSelectElement>) => {
+    setSelectedPillarId(parseOptionalId(event.target.value))
+  }
+
+  const handleRemoveFromShortlist = (idea: Idea) => {
+    void updateIdeaShortlist(idea.id, false)
+  }
+
+  const handlePreviewIdea = (idea: Idea) => {
+    setPreviewIdea(idea)
+  }
+
+  const handleClosePreview = () => {
+    setPreviewIdea(null)
   }
 
   return (
@@ -1199,28 +1549,25 @@ function StageScreen({
       {previewIdea && (
         <IdeaPreviewDialog
           idea={previewIdea}
-          workshop={workshop}
           open
-          onClose={() => setPreviewIdea(null)}
+          onClose={handleClosePreview}
         />
       )}
 
       <div className="mb-6 flex flex-col items-stretch justify-end gap-3 sm:flex-row sm:items-center">
         <label>
           <span className="sr-only">Team</span>
+
           <ExperienceSelect
             workshop={workshop}
             value={selectedTeamId ?? "all"}
-            onChange={(event) =>
-              onTeamChange(
-                event.target.value === "all" ? null : Number(event.target.value)
-              )
-            }
+            onChange={handleTeamChange}
             className="w-full sm:w-auto"
           >
             <ExperienceSelectOption value="all">
               All teams
             </ExperienceSelectOption>
+
             {teams.map((team) => (
               <ExperienceSelectOption key={team.ID} value={team.ID}>
                 {team.TeamName}
@@ -1231,22 +1578,20 @@ function StageScreen({
 
         <label>
           <span className="sr-only">Pillar</span>
+
           <ExperienceSelect
             workshop={workshop}
-            value={selectedCategoryId ?? "all"}
-            onChange={(event) =>
-              onCategoryChange(
-                event.target.value === "all" ? null : Number(event.target.value)
-              )
-            }
+            value={selectedPillarId ?? "all"}
+            onChange={handlePillarChange}
             className="w-full sm:w-auto"
           >
             <ExperienceSelectOption value="all">
               All pillars
             </ExperienceSelectOption>
-            {categories.map((category) => (
-              <ExperienceSelectOption key={category.ID} value={category.ID}>
-                {category.Name}
+
+            {pillars.map((pillar) => (
+              <ExperienceSelectOption key={pillar.ID} value={pillar.ID}>
+                {pillar.Name}
               </ExperienceSelectOption>
             ))}
           </ExperienceSelect>
@@ -1255,36 +1600,24 @@ function StageScreen({
 
       <ul
         className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
-        aria-busy={isPending}
+        aria-busy={isIdeasPending}
       >
-        {isPending
+        {isIdeasPending
           ? Array.from({ length: 4 }, (_, index) => (
-              <li
-                key={index}
-                className="min-h-96 animate-pulse overflow-hidden rounded-lg border bg-white shadow-xs sm:min-h-112"
-                aria-hidden="true"
-              >
-                <div className="aspect-4/3 bg-neutral-100" />
-                <div className="space-y-4 p-5">
-                  <div className="h-3 w-20 rounded bg-neutral-100" />
-                  <div className="h-6 w-3/4 rounded bg-neutral-100" />
-                  <div className="h-16 rounded bg-neutral-100" />
-                </div>
-              </li>
+              <IdeaCardSkeleton key={index} />
             ))
           : ideas.map((idea) => (
               <StageIdeaCard
-                key={idea.ID}
+                key={idea.id}
                 idea={idea}
-                workshop={workshop}
-                isShortlistPending={shortlistIdeaMutation.isPending}
-                onRemoveFromShortlist={() => void removeFromShortlist(idea)}
-                onPreview={() => setPreviewIdea(idea)}
+                isShortlistPending={shortlistingIdeaId === idea.id}
+                onRemoveFromShortlist={() => handleRemoveFromShortlist(idea)}
+                onPreview={() => handlePreviewIdea(idea)}
               />
             ))}
       </ul>
 
-      {!isPending && ideas.length === 0 && (
+      {!isIdeasPending && ideas.length === 0 && (
         <p className="mt-6 text-center text-sm text-neutral-500">
           No shortlisted ideas match the selected filters.
         </p>
@@ -1293,31 +1626,36 @@ function StageScreen({
   )
 }
 
+/* -------------------------------------------------------------------------- */
+/* Stage card                                                                 */
+/* -------------------------------------------------------------------------- */
+
 function StageIdeaCard({
   idea,
-  workshop,
   isShortlistPending,
   onRemoveFromShortlist,
   onPreview,
 }: {
-  idea: ParticipantIdea
-  workshop: ParticipantWorkshop
+  idea: Idea
   isShortlistPending: boolean
   onRemoveFromShortlist: () => void
   onPreview: () => void
 }) {
+  const { workshop } = useParticipantExperience()
+
   return (
     <li className="flex flex-col overflow-hidden rounded-lg border bg-white shadow-xs">
       <div className="aspect-4/3 w-full overflow-hidden bg-neutral-100">
-        {idea.imageFileName?.trim() ? (
+        {idea.imageUrl?.trim() ? (
           <img
-            src={idea.imageFileName}
+            src={idea.imageUrl}
             alt={idea.title || "Idea"}
             className="size-full object-contain"
           />
         ) : (
           <div className="flex size-full flex-col items-center justify-center gap-2 text-neutral-400">
             <ImagePlusIcon className="size-9" aria-hidden="true" />
+
             <span>No image available</span>
           </div>
         )}
@@ -1339,7 +1677,8 @@ function StageIdeaCard({
               aria-hidden="true"
             />
           </button>
-          {idea.flgCoach && (
+
+          {idea.isSharpened && (
             <SparklesIcon className="size-5" aria-hidden="true" />
           )}
         </div>
@@ -1348,22 +1687,27 @@ function StageIdeaCard({
           <h2 className="text-xl leading-tight font-semibold">
             {idea.title || "Untitled"}
           </h2>
+
           <p className="flex items-center gap-2 text-sm text-neutral-600">
             <ClockIcon className="size-3.5" aria-hidden="true" />
-            {formatRelativeDate(idea.CreatedDttm)}
+
+            {formatRelativeDate(idea.createdAt)}
           </p>
         </div>
 
         <div className="flex flex-wrap gap-2 text-xs">
           <span className="rounded-full bg-neutral-100 px-2.5 py-1">
-            {idea.TeamName || "Unknown team"}
+            {idea.teamName || "Unknown team"}
           </span>
+
           <span className="rounded-full border px-2.5 py-1">
-            {idea.Category || "Unknown pillar"}
+            {idea.pillarName || "Unknown pillar"}
           </span>
         </div>
 
-        <p className="line-clamp-3 text-sm text-neutral-600">{idea.Desc}</p>
+        <p className="line-clamp-3 text-sm text-neutral-600">
+          {idea.description}
+        </p>
 
         <ExperienceButton
           variant="primary"
@@ -1379,32 +1723,47 @@ function StageIdeaCard({
   )
 }
 
+/* -------------------------------------------------------------------------- */
+/* Shared idea skeleton                                                       */
+/* -------------------------------------------------------------------------- */
+
+function IdeaCardSkeleton() {
+  return (
+    <li
+      className="min-h-96 animate-pulse overflow-hidden rounded-lg border bg-white shadow-xs sm:min-h-112"
+      aria-hidden="true"
+    >
+      <div className="aspect-4/3 bg-neutral-100" />
+
+      <div className="space-y-4 p-5">
+        <div className="h-3 w-20 rounded bg-neutral-100" />
+        <div className="h-6 w-3/4 rounded bg-neutral-100" />
+        <div className="h-16 rounded bg-neutral-100" />
+      </div>
+    </li>
+  )
+}
+
+/* -------------------------------------------------------------------------- */
+/* Idea preview dialog                                                        */
+/* -------------------------------------------------------------------------- */
+
 function IdeaPreviewDialog({
   idea,
-  workshop,
   open,
   onClose,
 }: {
-  idea: ParticipantIdea
-  workshop: ParticipantWorkshop
+  idea: Idea
   open: boolean
   onClose: () => void
 }) {
-  const dialogRef = useRef<HTMLDialogElement>(null)
+  const { workshop } = useParticipantExperience()
 
-  useEffect(() => {
-    const dialog = dialogRef.current
+  const dialogRef = useNativeDialog(open)
 
-    if (!dialog) return
-
-    if (open && !dialog.open) {
-      dialog.showModal()
-    }
-
-    if (!open && dialog.open) {
-      dialog.close()
-    }
-  }, [open])
+  const handleClose = () => {
+    onClose()
+  }
 
   return (
     <dialog
@@ -1417,7 +1776,7 @@ function IdeaPreviewDialog({
         "sm:m-auto sm:h-fit sm:max-h-[calc(100dvh-2rem)]",
         "sm:w-[min(48rem,calc(100%-2rem))]"
       )}
-      onClose={onClose}
+      onClose={handleClose}
     >
       <div
         className={cn(
@@ -1432,7 +1791,9 @@ function IdeaPreviewDialog({
       >
         <header
           className="flex shrink-0 items-start justify-between gap-3 border-b px-4 py-3 sm:px-6 sm:py-4"
-          style={{ borderColor: workshop.card_primary_border_color }}
+          style={{
+            borderColor: workshop.card_primary_border_color,
+          }}
         >
           <div className="min-w-0">
             <h2
@@ -1441,12 +1802,15 @@ function IdeaPreviewDialog({
             >
               {idea.title || "Untitled"}
             </h2>
+
             <p
               id="idea-preview-description"
               className="mt-1 text-sm"
-              style={{ color: workshop.txt_secondary_color }}
+              style={{
+                color: workshop.txt_secondary_color,
+              }}
             >
-              Full idea submission from {idea.TeamName || "Unknown team"}.
+              Full idea submission from {idea.teamName || "Unknown team"}.
             </p>
           </div>
 
@@ -1458,7 +1822,7 @@ function IdeaPreviewDialog({
               outlineColor: workshop.btn_primary_bg_color,
             }}
             aria-label="Close idea preview"
-            onClick={() => dialogRef.current?.close()}
+            onClick={handleClose}
           >
             <XIcon className="size-4" aria-hidden="true" />
           </button>
@@ -1468,17 +1832,20 @@ function IdeaPreviewDialog({
           <div className="grid gap-5 md:grid-cols-[minmax(0,1.15fr)_minmax(15rem,0.85fr)]">
             <div
               className="aspect-4/3 overflow-hidden border bg-neutral-100"
-              style={{ borderColor: workshop.card_primary_border_color }}
+              style={{
+                borderColor: workshop.card_primary_border_color,
+              }}
             >
-              {idea.imageFileName?.trim() ? (
+              {idea.imageUrl?.trim() ? (
                 <img
-                  src={idea.imageFileName}
+                  src={idea.imageUrl}
                   alt={idea.title || "Idea"}
                   className="size-full object-contain"
                 />
               ) : (
                 <div className="flex size-full flex-col items-center justify-center gap-2 text-neutral-400">
                   <ImagePlusIcon className="size-9" aria-hidden="true" />
+
                   <span>No image available</span>
                 </div>
               )}
@@ -1487,14 +1854,18 @@ function IdeaPreviewDialog({
             <div className="min-w-0 space-y-5">
               <div className="flex flex-wrap gap-2 text-xs">
                 <span className="rounded-full bg-neutral-100 px-2.5 py-1 text-neutral-900">
-                  {idea.TeamName || "Unknown team"}
+                  {idea.teamName || "Unknown team"}
                 </span>
+
                 <span
                   className="rounded-full border px-2.5 py-1"
-                  style={{ borderColor: workshop.card_primary_border_color }}
+                  style={{
+                    borderColor: workshop.card_primary_border_color,
+                  }}
                 >
-                  {idea.Category || "Unknown pillar"}
+                  {idea.pillarName || "Unknown pillar"}
                 </span>
+
                 <span className="rounded-full bg-neutral-900 px-2.5 py-1 text-white">
                   Shortlisted
                 </span>
@@ -1502,21 +1873,27 @@ function IdeaPreviewDialog({
 
               <div>
                 <p className="font-medium">Submitted</p>
+
                 <p
                   className="mt-1"
-                  style={{ color: workshop.txt_secondary_color }}
+                  style={{
+                    color: workshop.txt_secondary_color,
+                  }}
                 >
-                  {formatRelativeDate(idea.CreatedDttm)}
+                  {formatRelativeDate(idea.createdAt)}
                 </p>
               </div>
 
               <div>
                 <p className="font-medium">Description</p>
+
                 <p
                   className="mt-1 text-sm leading-relaxed whitespace-pre-line"
-                  style={{ color: workshop.txt_secondary_color }}
+                  style={{
+                    color: workshop.txt_secondary_color,
+                  }}
                 >
-                  {idea.Desc}
+                  {idea.description}
                 </p>
               </div>
             </div>
@@ -1527,9 +1904,12 @@ function IdeaPreviewDialog({
   )
 }
 
+/* -------------------------------------------------------------------------- */
+/* Scout dialog                                                               */
+/* -------------------------------------------------------------------------- */
+
 function ScoutDialog({
   open,
-  workshop,
   pillarTitle,
   suggestions,
   isPending,
@@ -1537,30 +1917,17 @@ function ScoutDialog({
   onClose,
 }: {
   open: boolean
-  workshop: ParticipantWorkshop
   pillarTitle: string
   suggestions: string[]
   isPending: boolean
   isError: boolean
   onClose: () => void
 }) {
-  const dialogRef = useRef<HTMLDialogElement>(null)
+  const { workshop } = useParticipantExperience()
 
-  useEffect(() => {
-    const dialog = dialogRef.current
+  const dialogRef = useNativeDialog(open)
 
-    if (!dialog) return
-
-    if (open && !dialog.open) {
-      dialog.showModal()
-    }
-
-    if (!open && dialog.open) {
-      dialog.close()
-    }
-  }, [open])
-
-  const closeDialog = () => {
+  const handleClose = () => {
     onClose()
   }
 
@@ -1575,7 +1942,7 @@ function ScoutDialog({
         "sm:m-auto sm:h-fit sm:max-h-[calc(100dvh-2rem)]",
         "sm:w-[min(40rem,calc(100%-2rem))]"
       )}
-      onClose={onClose}
+      onClose={handleClose}
     >
       <div
         className={cn(
@@ -1589,7 +1956,6 @@ function ScoutDialog({
           color: workshop.txt_primary_color,
         }}
       >
-        {/* Header */}
         <header
           className={cn(
             "flex shrink-0 items-center justify-between gap-3",
@@ -1600,19 +1966,16 @@ function ScoutDialog({
             borderColor: workshop.card_primary_border_color,
           }}
         >
-          <div className={cn("min-w-0")}>
+          <div className="min-w-0">
             <h2
               id="scout-dialog-title"
-              className={cn(
-                "text-lg font-semibold tracking-[-0.02em]",
-                "sm:text-xl"
-              )}
+              className="text-lg font-semibold tracking-[-0.02em] sm:text-xl"
             >
               Scout Suggests
             </h2>
 
             <p
-              className={cn("mt-0.5 text-xs", "sm:mt-1 sm:text-sm")}
+              className="mt-0.5 text-xs sm:mt-1 sm:text-sm"
               style={{
                 color: workshop.txt_secondary_color,
               }}
@@ -1633,91 +1996,47 @@ function ScoutDialog({
               outlineColor: workshop.btn_primary_bg_color,
             }}
             aria-label="Close Scout suggestions"
-            onClick={closeDialog}
+            onClick={handleClose}
           >
-            <XIcon className={cn("size-4")} aria-hidden="true" />
+            <XIcon className="size-4" aria-hidden="true" />
           </button>
         </header>
 
-        {/* Scrollable content */}
-        <div
-          className={cn("min-h-0 flex-1 overflow-y-auto overscroll-contain")}
-        >
-          <div
-            className={cn("px-4 py-4", "sm:px-6 sm:py-6")}
-            aria-busy={isPending}
-          >
+        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
+          <div className="px-4 py-4 sm:px-6 sm:py-6" aria-busy={isPending}>
             <div
-              className={cn("rounded-lg border p-4", "sm:p-5")}
+              className="rounded-lg border p-4 sm:p-5"
               style={{
                 backgroundColor: workshop.card_secondary_bg_color,
                 borderColor: workshop.card_primary_border_color,
                 color: workshop.card_secondary_txt_color,
               }}
             >
-              <p
-                className={cn(
-                  "mb-4 text-xs font-semibold tracking-[0.14em] uppercase"
-                )}
-              >
+              <p className="mb-4 text-xs font-semibold tracking-[0.14em] uppercase">
                 {pillarTitle}
               </p>
 
               {isPending ? (
-                <div
-                  className={cn("grid gap-5")}
-                  aria-label="Loading suggestions"
-                >
+                <div className="grid gap-5" aria-label="Loading suggestions">
                   {Array.from({ length: 3 }, (_, index) => (
-                    <div
-                      key={index}
-                      className={cn("flex gap-3")}
-                      aria-hidden="true"
-                    >
-                      <span
-                        className={cn(
-                          "h-4 w-4 shrink-0 animate-pulse rounded",
-                          "bg-current opacity-10"
-                        )}
-                      />
+                    <div key={index} className="flex gap-3" aria-hidden="true">
+                      <span className="h-4 w-4 shrink-0 animate-pulse rounded bg-current opacity-10" />
 
-                      <div className={cn("grid flex-1 gap-2")}>
-                        <span
-                          className={cn(
-                            "h-3 w-full animate-pulse rounded",
-                            "bg-current opacity-10"
-                          )}
-                        />
-
-                        <span
-                          className={cn(
-                            "h-3 w-5/6 animate-pulse rounded",
-                            "bg-current opacity-10"
-                          )}
-                        />
-
-                        <span
-                          className={cn(
-                            "h-3 w-2/3 animate-pulse rounded",
-                            "bg-current opacity-10"
-                          )}
-                        />
+                      <div className="grid flex-1 gap-2">
+                        <span className="h-3 w-full animate-pulse rounded bg-current opacity-10" />
+                        <span className="h-3 w-5/6 animate-pulse rounded bg-current opacity-10" />
+                        <span className="h-3 w-2/3 animate-pulse rounded bg-current opacity-10" />
                       </div>
                     </div>
                   ))}
                 </div>
               ) : isError ? (
-                <p className={cn("text-sm leading-6")}>
+                <p className="text-sm leading-6">
                   Scout couldn&apos;t generate suggestions. Close this dialog
                   and try again.
                 </p>
               ) : (
-                <ol
-                  className={cn(
-                    "grid list-decimal gap-4 pl-6 text-sm leading-6",
-                    "sm:text-base sm:leading-7"
-                  )}
-                >
+                <ol className="grid list-decimal gap-4 pl-6 text-sm leading-6 sm:text-base sm:leading-7">
                   {suggestions.map((suggestion, index) => (
                     <li key={`${index}-${suggestion}`}>{suggestion}</li>
                   ))}
@@ -1727,9 +2046,8 @@ function ScoutDialog({
           </div>
         </div>
 
-        {/* Footer */}
         <footer
-          className={cn("shrink-0 border-t px-4 py-3", "sm:px-6 sm:py-4")}
+          className="shrink-0 border-t px-4 py-3 sm:px-6 sm:py-4"
           style={{
             backgroundColor: workshop.card_primary_bg_color,
             borderColor: workshop.card_primary_border_color,
@@ -1738,8 +2056,8 @@ function ScoutDialog({
           <ExperienceButton
             variant="primary"
             workshop={workshop}
-            className={cn("w-full")}
-            onClick={closeDialog}
+            className="w-full"
+            onClick={handleClose}
           >
             Back
           </ExperienceButton>
@@ -1749,60 +2067,107 @@ function ScoutDialog({
   )
 }
 
+/* -------------------------------------------------------------------------- */
+/* Idea dialog                                                                */
+/* -------------------------------------------------------------------------- */
+
 function IdeaDialog({
   open,
-  workshop,
-  code,
-  visitorId,
   teamId,
-  categories,
-  selectedCategoryId,
+  selectedPillarId,
   idea,
   onClose,
 }: {
   open: boolean
-  workshop: ParticipantWorkshop
-  code: string
-  visitorId: string
   teamId: number
-  categories: ParticipantWorkshop["category"]
-  selectedCategoryId: number | null
-  idea: ParticipantIdea | null
+  selectedPillarId: number | null
+  idea: Idea | null
   onClose: () => void
 }) {
-  const dialogRef = useRef<HTMLDialogElement>(null)
+  const { workshop, workshopCode, visitorId } = useParticipantExperience()
+
+  const pillars = workshop.category
+
+  const dialogRef = useNativeDialog(open)
   const formRef = useRef<HTMLFormElement>(null)
 
   const queryClient = useQueryClient()
+
   const saveIdeaMutation = useSaveIdea()
 
-  const ideaCategoryId = idea
-    ? categories.find((category) => category.Name === idea.Category)?.ID
+  const ideaPillarId = idea
+    ? pillars.find((pillar) => pillar.Name === idea.pillarName)?.ID
     : undefined
 
-  const defaultCategoryId =
-    ideaCategoryId ?? selectedCategoryId ?? categories[0]?.ID
+  const defaultPillarId = ideaPillarId ?? selectedPillarId ?? pillars[0]?.ID
 
-  const closeDialog = () => {
+  const invalidateParticipantIdeas = async () => {
+    await queryClient.invalidateQueries({
+      queryKey: PARTICIPANT_IDEAS_QUERY_KEY,
+    })
+  }
+
+  const handleClose = () => {
     if (saveIdeaMutation.isPending) return
 
     formRef.current?.reset()
+
     onClose()
   }
 
-  useEffect(() => {
-    const dialog = dialogRef.current
-
-    if (!dialog) return
-
-    if (open && !dialog.open) {
-      dialog.showModal()
+  const handleCancel = (event: React.SyntheticEvent<HTMLDialogElement>) => {
+    if (saveIdeaMutation.isPending) {
+      event.preventDefault()
     }
+  }
 
-    if (!open && dialog.open) {
-      dialog.close()
+  const handleSubmitIdea = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+
+    const formData = new FormData(event.currentTarget)
+
+    const categoryId = Number(formData.get("categoryId"))
+
+    const description = String(formData.get("description")).trim()
+
+    const title = String(formData.get("title")).trim() || null
+
+    const context = String(formData.get("context")).trim() || null
+
+    try {
+      const response = await saveIdeaMutation.mutateAsync({
+        ...(idea
+          ? {
+              idea_id: idea.id,
+            }
+          : {}),
+
+        visitor_id: visitorId,
+        workshop_code: workshopCode,
+        team_id: teamId,
+        category_id: categoryId,
+        desc: description,
+        title,
+        context,
+      })
+
+      await invalidateParticipantIdeas()
+
+      toast.add({
+        type: "success",
+        title: idea ? "Idea updated" : "Idea added",
+        description: response.message,
+      })
+
+      handleClose()
+    } catch {
+      toast.add({
+        type: "error",
+        title: idea ? "Unable to update idea" : "Unable to add idea",
+        description: "Please try again.",
+      })
     }
-  }, [open])
+  }
 
   return (
     <dialog
@@ -1815,12 +2180,8 @@ function IdeaDialog({
         "sm:m-auto sm:h-fit sm:max-h-[calc(100dvh-2rem)]",
         "sm:w-[min(40rem,calc(100%-2rem))]"
       )}
-      onCancel={(event) => {
-        if (saveIdeaMutation.isPending) {
-          event.preventDefault()
-        }
-      }}
-      onClose={closeDialog}
+      onCancel={handleCancel}
+      onClose={handleClose}
     >
       <form
         ref={formRef}
@@ -1835,40 +2196,8 @@ function IdeaDialog({
           color: workshop.txt_primary_color,
         }}
         aria-busy={saveIdeaMutation.isPending}
-        onSubmit={async (event) => {
-          event.preventDefault()
-
-          const formData = new FormData(event.currentTarget)
-
-          try {
-            const response = await saveIdeaMutation.mutateAsync({
-              ...(idea ? { idea_id: idea.ID } : {}),
-              visitor_id: visitorId,
-              workshop_code: code,
-              team_id: teamId,
-              category_id: Number(formData.get("categoryId")),
-              desc: String(formData.get("description")).trim(),
-              title: String(formData.get("title")).trim() || null,
-              context: String(formData.get("context")).trim() || null,
-            })
-
-            await queryClient.invalidateQueries({
-              queryKey: ["PARTICIPANT_IDEAS"],
-            })
-
-            toast.add({
-              type: "success",
-              title: idea ? "Idea updated" : "Idea added",
-              description: response.message,
-            })
-
-            closeDialog()
-          } catch {
-            return
-          }
-        }}
+        onSubmit={handleSubmitIdea}
       >
-        {/* Header */}
         <header
           className={cn(
             "flex shrink-0 items-center justify-between gap-3",
@@ -1879,19 +2208,16 @@ function IdeaDialog({
             borderColor: workshop.card_primary_border_color,
           }}
         >
-          <div className={cn("min-w-0")}>
+          <div className="min-w-0">
             <h2
               id="idea-dialog-title"
-              className={cn(
-                "text-lg font-semibold tracking-[-0.02em]",
-                "sm:text-xl"
-              )}
+              className="text-lg font-semibold tracking-[-0.02em] sm:text-xl"
             >
               {idea ? "Edit idea" : "Add an idea"}
             </h2>
 
             <p
-              className={cn("mt-0.5 text-xs", "sm:mt-1 sm:text-sm")}
+              className="mt-0.5 text-xs sm:mt-1 sm:text-sm"
               style={{
                 color: workshop.txt_secondary_color,
               }}
@@ -1914,55 +2240,48 @@ function IdeaDialog({
             }}
             aria-label="Close dialog"
             disabled={saveIdeaMutation.isPending}
-            onClick={closeDialog}
+            onClick={handleClose}
           >
-            <XIcon className={cn("size-4")} aria-hidden="true" />
+            <XIcon className="size-4" aria-hidden="true" />
           </button>
         </header>
 
-        {/* Scrollable content */}
-        <div
-          className={cn("min-h-0 flex-1 overflow-y-auto overscroll-contain")}
-        >
-          <div
-            className={cn("grid gap-4 px-4 py-4", "sm:gap-5 sm:px-6 sm:py-6")}
-          >
-            {/* Pillar */}
-            <label className={cn("grid gap-1.5", "sm:gap-2")}>
-              <span className={cn("text-sm font-medium")}>Pillar</span>
+        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
+          <div className="grid gap-4 px-4 py-4 sm:gap-5 sm:px-6 sm:py-6">
+            <label className="grid gap-1.5 sm:gap-2">
+              <span className="text-sm font-medium">Pillar</span>
 
               <ExperienceSelect
                 workshop={workshop}
                 name="categoryId"
                 required
-                defaultValue={defaultCategoryId}
+                defaultValue={defaultPillarId}
                 disabled={saveIdeaMutation.isPending}
-                className={cn("w-full")}
+                className="w-full"
               >
-                {categories.length === 0 && (
+                {pillars.length === 0 && (
                   <ExperienceSelectOption value="">
                     No pillars available
                   </ExperienceSelectOption>
                 )}
 
-                {categories.map((category) => (
-                  <ExperienceSelectOption key={category.ID} value={category.ID}>
-                    {category.Name}
+                {pillars.map((pillar) => (
+                  <ExperienceSelectOption key={pillar.ID} value={pillar.ID}>
+                    {pillar.Name}
                   </ExperienceSelectOption>
                 ))}
               </ExperienceSelect>
             </label>
 
-            {/* Description */}
-            <label className={cn("grid gap-1.5", "sm:gap-2")}>
-              <span className={cn("text-sm font-medium")}>Description</span>
+            <label className="grid gap-1.5 sm:gap-2">
+              <span className="text-sm font-medium">Description</span>
 
               <textarea
                 name="description"
                 required
                 autoFocus
                 rows={4}
-                defaultValue={idea?.Desc ?? ""}
+                defaultValue={idea?.description ?? ""}
                 disabled={saveIdeaMutation.isPending}
                 placeholder="Describe the idea, the problem it solves, and its impact"
                 className={cn(
@@ -1979,13 +2298,12 @@ function IdeaDialog({
               />
             </label>
 
-            {/* Title */}
-            <label className={cn("grid gap-1.5", "sm:gap-2")}>
-              <div className={cn("flex items-center gap-2")}>
-                <span className={cn("text-sm font-medium")}>Title</span>
+            <label className="grid gap-1.5 sm:gap-2">
+              <div className="flex items-center gap-2">
+                <span className="text-sm font-medium">Title</span>
 
                 <span
-                  className={cn("text-sm")}
+                  className="text-sm"
                   style={{
                     color: workshop.txt_secondary_color,
                   }}
@@ -2013,13 +2331,12 @@ function IdeaDialog({
               />
             </label>
 
-            {/* Context */}
-            <label className={cn("grid gap-1.5", "sm:gap-2")}>
-              <div className={cn("flex items-center gap-2")}>
-                <span className={cn("text-sm font-medium")}>Context</span>
+            <label className="grid gap-1.5 sm:gap-2">
+              <div className="flex items-center gap-2">
+                <span className="text-sm font-medium">Context</span>
 
                 <span
-                  className={cn("text-sm")}
+                  className="text-sm"
                   style={{
                     color: workshop.txt_secondary_color,
                   }}
@@ -2031,7 +2348,7 @@ function IdeaDialog({
               <textarea
                 name="context"
                 rows={4}
-                defaultValue={idea?.Context ?? ""}
+                defaultValue={idea?.context ?? ""}
                 disabled={saveIdeaMutation.isPending}
                 placeholder="Describe the context in which this idea will be used"
                 className={cn(
@@ -2050,7 +2367,6 @@ function IdeaDialog({
           </div>
         </div>
 
-        {/* Footer */}
         <footer
           className={cn(
             "flex shrink-0 items-center justify-end gap-2",
@@ -2067,7 +2383,7 @@ function IdeaDialog({
             variant="secondary"
             workshop={workshop}
             disabled={saveIdeaMutation.isPending}
-            onClick={closeDialog}
+            onClick={handleClose}
           >
             Cancel
           </ExperienceButton>
@@ -2076,7 +2392,7 @@ function IdeaDialog({
             type="submit"
             variant="primary"
             workshop={workshop}
-            disabled={saveIdeaMutation.isPending || categories.length === 0}
+            disabled={saveIdeaMutation.isPending || pillars.length === 0}
           >
             {saveIdeaMutation.isPending
               ? "Saving..."
