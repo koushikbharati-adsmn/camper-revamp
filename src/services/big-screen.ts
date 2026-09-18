@@ -25,6 +25,7 @@ export interface WorkshopScreen {
   page_bg_image: string | null
   font_primary_name: string | null
   font_secondary_name: string | null
+  shortUrl: string | null
   teams: WorkshopScreenTeam[]
   categories: WorkshopScreenCategory[]
 }
