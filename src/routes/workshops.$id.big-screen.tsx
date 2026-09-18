@@ -10,6 +10,10 @@ import {
   getWorkshopOptions,
 } from "@/services/bigscreen"
 
+import {
+  ExperienceSelect,
+  ExperienceSelectOption,
+} from "@/components/experience/experience-select"
 import ActivityList from "@/components/website/ActivityList"
 import Button from "@/components/website/Button"
 import FieldInput from "@/components/website/FieldInput"
@@ -18,7 +22,6 @@ import IdeaVoteCard from "@/components/website/IdeaVoteCard"
 import ModalOverlay from "@/components/website/ModalOverlay"
 import NewsroomStats from "@/components/website/NewsroomStats"
 import NewsroomStatsSummary from "@/components/website/NewsroomStatsSummary"
-import Select from "@/components/website/Select"
 import TextArea from "@/components/website/TextArea"
 import TickerMarqueeSection from "@/components/website/TickerMarqueeSection"
 
@@ -250,19 +253,37 @@ function RouteComponent() {
                     {/* Filters */}
                     {currentPage === "bigscreen1" && (
                       <div className="flex w-full flex-wrap items-center gap-2">
-                        <Select
-                          options={teamOptions}
+                        <ExperienceSelect
                           value={team}
-                          onChange={setTeam}
+                          onChange={(event) => setTeam(event.target.value)}
                           aria-label="Select team"
-                        />
+                          className="w-44 shrink-0"
+                        >
+                          {teamOptions.map((option) => (
+                            <ExperienceSelectOption
+                              key={option.value}
+                              value={option.value}
+                            >
+                              {option.label}
+                            </ExperienceSelectOption>
+                          ))}
+                        </ExperienceSelect>
 
-                        <Select
-                          options={pillarOptions}
+                        <ExperienceSelect
                           value={pillar}
-                          onChange={setPillar}
+                          onChange={(event) => setPillar(event.target.value)}
                           aria-label="Select pillar"
-                        />
+                          className="w-44 shrink-0"
+                        >
+                          {pillarOptions.map((option) => (
+                            <ExperienceSelectOption
+                              key={option.value}
+                              value={option.value}
+                            >
+                              {option.label}
+                            </ExperienceSelectOption>
+                          ))}
+                        </ExperienceSelect>
                       </div>
                     )}
                   </div>
