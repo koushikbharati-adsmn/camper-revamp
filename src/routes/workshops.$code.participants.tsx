@@ -10,18 +10,14 @@ import {
   useScoutIdea,
   useShortlistIdea,
 } from "@/services/participants"
-import {
-  queryOptions,
-  useQuery,
-  useQueryClient,
-  useSuspenseQuery,
-} from "@tanstack/react-query"
+import { queryOptions, useQuery, useSuspenseQuery } from "@tanstack/react-query"
 import { createFileRoute } from "@tanstack/react-router"
 import {
   createContext,
   type ChangeEvent,
   type FormEvent,
   type ReactNode,
+  type SyntheticEvent,
   useContext,
   useEffect,
   useMemo,
@@ -81,14 +77,6 @@ type Idea = {
   isSharpened: boolean
 }
 
-type ParticipantIdeasQueryParams = {
-  teamId: number | null
-  pillarId: number | null
-  isShortlisted?: boolean | null
-  isSharpened?: boolean | null
-  enabled?: boolean
-}
-
 type ParticipantExperienceContextValue = {
   workshopCode: string
   visitorId: string
@@ -98,8 +86,6 @@ type ParticipantExperienceContextValue = {
 /* -------------------------------------------------------------------------- */
 /* Constants                                                                  */
 /* -------------------------------------------------------------------------- */
-
-const PARTICIPANT_IDEAS_QUERY_KEY = ["PARTICIPANT_IDEAS"] as const
 
 const IDEA_FILTER_OPTIONS = [
   {
@@ -196,41 +182,6 @@ function parseOptionalId(value: string) {
 /* Shared hooks                                                               */
 /* -------------------------------------------------------------------------- */
 
-function useParticipantIdeas({
-  teamId,
-  pillarId,
-  isShortlisted = null,
-  isSharpened = null,
-  enabled = true,
-}: ParticipantIdeasQueryParams) {
-  const { workshopCode, visitorId } = useParticipantExperience()
-
-  return useQuery({
-    ...getParticipantIdeasOptions({
-      visitor_id: visitorId,
-      workshop_code: workshopCode,
-      team_id: teamId,
-      category_id: pillarId,
-      is_shortlisted: isShortlisted,
-      is_coached: isSharpened,
-    }),
-    enabled,
-    select: (response) => response.data.map(mapParticipantIdea),
-  })
-}
-
-function useWorkshopActivities() {
-  const { workshopCode } = useParticipantExperience()
-
-  return useQuery({
-    ...getActivitiesOptions({
-      code: workshopCode,
-      type: null,
-    }),
-    select: (response) => response.data,
-  })
-}
-
 function useNativeDialog(open: boolean) {
   const dialogRef = useRef<HTMLDialogElement>(null)
 
@@ -250,104 +201,6 @@ function useNativeDialog(open: boolean) {
   }, [open])
 
   return dialogRef
-}
-
-function useIdeaActions() {
-  const { workshop, workshopCode } = useParticipantExperience()
-
-  const queryClient = useQueryClient()
-
-  const generateImageMutation = useGenerateIdeaImage()
-  const shortlistMutation = useShortlistIdea()
-  const scoutMutation = useScoutIdea()
-
-  const invalidateParticipantIdeas = async () => {
-    await queryClient.invalidateQueries({
-      queryKey: PARTICIPANT_IDEAS_QUERY_KEY,
-    })
-  }
-
-  const generateIdeaImage = async (idea: Idea) => {
-    const pillar = workshop.category.find(
-      (item) => item.Name === idea.pillarName
-    )
-
-    try {
-      await generateImageMutation.mutateAsync({
-        idea_id: idea.id,
-        workshop_code: workshopCode,
-        pillar_context: pillar?.Context ?? "",
-        workshop_context: workshop.WorkshopContext,
-        user_idea: idea.description,
-        brand_guidelines: workshop.GuidelineFileName,
-      })
-
-      await invalidateParticipantIdeas()
-    } catch {
-      toast.add({
-        type: "error",
-        title: "Unable to generate image",
-        description: "Please try again.",
-      })
-    }
-  }
-
-  const updateIdeaShortlist = async (
-    ideaId: number,
-    shouldShortlist: boolean
-  ) => {
-    try {
-      await shortlistMutation.mutateAsync({
-        workshop_code: workshopCode,
-        idea_id: ideaId,
-        flag: shouldShortlist,
-      })
-
-      await invalidateParticipantIdeas()
-    } catch {
-      toast.add({
-        type: "error",
-        title: "Unable to update shortlist",
-        description: "Please try again.",
-      })
-    }
-  }
-
-  const requestScoutSuggestions = async (
-    pillarTitle: string,
-    ideas: Idea[]
-  ) => {
-    try {
-      await scoutMutation.mutateAsync({
-        workshop_code: workshopCode,
-        pillar_title: pillarTitle,
-        user_ideas: ideas.map((idea) => idea.description),
-      })
-    } catch {
-      return
-    }
-  }
-
-  return {
-    generateIdeaImage,
-    updateIdeaShortlist,
-    requestScoutSuggestions,
-
-    generatingIdeaId: generateImageMutation.isPending
-      ? generateImageMutation.variables?.idea_id
-      : null,
-
-    shortlistingIdeaId: shortlistMutation.isPending
-      ? shortlistMutation.variables?.idea_id
-      : null,
-
-    isImageActionPending: generateImageMutation.isPending,
-
-    scoutSuggestions: scoutMutation.data?.data.text ?? [],
-    isScoutPending: scoutMutation.isPending,
-    isScoutError: scoutMutation.isError,
-    resetScoutSuggestions: scoutMutation.reset,
-  }
 }
 
 /* -------------------------------------------------------------------------- */
@@ -400,7 +253,7 @@ function RouteComponent() {
 /* -------------------------------------------------------------------------- */
 
 function ParticipantExperience() {
-  const { workshop } = useParticipantExperience()
+  const { workshop, workshopCode } = useParticipantExperience()
 
   const walkthroughSteps = useMemo(
     () =>
@@ -422,7 +275,13 @@ function ParticipantExperience() {
     data: activities = [],
     isPending: isActivitiesPending,
     isError: isActivitiesError,
-  } = useWorkshopActivities()
+  } = useQuery({
+    ...getActivitiesOptions({
+      code: workshopCode,
+      type: null,
+    }),
+    select: (response) => response.data,
+  })
 
   const handleWalkthroughComplete = () => {
     setIsWalkthroughActive(false)
@@ -610,7 +469,13 @@ function NewsroomScreen() {
     isPending: isActivitiesPending,
     isError: isActivitiesError,
     refetch: refetchActivities,
-  } = useWorkshopActivities()
+  } = useQuery({
+    ...getActivitiesOptions({
+      code: workshopCode,
+      type: null,
+    }),
+    select: (response) => response.data,
+  })
 
   const summary = [
     {
@@ -1140,7 +1005,7 @@ function IdeasScreen({
   selectedTeamId: number
   onTeamChange: (teamId: number) => void
 }) {
-  const { workshop } = useParticipantExperience()
+  const { workshop, workshopCode, visitorId } = useParticipantExperience()
 
   const teams = workshop.teams
   const pillars = workshop.category
@@ -1160,27 +1025,21 @@ function IdeasScreen({
     (pillar) => pillar.ID === selectedPillarId
   )
 
-  const { data: ideas = [], isPending: isIdeasPending } = useParticipantIdeas({
-    teamId: selectedTeamId,
-    pillarId: selectedPillarId,
-    isShortlisted: ideaStatusFilter === "shortlisted" ? true : null,
-    isSharpened: ideaStatusFilter === "sharpened" ? true : null,
+  const { data: ideas = [], isPending: isIdeasPending } = useQuery({
+    ...getParticipantIdeasOptions({
+      visitor_id: visitorId,
+      workshop_code: workshopCode,
+      team_id: selectedTeamId,
+      category_id: selectedPillarId,
+      is_shortlisted: ideaStatusFilter === "shortlisted" ? true : null,
+      is_coached: ideaStatusFilter === "sharpened" ? true : null,
+    }),
+    select: (response) => response.data.map(mapParticipantIdea),
   })
 
-  const {
-    generateIdeaImage,
-    updateIdeaShortlist,
-    requestScoutSuggestions,
-
-    generatingIdeaId,
-    shortlistingIdeaId,
-    isImageActionPending,
-
-    scoutSuggestions,
-    isScoutPending,
-    isScoutError,
-    resetScoutSuggestions,
-  } = useIdeaActions()
+  const generateIdeaImageMutation = useGenerateIdeaImage()
+  const shortlistIdeaMutation = useShortlistIdea()
+  const scoutIdeaMutation = useScoutIdea()
 
   const handleOpenNewIdeaDialog = () => {
     setEditingIdea(null)
@@ -1210,21 +1069,37 @@ function IdeasScreen({
   }
 
   const handleGenerateIdeaImage = (idea: Idea) => {
-    void generateIdeaImage(idea)
+    const pillar = pillars.find((item) => item.Name === idea.pillarName)
+
+    generateIdeaImageMutation.mutate({
+      idea_id: idea.id,
+      workshop_code: workshopCode,
+      pillar_context: pillar?.Context ?? "",
+      workshop_context: workshop.WorkshopContext,
+      user_idea: idea.description,
+      brand_guidelines: workshop.GuidelineFileName,
+    })
   }
 
   const handleToggleShortlist = (idea: Idea) => {
-    void updateIdeaShortlist(idea.id, !idea.isShortlisted)
+    shortlistIdeaMutation.mutate({
+      workshop_code: workshopCode,
+      idea_id: idea.id,
+      flag: !idea.isShortlisted,
+    })
   }
 
   const handleScoutIdeas = () => {
     if (!selectedPillar || ideas.length === 0) return
 
-    resetScoutSuggestions()
-
+    scoutIdeaMutation.reset()
     setIsScoutDialogOpen(true)
 
-    void requestScoutSuggestions(selectedPillar.Name, ideas)
+    scoutIdeaMutation.mutate({
+      workshop_code: workshopCode,
+      pillar_title: selectedPillar.Name,
+      user_ideas: ideas.map((idea) => idea.description),
+    })
   }
 
   const handleCloseScoutDialog = () => {
@@ -1245,9 +1120,9 @@ function IdeasScreen({
       <ScoutDialog
         open={isScoutDialogOpen}
         pillarTitle={selectedPillar?.Name ?? ""}
-        suggestions={scoutSuggestions}
-        isPending={isScoutPending}
-        isError={isScoutError}
+        suggestions={scoutIdeaMutation.data?.data.text ?? []}
+        isPending={scoutIdeaMutation.isPending}
+        isError={scoutIdeaMutation.isError}
         onClose={handleCloseScoutDialog}
       />
 
@@ -1329,9 +1204,15 @@ function IdeasScreen({
               <IdeateIdeaCard
                 key={idea.id}
                 idea={idea}
-                isGeneratingImage={generatingIdeaId === idea.id}
-                isImageActionPending={isImageActionPending}
-                isShortlistPending={shortlistingIdeaId === idea.id}
+                isGeneratingImage={
+                  generateIdeaImageMutation.isPending &&
+                  generateIdeaImageMutation.variables?.idea_id === idea.id
+                }
+                isImageActionPending={generateIdeaImageMutation.isPending}
+                isShortlistPending={
+                  shortlistIdeaMutation.isPending &&
+                  shortlistIdeaMutation.variables?.idea_id === idea.id
+                }
                 onGenerateImage={() => handleGenerateIdeaImage(idea)}
                 onToggleShortlist={() => handleToggleShortlist(idea)}
                 onEdit={() => handleEditIdea(idea)}
@@ -1348,9 +1229,11 @@ function IdeasScreen({
       <button
         className="fixed right-4 bottom-16 z-20 flex items-center justify-center gap-2 drop-shadow-sm disabled:opacity-70 sm:right-6"
         type="button"
-        disabled={!selectedPillar || ideas.length === 0 || isScoutPending}
+        disabled={
+          !selectedPillar || ideas.length === 0 || scoutIdeaMutation.isPending
+        }
         aria-label="Scout Ideas"
-        aria-busy={isScoutPending}
+        aria-busy={scoutIdeaMutation.isPending}
         onClick={handleScoutIdeas}
         title={
           selectedPillar
@@ -1505,7 +1388,7 @@ function IdeateIdeaCard({
 /* -------------------------------------------------------------------------- */
 
 function StageScreen() {
-  const { workshop } = useParticipantExperience()
+  const { workshop, workshopCode, visitorId } = useParticipantExperience()
 
   const teams = workshop.teams
   const pillars = workshop.category
@@ -1516,13 +1399,19 @@ function StageScreen() {
 
   const [previewIdea, setPreviewIdea] = useState<Idea | null>(null)
 
-  const { data: ideas = [], isPending: isIdeasPending } = useParticipantIdeas({
-    teamId: selectedTeamId,
-    pillarId: selectedPillarId,
-    isShortlisted: true,
+  const { data: ideas = [], isPending: isIdeasPending } = useQuery({
+    ...getParticipantIdeasOptions({
+      visitor_id: visitorId,
+      workshop_code: workshopCode,
+      team_id: selectedTeamId,
+      category_id: selectedPillarId,
+      is_shortlisted: true,
+      is_coached: null,
+    }),
+    select: (response) => response.data.map(mapParticipantIdea),
   })
 
-  const { updateIdeaShortlist, shortlistingIdeaId } = useIdeaActions()
+  const shortlistIdeaMutation = useShortlistIdea()
 
   const handleTeamChange = (event: ChangeEvent<HTMLSelectElement>) => {
     setSelectedTeamId(parseOptionalId(event.target.value))
@@ -1533,7 +1422,11 @@ function StageScreen() {
   }
 
   const handleRemoveFromShortlist = (idea: Idea) => {
-    void updateIdeaShortlist(idea.id, false)
+    shortlistIdeaMutation.mutate({
+      workshop_code: workshopCode,
+      idea_id: idea.id,
+      flag: false,
+    })
   }
 
   const handlePreviewIdea = (idea: Idea) => {
@@ -1610,7 +1503,10 @@ function StageScreen() {
               <StageIdeaCard
                 key={idea.id}
                 idea={idea}
-                isShortlistPending={shortlistingIdeaId === idea.id}
+                isShortlistPending={
+                  shortlistIdeaMutation.isPending &&
+                  shortlistIdeaMutation.variables?.idea_id === idea.id
+                }
                 onRemoveFromShortlist={() => handleRemoveFromShortlist(idea)}
                 onPreview={() => handlePreviewIdea(idea)}
               />
@@ -2091,8 +1987,6 @@ function IdeaDialog({
   const dialogRef = useNativeDialog(open)
   const formRef = useRef<HTMLFormElement>(null)
 
-  const queryClient = useQueryClient()
-
   const saveIdeaMutation = useSaveIdea()
 
   const ideaPillarId = idea
@@ -2101,47 +1995,40 @@ function IdeaDialog({
 
   const defaultPillarId = ideaPillarId ?? selectedPillarId ?? pillars[0]?.ID
 
-  const invalidateParticipantIdeas = async () => {
-    await queryClient.invalidateQueries({
-      queryKey: PARTICIPANT_IDEAS_QUERY_KEY,
-    })
+  const closeDialog = () => {
+    formRef.current?.reset()
+    onClose()
   }
 
   const handleClose = () => {
     if (saveIdeaMutation.isPending) return
 
-    formRef.current?.reset()
-
-    onClose()
+    closeDialog()
   }
 
-  const handleCancel = (event: React.SyntheticEvent<HTMLDialogElement>) => {
+  const handleCancel = (event: SyntheticEvent<HTMLDialogElement>) => {
     if (saveIdeaMutation.isPending) {
       event.preventDefault()
     }
   }
 
-  const handleSubmitIdea = async (event: FormEvent<HTMLFormElement>) => {
+  const handleSubmitIdea = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
 
     const formData = new FormData(event.currentTarget)
 
     const categoryId = Number(formData.get("categoryId"))
-
     const description = String(formData.get("description")).trim()
-
     const title = String(formData.get("title")).trim() || null
-
     const context = String(formData.get("context")).trim() || null
 
-    try {
-      const response = await saveIdeaMutation.mutateAsync({
+    saveIdeaMutation.mutate(
+      {
         ...(idea
           ? {
               idea_id: idea.id,
             }
           : {}),
-
         visitor_id: visitorId,
         workshop_code: workshopCode,
         team_id: teamId,
@@ -2149,24 +2036,19 @@ function IdeaDialog({
         desc: description,
         title,
         context,
-      })
+      },
+      {
+        onSuccess: (response) => {
+          toast.add({
+            type: "success",
+            title: idea ? "Idea updated" : "Idea added",
+            description: response.message,
+          })
 
-      await invalidateParticipantIdeas()
-
-      toast.add({
-        type: "success",
-        title: idea ? "Idea updated" : "Idea added",
-        description: response.message,
-      })
-
-      handleClose()
-    } catch {
-      toast.add({
-        type: "error",
-        title: idea ? "Unable to update idea" : "Unable to add idea",
-        description: "Please try again.",
-      })
-    }
+          closeDialog()
+        },
+      }
+    )
   }
 
   return (
