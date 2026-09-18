@@ -1,5 +1,12 @@
 import { useEffect, useRef } from "react"
-import { ImageIcon, XIcon } from "lucide-react"
+import {
+  ImageIcon,
+  ShapesIcon,
+  SparklesIcon,
+  StarIcon,
+  UsersIcon,
+  XIcon,
+} from "lucide-react"
 
 import { formatRelativeDate } from "@/lib/date"
 import { cn } from "@/lib/utils"
@@ -44,14 +51,17 @@ export function IdeaPreviewDialog({
       className={cn(
         "fixed inset-0 m-0 h-dvh max-h-dvh w-full max-w-none",
         "overflow-hidden border-0 bg-transparent p-0 backdrop:bg-black/50",
-        "sm:m-auto sm:h-fit sm:max-h-[calc(100dvh-2rem)]",
-        "sm:w-[min(48rem,calc(100%-2rem))]"
+        // Wide and flat on larger screens — capped by both a viewport-relative
+        // and an absolute max-height so it stays landscape-proportioned
+        // instead of growing tall on short/small viewports.
+        "sm:m-auto sm:h-fit sm:max-h-[min(85dvh,42rem)]",
+        "sm:w-[min(60rem,calc(100%-2rem))]"
       )}
       onClose={onClose}
     >
       {idea && (
         <div
-          className="flex h-full max-h-dvh min-h-0 flex-col overflow-hidden sm:h-auto sm:max-h-[calc(100dvh-2rem)] sm:rounded-2xl sm:border sm:shadow-lg"
+          className="flex h-full max-h-dvh min-h-0 flex-col overflow-hidden sm:h-auto sm:max-h-[min(85dvh,42rem)] sm:rounded-2xl sm:border sm:shadow-lg"
           style={{
             backgroundColor: workshop.card_primary_bg_color,
             borderColor: workshop.card_primary_border_color,
@@ -69,9 +79,32 @@ export function IdeaPreviewDialog({
               >
                 {idea.title || "Untitled"}
               </h2>
-              <p className="mt-1 text-sm text-neutral-500">
-                Submitted by {idea.TeamName || "Unknown team"}
-              </p>
+
+              <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1.5">
+                {idea.CreatedDttm && (
+                  <p className="text-sm text-neutral-500">
+                    Submitted {formatRelativeDate(idea.CreatedDttm)}
+                  </p>
+                )}
+
+                {idea.flgTeam && (
+                  <span className="inline-flex items-center gap-1 rounded-full bg-neutral-900 px-2.5 py-1 text-xs text-white">
+                    <StarIcon
+                      className="size-3.5"
+                      fill="currentColor"
+                      aria-hidden="true"
+                    />
+                    Shortlisted
+                  </span>
+                )}
+
+                {idea.flgCoach && (
+                  <span className="inline-flex items-center gap-1 rounded-full bg-neutral-900 px-2.5 py-1 text-xs text-white">
+                    <SparklesIcon className="size-3.5" aria-hidden="true" />
+                    Sharpened
+                  </span>
+                )}
+              </div>
             </div>
 
             <button
@@ -86,44 +119,28 @@ export function IdeaPreviewDialog({
           </header>
 
           <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-4 sm:p-6">
-            <div className="grid gap-5 md:grid-cols-[minmax(0,1.15fr)_minmax(15rem,0.85fr)]">
-              <div
-                className="aspect-4/3 overflow-hidden rounded-xl border bg-neutral-100"
-                style={{
-                  borderColor: workshop.card_primary_border_color,
-                }}
-              >
+            <div className="grid gap-5 md:grid-cols-2">
+              <div className="aspect-4/3 max-h-112 overflow-hidden rounded-xl">
                 <IdeaPreviewThumbnail idea={idea} />
               </div>
 
               <div className="min-w-0 space-y-4">
                 <div className="flex flex-wrap gap-2 text-xs">
-                  <span className="rounded-full bg-neutral-100 px-2.5 py-1">
+                  <span className="inline-flex items-center gap-1 rounded-full bg-neutral-100 px-2.5 py-1">
+                    <UsersIcon className="size-3.5" aria-hidden="true" />
                     {idea.TeamName || "Unknown team"}
                   </span>
+
                   <span
-                    className="rounded-full border px-2.5 py-1"
+                    className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1"
                     style={{
                       borderColor: workshop.card_primary_border_color,
                     }}
                   >
+                    <ShapesIcon className="size-3.5" aria-hidden="true" />
                     {idea.Category || "Unknown pillar"}
                   </span>
-                  {idea.flgCoach && (
-                    <span className="rounded-full bg-neutral-900 px-2.5 py-1 text-white">
-                      Sharpened
-                    </span>
-                  )}
                 </div>
-
-                {idea.CreatedDttm && (
-                  <div>
-                    <p className="text-sm font-medium">Submitted</p>
-                    <p className="mt-1 text-sm text-neutral-500">
-                      {formatRelativeDate(idea.CreatedDttm)}
-                    </p>
-                  </div>
-                )}
 
                 <div>
                   <p className="text-sm font-medium">Description</p>
@@ -153,7 +170,7 @@ function IdeaPreviewThumbnail({ idea }: { idea: IdeaScreen }) {
   if (!idea.imageFileName?.trim()) {
     return (
       <div
-        className="flex size-full items-center justify-center text-neutral-400"
+        className="flex size-full items-center justify-center bg-neutral-100 text-neutral-400"
         aria-label={`${idea.title || "Untitled"} thumbnail unavailable`}
       >
         <ImageIcon className="size-8" aria-hidden="true" />
