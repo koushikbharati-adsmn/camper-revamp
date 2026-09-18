@@ -134,7 +134,9 @@ export function getParticipantWorkshopOptions(
 
 export interface ParticipantIdea {
   ID: number
+  TeamID: number
   TeamName: string
+  CategoryID: number
   Category: string
   Desc: string
   title: string | null
@@ -144,6 +146,18 @@ export interface ParticipantIdea {
   flgTeam: boolean
   flgCoach: boolean
   CreatedDttm: string
+}
+
+export interface SocketIdea {
+  roomId: string
+  ideaId: number
+  teamId: number
+  teamName: string
+  categoryId: number
+  categoryName: string
+  desc: string
+  title: string | null
+  context: string | null
 }
 
 interface GetParticipantIdeasResponse {
@@ -214,17 +228,8 @@ const saveIdea = async (payload: SaveIdeaPayload) => {
 }
 
 export const useSaveIdea = () => {
-  const queryClient = useQueryClient()
-
   return useMutation({
     mutationFn: saveIdea,
-
-    onSuccess: async () => {
-      await queryClient.invalidateQueries({
-        queryKey: participantIdeaKeys.all,
-      })
-    },
-
     onError: (error) => {
       toast.add({
         type: "error",

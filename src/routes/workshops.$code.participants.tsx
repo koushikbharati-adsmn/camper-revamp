@@ -11,6 +11,7 @@ import {
   useSaveIdea,
   useScoutIdea,
   useShortlistIdea,
+  type SocketIdea,
 } from "@/services/participants"
 import {
   queryOptions,
@@ -1021,6 +1022,7 @@ function IdeasScreen({
   selectedTeamId: number
   onTeamChange: (teamId: number) => void
 }) {
+  const queryClient = useQueryClient()
   const { workshop, workshopCode, visitorId } = useParticipantExperience()
 
   const teams = workshop.teams
@@ -1041,17 +1043,111 @@ function IdeasScreen({
     (pillar) => pillar.ID === selectedPillarId
   )
 
+  const ideasQueryOptions = getParticipantIdeasOptions({
+    visitor_id: visitorId,
+    workshop_code: workshopCode,
+    team_id: selectedTeamId,
+    category_id: selectedPillarId,
+    is_shortlisted: ideaStatusFilter === "shortlisted" ? true : null,
+    is_coached: ideaStatusFilter === "sharpened" ? true : null,
+  })
+
   const { data: ideas = [], isPending: isIdeasPending } = useQuery({
-    ...getParticipantIdeasOptions({
-      visitor_id: visitorId,
-      workshop_code: workshopCode,
-      team_id: selectedTeamId,
-      category_id: selectedPillarId,
-      is_shortlisted: ideaStatusFilter === "shortlisted" ? true : null,
-      is_coached: ideaStatusFilter === "sharpened" ? true : null,
-    }),
+    ...ideasQueryOptions,
     select: (response) => response.data,
   })
+
+  useEffect(() => {
+    const handleIdeaUpserted = ({
+      roomId,
+      idea: socketIdea,
+    }: {
+      roomId: string
+      idea: SocketIdea
+    }) => {
+      if (roomId !== workshopCode) return
+
+      queryClient.setQueryData(ideasQueryOptions.queryKey, (oldData) => {
+        if (!oldData?.data) return oldData
+
+        const existingIdea = oldData.data.find(
+          (idea) => idea.ID === socketIdea.ideaId
+        )
+
+        // UPDATE
+        if (existingIdea) {
+          return {
+            ...oldData,
+            data: oldData.data.map((idea) =>
+              idea.ID === socketIdea.ideaId
+                ? {
+                    ...idea,
+                    CategoryID: socketIdea.categoryId,
+                    Category: socketIdea.categoryName,
+                    Desc: socketIdea.desc,
+                    title: socketIdea.title,
+                    Context: socketIdea.context,
+                  }
+                : idea
+            ),
+          }
+        }
+
+        // ADD
+        if (socketIdea.teamId !== selectedTeamId) {
+          return oldData
+        }
+
+        if (
+          selectedPillarId !== null &&
+          socketIdea.categoryId !== selectedPillarId
+        ) {
+          return oldData
+        }
+
+        if (ideaStatusFilter !== "all") {
+          return oldData
+        }
+
+        const team = teams.find((team) => team.ID === socketIdea.teamId)
+
+        const newIdea: ParticipantIdea = {
+          ID: socketIdea.ideaId,
+          TeamID: socketIdea.teamId,
+          TeamName: team?.TeamName ?? "",
+          CategoryID: socketIdea.categoryId,
+          Category: socketIdea.categoryName,
+          Desc: socketIdea.desc,
+          title: socketIdea.title,
+          Context: socketIdea.context,
+          imageFileName: "",
+          flgSelf: false,
+          flgTeam: false,
+          flgCoach: false,
+          CreatedDttm: new Date().toISOString(),
+        }
+
+        return {
+          ...oldData,
+          data: [...oldData.data, newIdea],
+        }
+      })
+    }
+
+    socket.on("idea_upserted", handleIdeaUpserted)
+
+    return () => {
+      socket.off("idea_upserted", handleIdeaUpserted)
+    }
+  }, [
+    workshopCode,
+    selectedTeamId,
+    selectedPillarId,
+    ideaStatusFilter,
+    teams,
+    queryClient,
+    ideasQueryOptions.queryKey,
+  ])
 
   const generateIdeaImageMutation = useGenerateIdeaImage()
   const shortlistIdeaMutation = useShortlistIdea()
@@ -1411,17 +1507,64 @@ function StageScreen() {
 
   const [previewIdea, setPreviewIdea] = useState<ParticipantIdea | null>(null)
 
+  const queryClient = useQueryClient()
+
+  const ideasQueryOptions = getParticipantIdeasOptions({
+    visitor_id: visitorId,
+    workshop_code: workshopCode,
+    team_id: selectedTeamId,
+    category_id: selectedPillarId,
+    is_shortlisted: true,
+    is_coached: null,
+  })
+
   const { data: ideas = [], isPending: isIdeasPending } = useQuery({
-    ...getParticipantIdeasOptions({
-      visitor_id: visitorId,
-      workshop_code: workshopCode,
-      team_id: selectedTeamId,
-      category_id: selectedPillarId,
-      is_shortlisted: true,
-      is_coached: null,
-    }),
+    ...ideasQueryOptions,
     select: (response) => response.data,
   })
+
+  useEffect(() => {
+    const handleIdeaUpserted = ({
+      roomId,
+      idea: socketIdea,
+    }: {
+      roomId: string
+      idea: SocketIdea
+    }) => {
+      if (roomId !== workshopCode) return
+
+      queryClient.setQueryData(ideasQueryOptions.queryKey, (oldData) => {
+        if (!oldData?.data) return oldData
+
+        return {
+          ...oldData,
+          data: oldData.data.map((idea) =>
+            idea.ID === socketIdea.ideaId
+              ? {
+                  ...idea,
+                  Category: socketIdea.categoryName,
+                  Desc: socketIdea.desc,
+                  title: socketIdea.title,
+                  Context: socketIdea.context,
+                }
+              : idea
+          ),
+        }
+      })
+    }
+
+    socket.on("idea_upserted", handleIdeaUpserted)
+
+    return () => {
+      socket.off("idea_upserted", handleIdeaUpserted)
+    }
+  }, [
+    workshopCode,
+    selectedTeamId,
+    selectedPillarId,
+    queryClient,
+    ideasQueryOptions.queryKey,
+  ])
 
   const shortlistIdeaMutation = useShortlistIdea()
 
@@ -2049,6 +2192,25 @@ function IdeaDialog({
       },
       {
         onSuccess: (response) => {
+          const category = pillars.find((pillar) => pillar.ID === categoryId)
+
+          const team = workshop.teams.find((team) => team.ID === teamId)
+
+          socket.emit("upsert_idea", {
+            roomId: workshopCode,
+            idea: {
+              roomId: workshopCode,
+              ideaId: response.data.idea_id,
+              teamId,
+              teamName: team?.TeamName ?? "",
+              categoryId,
+              categoryName: category?.Name ?? "",
+              desc: description,
+              title,
+              context,
+            },
+          })
+
           toast.add({
             type: "success",
             title: idea ? "Idea updated" : "Idea added",
