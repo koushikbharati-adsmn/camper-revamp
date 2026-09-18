@@ -438,6 +438,16 @@ function LifecycleCard({
           )}
           {status === "Vote" && (
             <Button
+              className="w-full sm:w-auto"
+              disabled={isUpdating}
+              onClick={() => onRequestTransition("Reveal")}
+            >
+              {isUpdating ? <Spinner /> : <EyeIcon />}
+              Reveal Results
+            </Button>
+          )}
+          {status === "Reveal" && (
+            <Button
               variant="destructive"
               className="w-full sm:w-auto"
               disabled={isUpdating}
@@ -1039,6 +1049,7 @@ function LifecycleDialog({
   onConfirm: () => void
 }) {
   const isEnding = targetStatus === "Completed"
+  const isRevealing = targetStatus === "Reveal"
 
   return (
     <AlertDialog open={Boolean(targetStatus)} onOpenChange={onOpenChange}>
@@ -1047,15 +1058,27 @@ function LifecycleDialog({
           <AlertDialogMedia
             className={isEnding ? "text-destructive" : undefined}
           >
-            {isEnding ? <ShieldAlertIcon /> : <TagsIcon />}
+            {isEnding ? (
+              <ShieldAlertIcon />
+            ) : isRevealing ? (
+              <EyeIcon />
+            ) : (
+              <TagsIcon />
+            )}
           </AlertDialogMedia>
           <AlertDialogTitle>
-            {isEnding ? "End this workshop?" : "Start voting?"}
+            {isEnding
+              ? "End this workshop?"
+              : isRevealing
+                ? "Reveal voting results?"
+                : "Start voting?"}
           </AlertDialogTitle>
           <AlertDialogDescription>
             {isEnding
               ? "This completes the workshop. Returning to an earlier phase requires resetting the workshop, which may clear workshop activity."
-              : "This starts voting. Returning to ideation requires resetting the workshop, which may clear workshop activity."}
+              : isRevealing
+                ? "This ends voting and reveals the results to participants."
+                : "This starts voting. Returning to ideation requires resetting the workshop, which may clear workshop activity."}
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
@@ -1069,10 +1092,14 @@ function LifecycleDialog({
             {isPending
               ? isEnding
                 ? "Ending..."
-                : "Starting..."
+                : isRevealing
+                  ? "Revealing..."
+                  : "Starting..."
               : isEnding
                 ? "End Workshop"
-                : "Start Voting"}
+                : isRevealing
+                  ? "Reveal Results"
+                  : "Start Voting"}
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>

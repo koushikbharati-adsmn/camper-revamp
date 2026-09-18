@@ -1,4 +1,4 @@
-export type WorkshopStatus = "Ideate" | "Vote" | "Completed"
+export type WorkshopStatus = "Ideate" | "Vote" | "Reveal" | "Completed"
 export type WorkshopLifecycleStatus = WorkshopStatus | null
 
 export type WorkshopPhase = {
@@ -33,6 +33,14 @@ export const WORKSHOP_PHASES: readonly WorkshopPhase[] = [
     message: "Participants can vote on shortlisted ideas.",
     badgeClassName:
       "bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-300",
+  },
+  {
+    status: "Reveal",
+    label: "Reveal",
+    description: "Voting results are revealed to participants",
+    message: "Voting results are being revealed.",
+    badgeClassName:
+      "bg-purple-100 text-purple-700 dark:bg-purple-950 dark:text-purple-300",
   },
   {
     status: "Completed",
