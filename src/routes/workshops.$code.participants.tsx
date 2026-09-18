@@ -176,7 +176,10 @@ function ParticipantExperience({
                 }}
                 aria-current={activeScreen === "home" ? "page" : undefined}
                 disabled={shouldShowWalkthrough}
-                onClick={() => setActiveScreen("home")}
+                onClick={() => {
+                  setActiveScreen("home")
+                  setSelectedTeamId(null)
+                }}
               >
                 Home
               </button>
