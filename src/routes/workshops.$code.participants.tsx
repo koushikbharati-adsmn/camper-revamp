@@ -306,7 +306,6 @@ function ParticipantExperience() {
 
   const handleNavigateHome = () => {
     setActiveView("home")
-    setSelectedTeamId(null)
   }
 
   const handleNavigateStage = () => {
