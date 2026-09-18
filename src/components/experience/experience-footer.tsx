@@ -46,7 +46,7 @@ export function ExperienceFooter({
               >
                 {activities.map((activity) => (
                   <div
-                    key={`${group}-${activity.ID}`}
+                    key={`${group}-${activity.CreatedDttm}`}
                     className="flex items-center gap-2 px-8"
                   >
                     <BellIcon
