@@ -337,25 +337,33 @@ function RouteComponent() {
                 {/* Left content */}
                 <div className="flex min-w-0 flex-col items-center gap-4">
                   {!showLatestActivity && (
-                    <div
-                      className="relative flex w-full items-center justify-center gap-2 rounded-2xl border p-4 shadow-sm"
-                      style={{
-                        borderColor: bigScreenTheme.card_primary_border_color,
-                      }}
-                      id="scan-qr"
-                      aria-label="Scan QR code"
-                    >
-                      <QRCodeSVG
-                        value={participantsUrl}
-                        title="Scan to join the workshop"
-                        className="h-auto w-full max-w-full object-contain"
-                        size={1000}
-                        marginSize={2}
-                        level="H"
-                        fgColor="#000000"
-                        bgColor="#ffffff"
-                      />
-                    </div>
+                    <>
+                      {workshop?.shortUrl && (
+                        <p className="text-sm font-semibold text-neutral-700">
+                          {workshop.shortUrl}
+                        </p>
+                      )}
+
+                      <div
+                        className="relative flex w-full items-center justify-center gap-2 rounded-2xl border p-4 shadow-sm"
+                        style={{
+                          borderColor: bigScreenTheme.card_primary_border_color,
+                        }}
+                        id="scan-qr"
+                        aria-label="Scan QR code"
+                      >
+                        <QRCodeSVG
+                          value={participantsUrl}
+                          title="Scan to join the workshop"
+                          className="h-auto w-full max-w-full object-contain"
+                          size={1000}
+                          marginSize={2}
+                          level="H"
+                          fgColor="#000000"
+                          bgColor="#ffffff"
+                        />
+                      </div>
+                    </>
                   )}
 
                   {showLatestActivity ? (
