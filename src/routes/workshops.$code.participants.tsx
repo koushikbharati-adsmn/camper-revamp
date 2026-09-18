@@ -253,7 +253,7 @@ function RouteComponent() {
 /* -------------------------------------------------------------------------- */
 
 function ParticipantExperience() {
-  const { workshop, workshopCode } = useParticipantExperience()
+  const { workshop, workshopCode, visitorId } = useParticipantExperience()
 
   const walkthroughSteps = useMemo(
     () =>
@@ -263,9 +263,17 @@ function ParticipantExperience() {
     [workshop.walkThrough]
   )
 
-  const [isWalkthroughActive, setIsWalkthroughActive] = useState(
-    walkthroughSteps.length > 0
-  )
+  const walkthroughStorageKey = `participant-walkthrough-completed:${visitorId}:${workshopCode}`
+
+  const [isWalkthroughActive, setIsWalkthroughActive] = useState(() => {
+    if (walkthroughSteps.length === 0) return false
+
+    try {
+      return sessionStorage.getItem(walkthroughStorageKey) !== "true"
+    } catch {
+      return true
+    }
+  })
 
   const [activeView, setActiveView] = useState<ParticipantView>("home")
 
@@ -284,6 +292,12 @@ function ParticipantExperience() {
   })
 
   const handleWalkthroughComplete = () => {
+    try {
+      sessionStorage.setItem(walkthroughStorageKey, "true")
+    } catch {
+      // Continue for the current page load when browser storage is unavailable.
+    }
+
     setIsWalkthroughActive(false)
   }
 
