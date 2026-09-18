@@ -1355,15 +1355,13 @@ function IdeateIdeaCard({
               />
             </button>
 
-            {idea.flgSelf && (
-              <button
-                type="button"
-                aria-label={`Edit ${idea.title || "idea"}`}
-                onClick={onEdit}
-              >
-                <SquarePenIcon className="size-5" aria-hidden="true" />
-              </button>
-            )}
+            <button
+              type="button"
+              aria-label={`Edit ${idea.title || "idea"}`}
+              onClick={onEdit}
+            >
+              <SquarePenIcon className="size-5" aria-hidden="true" />
+            </button>
           </div>
 
           {idea.flgCoach && (
