@@ -24,6 +24,7 @@ import {
   createContext,
   type ChangeEvent,
   type FormEvent,
+  type KeyboardEvent,
   type ReactNode,
   type SyntheticEvent,
   useContext,
@@ -42,9 +43,11 @@ import {
   ImagePlusIcon,
   PlusIcon,
   RefreshCwIcon,
+  ShapesIcon,
   SparklesIcon,
   SquarePenIcon,
   StarIcon,
+  UsersIcon,
   XIcon,
 } from "lucide-react"
 import useEmblaCarousel from "embla-carousel-react"
@@ -1595,7 +1598,7 @@ function StageScreen() {
 
   const [selectedPillarId, setSelectedPillarId] = useState<number | null>(null)
 
-  const [previewIdea, setPreviewIdea] = useState<ParticipantIdea | null>(null)
+  const [previewIdeaId, setPreviewIdeaId] = useState<number | null>(null)
 
   const queryClient = useQueryClient()
 
@@ -1612,6 +1615,15 @@ function StageScreen() {
     ...ideasQueryOptions,
     select: (response) => response.data,
   })
+
+  const previewIdeaIndex =
+    previewIdeaId === null
+      ? -1
+      : ideas.findIndex((idea) => idea.ID === previewIdeaId)
+  const previewIdea = previewIdeaIndex === -1 ? null : ideas[previewIdeaIndex]
+  const hasPreviousIdea = previewIdeaIndex > 0
+  const hasNextIdea =
+    previewIdeaIndex >= 0 && previewIdeaIndex < ideas.length - 1
 
   useEffect(() => {
     const handleIdeaUpserted = ({
@@ -1675,11 +1687,23 @@ function StageScreen() {
   }
 
   const handlePreviewIdea = (idea: ParticipantIdea) => {
-    setPreviewIdea(idea)
+    setPreviewIdeaId(idea.ID)
   }
 
   const handleClosePreview = () => {
-    setPreviewIdea(null)
+    setPreviewIdeaId(null)
+  }
+
+  const handlePreviewPreviousIdea = () => {
+    if (!hasPreviousIdea) return
+
+    setPreviewIdeaId(ideas[previewIdeaIndex - 1].ID)
+  }
+
+  const handlePreviewNextIdea = () => {
+    if (!hasNextIdea) return
+
+    setPreviewIdeaId(ideas[previewIdeaIndex + 1].ID)
   }
 
   return (
@@ -1688,6 +1712,12 @@ function StageScreen() {
         <IdeaPreviewDialog
           idea={previewIdea}
           open
+          position={previewIdeaIndex + 1}
+          total={ideas.length}
+          hasPrevious={hasPreviousIdea}
+          hasNext={hasNextIdea}
+          onPrevious={handlePreviewPreviousIdea}
+          onNext={handlePreviewNextIdea}
           onClose={handleClosePreview}
         />
       )}
@@ -1890,10 +1920,22 @@ function IdeaCardSkeleton() {
 function IdeaPreviewDialog({
   idea,
   open,
+  position,
+  total,
+  hasPrevious,
+  hasNext,
+  onPrevious,
+  onNext,
   onClose,
 }: {
   idea: ParticipantIdea
   open: boolean
+  position: number
+  total: number
+  hasPrevious: boolean
+  hasNext: boolean
+  onPrevious: () => void
+  onNext: () => void
   onClose: () => void
 }) {
   const { workshop } = useParticipantExperience()
@@ -1904,58 +1946,63 @@ function IdeaPreviewDialog({
     onClose()
   }
 
+  const handleKeyDown = (event: KeyboardEvent<HTMLDialogElement>) => {
+    if (event.key === "ArrowLeft" && hasPrevious) {
+      event.preventDefault()
+      onPrevious()
+    }
+
+    if (event.key === "ArrowRight" && hasNext) {
+      event.preventDefault()
+      onNext()
+    }
+  }
+
   return (
     <dialog
       ref={dialogRef}
       aria-labelledby="idea-preview-title"
       aria-describedby="idea-preview-description"
-      className={cn(
-        "fixed inset-0 m-0 h-dvh max-h-dvh w-full max-w-none",
-        "overflow-hidden border-0 bg-transparent p-0 backdrop:bg-black/50",
-        "sm:m-auto sm:h-fit sm:max-h-[calc(100dvh-2rem)]",
-        "sm:w-[min(48rem,calc(100%-2rem))]"
-      )}
+      className="fixed inset-0 m-0 h-dvh max-h-dvh w-full max-w-none overflow-hidden border-0 bg-transparent p-0 backdrop:bg-black/70"
       onClose={handleClose}
+      onKeyDown={handleKeyDown}
     >
       <div
-        className={cn(
-          "flex h-full max-h-dvh min-h-0 flex-col overflow-hidden",
-          "sm:h-auto sm:max-h-[calc(100dvh-2rem)] sm:rounded-lg sm:border sm:shadow-lg"
-        )}
+        className="flex h-full max-h-dvh min-h-0 flex-col overflow-hidden"
         style={{
           backgroundColor: workshop.card_primary_bg_color,
-          borderColor: workshop.card_primary_border_color,
           color: workshop.txt_primary_color,
         }}
       >
         <header
-          className="flex shrink-0 items-start justify-between gap-3 border-b px-4 py-3 sm:px-6 sm:py-4"
+          className="flex h-16 shrink-0 items-center justify-between gap-4 border-b px-4 sm:px-6"
           style={{
             borderColor: workshop.card_primary_border_color,
           }}
         >
-          <div className="min-w-0">
-            <h2
-              id="idea-preview-title"
-              className="text-xl leading-tight font-semibold tracking-[-0.02em]"
-            >
-              {idea.title || "Untitled"}
-            </h2>
+          <div className="flex min-w-0 items-center gap-3">
+            <span className="text-sm font-semibold tracking-[0.16em] uppercase">
+              The Stage
+            </span>
+
+            <span
+              className="h-4 w-px"
+              style={{ backgroundColor: workshop.card_primary_border_color }}
+              aria-hidden="true"
+            />
 
             <p
-              id="idea-preview-description"
-              className="mt-1 text-sm"
-              style={{
-                color: workshop.txt_secondary_color,
-              }}
+              className="text-sm tabular-nums"
+              style={{ color: workshop.txt_secondary_color }}
+              aria-live="polite"
             >
-              Full idea submission from {idea.TeamName || "Unknown team"}.
+              Idea {position} of {total}
             </p>
           </div>
 
           <button
             type="button"
-            className="grid size-9 shrink-0 place-items-center rounded-md border transition-colors focus-visible:outline-2 focus-visible:outline-offset-2"
+            className="grid size-10 shrink-0 place-items-center rounded-full border transition-colors hover:bg-black/5 focus-visible:outline-2 focus-visible:outline-offset-2"
             style={{
               borderColor: workshop.card_primary_border_color,
               outlineColor: workshop.btn_primary_bg_color,
@@ -1963,80 +2010,114 @@ function IdeaPreviewDialog({
             aria-label="Close idea preview"
             onClick={handleClose}
           >
-            <XIcon className="size-4" aria-hidden="true" />
+            <XIcon className="size-5" aria-hidden="true" />
           </button>
         </header>
 
-        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-4 sm:p-6">
-          <div className="grid gap-5 md:grid-cols-[minmax(0,1.15fr)_minmax(15rem,0.85fr)]">
-            <div
-              className="aspect-4/3 overflow-hidden border bg-neutral-100"
-              style={{
-                borderColor: workshop.card_primary_border_color,
-              }}
+        <div className="grid min-h-0 flex-1 overflow-y-auto overscroll-contain lg:grid-cols-[minmax(0,1fr)_minmax(20rem,30rem)] lg:overflow-hidden">
+          <div className="relative flex min-h-[48dvh] items-center justify-center overflow-hidden bg-neutral-950 p-12 sm:p-16 lg:min-h-0">
+            {idea.imageFileName?.trim() ? (
+              <img
+                src={idea.imageFileName}
+                alt={idea.title || "Idea"}
+                className="max-h-full max-w-full object-contain"
+              />
+            ) : (
+              <div className="flex flex-col items-center justify-center gap-3 text-neutral-500">
+                <ImagePlusIcon className="size-12" aria-hidden="true" />
+
+                <span>No image available</span>
+              </div>
+            )}
+
+            <button
+              type="button"
+              className="absolute top-1/2 left-3 grid size-11 -translate-y-1/2 place-items-center rounded-full bg-white/10 text-white ring-1 ring-white/20 backdrop-blur-sm transition-colors hover:bg-white/20 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white disabled:cursor-not-allowed disabled:opacity-25 sm:left-6 sm:size-12"
+              aria-label="View previous idea"
+              disabled={!hasPrevious}
+              onClick={onPrevious}
             >
-              {idea.imageFileName?.trim() ? (
-                <img
-                  src={idea.imageFileName}
-                  alt={idea.title || "Idea"}
-                  className="size-full object-contain"
-                />
-              ) : (
-                <div className="flex size-full flex-col items-center justify-center gap-2 text-neutral-400">
-                  <ImagePlusIcon className="size-9" aria-hidden="true" />
+              <ChevronLeftIcon className="size-6" aria-hidden="true" />
+            </button>
 
-                  <span>No image available</span>
-                </div>
-              )}
-            </div>
+            <button
+              type="button"
+              className="absolute top-1/2 right-3 grid size-11 -translate-y-1/2 place-items-center rounded-full bg-white/10 text-white ring-1 ring-white/20 backdrop-blur-sm transition-colors hover:bg-white/20 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white disabled:cursor-not-allowed disabled:opacity-25 sm:right-6 sm:size-12"
+              aria-label="View next idea"
+              disabled={!hasNext}
+              onClick={onNext}
+            >
+              <ChevronRightIcon className="size-6" aria-hidden="true" />
+            </button>
+          </div>
 
-            <div className="min-w-0 space-y-5">
-              <div className="flex flex-wrap gap-2 text-xs">
-                <span className="rounded-full bg-neutral-100 px-2.5 py-1 text-neutral-900">
+          <aside
+            className="min-w-0 border-t lg:overflow-y-auto lg:border-t-0 lg:border-l"
+            style={{ borderColor: workshop.card_primary_border_color }}
+          >
+            <div className="flex min-h-full flex-col p-6 sm:p-8 lg:p-10">
+              <div className="flex flex-col-reverse gap-2 sm:flex-col">
+                <p
+                  id="idea-preview-description"
+                  className="text-sm leading-6"
+                  style={{ color: workshop.txt_secondary_color }}
+                >
+                  {formatRelativeDate(idea.CreatedDttm)}
+                </p>
+                <h2
+                  id="idea-preview-title"
+                  className="text-3xl leading-[1.08] font-semibold tracking-[-0.035em] text-balance sm:text-4xl"
+                >
+                  {idea.title || "Untitled"}
+                </h2>
+              </div>
+
+              <div className="mt-4 flex flex-wrap gap-2 text-xs">
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-neutral-100 px-3 py-1.5 text-neutral-900">
+                  <UsersIcon className="size-3.5" aria-hidden="true" />
                   {idea.TeamName || "Unknown team"}
                 </span>
 
                 <span
-                  className="rounded-full border px-2.5 py-1"
+                  className="inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5"
                   style={{
                     borderColor: workshop.card_primary_border_color,
                   }}
                 >
+                  <ShapesIcon className="size-3.5" aria-hidden="true" />
                   {idea.CategoryName || "Unknown pillar"}
                 </span>
 
-                <span className="rounded-full bg-neutral-900 px-2.5 py-1 text-white">
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-neutral-900 px-3 py-1.5 text-white">
+                  <StarIcon
+                    className="size-3.5"
+                    fill="currentColor"
+                    aria-hidden="true"
+                  />
                   Shortlisted
                 </span>
+
+                {idea.flgCoach && (
+                  <span className="inline-flex items-center gap-1.5 rounded-full bg-neutral-100 px-3 py-1.5 text-neutral-900">
+                    <SparklesIcon className="size-3.5" aria-hidden="true" />
+                    Sharpened
+                  </span>
+                )}
               </div>
 
-              <div>
-                <p className="font-medium">Submitted</p>
+              <div
+                className="my-8 border-t"
+                style={{ borderColor: workshop.card_primary_border_color }}
+              />
 
-                <p
-                  className="mt-1"
-                  style={{
-                    color: workshop.txt_secondary_color,
-                  }}
-                >
-                  {formatRelativeDate(idea.CreatedDttm)}
-                </p>
-              </div>
-
-              <div>
-                <p className="font-medium">Description</p>
-
-                <p
-                  className="mt-1 text-sm leading-relaxed whitespace-pre-line"
-                  style={{
-                    color: workshop.txt_secondary_color,
-                  }}
-                >
-                  {idea.Desc}
-                </p>
-              </div>
+              <p
+                className="text-base leading-7 whitespace-pre-line"
+                style={{ color: workshop.txt_secondary_color }}
+              >
+                {idea.Desc}
+              </p>
             </div>
-          </div>
+          </aside>
         </div>
       </div>
     </dialog>
