@@ -70,6 +70,7 @@ import {
 import { cn } from "@/lib/utils"
 import { NewsroomStatsRows } from "@/components/experience/experience-stats-rows"
 import { ExperienceFooter } from "@/components/experience/experience-footer"
+import { SharpenDialog } from "@/components/experience/sharpen-dialog"
 import { socket } from "@/lib/socket"
 
 /* -------------------------------------------------------------------------- */
@@ -1039,6 +1040,10 @@ function IdeasScreen({
 
   const [editingIdea, setEditingIdea] = useState<ParticipantIdea | null>(null)
 
+  const [sharpeningIdea, setSharpeningIdea] = useState<ParticipantIdea | null>(
+    null
+  )
+
   const [fullscreenIdeaId, setFullscreenIdeaId] = useState<number | null>(null)
 
   const selectedPillar = pillars.find(
@@ -1276,6 +1281,23 @@ function IdeasScreen({
     setEditingIdea(null)
   }
 
+  const handleOpenSharpenDialog = (idea: ParticipantIdea) => {
+    setSharpeningIdea(idea)
+  }
+
+  const handleCloseSharpenDialog = () => {
+    setSharpeningIdea(null)
+  }
+
+  const handleEditSharpeningIdea = () => {
+    if (!sharpeningIdea) return
+
+    const idea = sharpeningIdea
+
+    setSharpeningIdea(null)
+    handleEditIdea(idea)
+  }
+
   const handleTeamSelectChange = (event: ChangeEvent<HTMLSelectElement>) => {
     onTeamChange(Number(event.target.value))
   }
@@ -1353,6 +1375,18 @@ function IdeasScreen({
         isError={scoutIdeaMutation.isError}
         onClose={handleCloseScoutDialog}
       />
+
+      {sharpeningIdea && (
+        <SharpenDialog
+          key={sharpeningIdea.ID}
+          open
+          idea={sharpeningIdea}
+          coaches={workshop.coaches}
+          workshop={workshop}
+          onClose={handleCloseSharpenDialog}
+          onEditIdea={handleEditSharpeningIdea}
+        />
+      )}
 
       {fullscreenIdea && (
         <IdeaImageFullscreenDialog
@@ -1446,6 +1480,7 @@ function IdeasScreen({
                 onOpenImage={() => handleOpenFullscreenImage(idea)}
                 onToggleShortlist={() => handleToggleShortlist(idea)}
                 onEdit={() => handleEditIdea(idea)}
+                onSharpen={() => handleOpenSharpenDialog(idea)}
               />
             ))}
       </ul>
@@ -1491,6 +1526,7 @@ function IdeateIdeaCard({
   onOpenImage,
   onToggleShortlist,
   onEdit,
+  onSharpen,
 }: {
   idea: ParticipantIdea
   isGeneratingImage: boolean
@@ -1499,6 +1535,7 @@ function IdeateIdeaCard({
   onOpenImage: () => void
   onToggleShortlist: () => void
   onEdit: () => void
+  onSharpen: () => void
 }) {
   const { workshop } = useParticipantExperience()
 
@@ -1621,6 +1658,7 @@ function IdeateIdeaCard({
           variant="primary"
           workshop={workshop}
           className="w-28"
+          onClick={onSharpen}
         >
           Sharpen
         </ExperienceButton>
