@@ -6,7 +6,6 @@ import {
   useMutation,
   useQueryClient,
 } from "@tanstack/react-query"
-import type { QueryClient, QueryKey } from "@tanstack/react-query"
 import type { VotingScope } from "./workshops-panel"
 import { toast } from "@/components/ui/toast"
 
@@ -266,93 +265,9 @@ const shortlistIdea = async (payload: ShortlistIdeaPayload) => {
   return res.data
 }
 
-const getWorkshopIdeaQueries = (
-  queryClient: QueryClient,
-  workshopCode: string
-) =>
-  queryClient.getQueriesData<GetParticipantIdeasResponse>({
-    queryKey: participantIdeaKeys.all,
-    predicate: ({ queryKey }) => {
-      const params = queryKey[1] as GetParticipantIdeasParams | undefined
-
-      return params?.workshop_code === workshopCode
-    },
-  })
-
-export const updateParticipantIdeaShortlistCache = (
-  queryClient: QueryClient,
-  { roomId, ideaId, isShortlisted }: IdeaShortlistSocketPayload
-) => {
-  getWorkshopIdeaQueries(queryClient, roomId).forEach(([queryKey]) => {
-    const params = queryKey[1] as GetParticipantIdeasParams
-
-    queryClient.setQueryData<GetParticipantIdeasResponse>(
-      queryKey,
-      (current) => {
-        if (!current?.data.some((idea) => idea.ID === ideaId)) return current
-
-        return {
-          ...current,
-          data:
-            params.is_shortlisted === true && !isShortlisted
-              ? current.data.filter((idea) => idea.ID !== ideaId)
-              : current.data.map((idea) =>
-                  idea.ID === ideaId
-                    ? { ...idea, flgTeam: isShortlisted }
-                    : idea
-                ),
-        }
-      }
-    )
-  })
-}
-
-type ShortlistIdeaSnapshot = {
-  queryKey: QueryKey
-  idea: ParticipantIdea
-  index: number
-}
-
 export const useShortlistIdea = () => {
-  const queryClient = useQueryClient()
-
   return useMutation({
     mutationFn: shortlistIdea,
-
-    onMutate: async ({ workshop_code, idea_id, flag }) => {
-      await queryClient.cancelQueries({
-        queryKey: participantIdeaKeys.all,
-        predicate: ({ queryKey }) => {
-          const params = queryKey[1] as GetParticipantIdeasParams | undefined
-
-          return params?.workshop_code === workshop_code
-        },
-      })
-
-      const snapshots = getWorkshopIdeaQueries(queryClient, workshop_code)
-        .map(([queryKey, current]): ShortlistIdeaSnapshot | null => {
-          const index = current?.data.findIndex((idea) => idea.ID === idea_id)
-
-          if (index === undefined || index < 0 || !current) return null
-
-          return {
-            queryKey,
-            idea: current.data[index],
-            index,
-          }
-        })
-        .filter(
-          (snapshot): snapshot is ShortlistIdeaSnapshot => snapshot !== null
-        )
-
-      updateParticipantIdeaShortlistCache(queryClient, {
-        roomId: workshop_code,
-        ideaId: idea_id,
-        isShortlisted: flag,
-      })
-
-      return { snapshots }
-    },
 
     onSuccess: (_response, { workshop_code, idea_id, flag }) => {
       socket.emit("update_idea_shortlist", {
@@ -362,36 +277,7 @@ export const useShortlistIdea = () => {
       } satisfies IdeaShortlistSocketPayload)
     },
 
-    onError: (error, _payload, context) => {
-      context?.snapshots.forEach(({ queryKey, idea, index }) => {
-        queryClient.setQueryData<GetParticipantIdeasResponse>(
-          queryKey,
-          (current) => {
-            if (!current) return current
-
-            const currentIndex = current.data.findIndex(
-              (currentIdea) => currentIdea.ID === idea.ID
-            )
-
-            if (currentIndex >= 0) {
-              return {
-                ...current,
-                data: current.data.map((currentIdea) =>
-                  currentIdea.ID === idea.ID
-                    ? { ...currentIdea, flgTeam: idea.flgTeam }
-                    : currentIdea
-                ),
-              }
-            }
-
-            const data = [...current.data]
-            data.splice(Math.min(index, data.length), 0, idea)
-
-            return { ...current, data }
-          }
-        )
-      })
-
+    onError: (error) => {
       toast.add({
         type: "error",
         title: "Oops! Something went wrong",

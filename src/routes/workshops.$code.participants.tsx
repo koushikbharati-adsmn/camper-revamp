@@ -5,13 +5,12 @@ import {
   type ParticipantWorkshop,
   getParticipantIdeasOptions,
   getParticipantWorkshopOptions,
-  type IdeaShortlistSocketPayload,
-  updateParticipantIdeaShortlistCache,
   useGenerateIdeaImage,
   useSaveIdea,
   useScoutIdea,
   useShortlistIdea,
   type SocketIdea,
+  type IdeaShortlistSocketPayload,
 } from "@/services/participants"
 import {
   queryOptions,
@@ -268,14 +267,7 @@ function ParticipantExperience() {
       socket.emit("join_room", { roomId: workshopCode })
     }
 
-    const handleIdeaShortlistUpdate = (payload: IdeaShortlistSocketPayload) => {
-      if (payload.roomId !== workshopCode) return
-
-      updateParticipantIdeaShortlistCache(queryClient, payload)
-    }
-
     socket.on("connect", joinWorkshopRoom)
-    socket.on("idea_shortlist_updated", handleIdeaShortlistUpdate)
 
     if (socket.connected) {
       joinWorkshopRoom()
@@ -283,7 +275,6 @@ function ParticipantExperience() {
 
     return () => {
       socket.off("connect", joinWorkshopRoom)
-      socket.off("idea_shortlist_updated", handleIdeaShortlistUpdate)
     }
   }, [queryClient, workshopCode])
 
@@ -1157,6 +1148,42 @@ function IdeasScreen({
     ideasQueryOptions.queryKey,
   ])
 
+  useEffect(() => {
+    const handleIdeaShortlistUpdated = ({
+      roomId,
+      ideaId,
+      isShortlisted,
+    }: IdeaShortlistSocketPayload) => {
+      if (roomId !== workshopCode) return
+
+      queryClient.setQueryData(ideasQueryOptions.queryKey, (oldData) => {
+        if (!oldData?.data) return oldData
+
+        if (!oldData.data.some((idea) => idea.ID === ideaId)) {
+          return oldData
+        }
+
+        return {
+          ...oldData,
+          data:
+            ideaStatusFilter === "shortlisted" && !isShortlisted
+              ? oldData.data.filter((idea) => idea.ID !== ideaId)
+              : oldData.data.map((idea) =>
+                  idea.ID === ideaId
+                    ? { ...idea, flgTeam: isShortlisted }
+                    : idea
+                ),
+        }
+      })
+    }
+
+    socket.on("idea_shortlist_updated", handleIdeaShortlistUpdated)
+
+    return () => {
+      socket.off("idea_shortlist_updated", handleIdeaShortlistUpdated)
+    }
+  }, [workshopCode, ideaStatusFilter, queryClient, ideasQueryOptions.queryKey])
+
   const generateIdeaImageMutation = useGenerateIdeaImage()
   const shortlistIdeaMutation = useShortlistIdea()
   const scoutIdeaMutation = useScoutIdea()
@@ -1667,6 +1694,40 @@ function StageScreen() {
     queryClient,
     ideasQueryOptions.queryKey,
   ])
+
+  useEffect(() => {
+    const handleIdeaShortlistUpdated = ({
+      roomId,
+      ideaId,
+      isShortlisted,
+    }: IdeaShortlistSocketPayload) => {
+      if (roomId !== workshopCode) return
+
+      queryClient.setQueryData(ideasQueryOptions.queryKey, (oldData) => {
+        if (!oldData?.data) return oldData
+
+        if (!isShortlisted) {
+          return {
+            ...oldData,
+            data: oldData.data.filter((idea) => idea.ID !== ideaId),
+          }
+        }
+
+        return {
+          ...oldData,
+          data: oldData.data.map((idea) =>
+            idea.ID === ideaId ? { ...idea, flgTeam: true } : idea
+          ),
+        }
+      })
+    }
+
+    socket.on("idea_shortlist_updated", handleIdeaShortlistUpdated)
+
+    return () => {
+      socket.off("idea_shortlist_updated", handleIdeaShortlistUpdated)
+    }
+  }, [workshopCode, queryClient, ideasQueryOptions.queryKey])
 
   const shortlistIdeaMutation = useShortlistIdea()
 
