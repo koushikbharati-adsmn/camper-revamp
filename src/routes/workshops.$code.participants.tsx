@@ -4,10 +4,10 @@ import {
   type GenerateIdeaImagePayload,
   type IdeaImageSocketPayload,
   type IdeaShortlistSocketPayload,
+  type IdeaUpsertSocketPayload,
   type ParticipantIdea,
   type ParticipantWorkshop,
   type ShortlistIdeaPayload,
-  type SocketIdea,
   getParticipantIdeasOptions,
   getParticipantWorkshopOptions,
   participantIdeaMutationKeys,
@@ -1063,10 +1063,7 @@ function IdeasScreen({
     const handleIdeaUpserted = ({
       roomId,
       idea: socketIdea,
-    }: {
-      roomId: string
-      idea: SocketIdea
-    }) => {
+    }: IdeaUpsertSocketPayload) => {
       if (roomId !== workshopCode) return
 
       queryClient.setQueryData(ideasQueryOptions.queryKey, (oldData) => {
@@ -1136,22 +1133,6 @@ function IdeasScreen({
       })
     }
 
-    socket.on("idea_upserted", handleIdeaUpserted)
-
-    return () => {
-      socket.off("idea_upserted", handleIdeaUpserted)
-    }
-  }, [
-    workshopCode,
-    selectedTeamId,
-    selectedPillarId,
-    ideaStatusFilter,
-    teams,
-    queryClient,
-    ideasQueryOptions.queryKey,
-  ])
-
-  useEffect(() => {
     const handleIdeaShortlistUpdated = ({
       roomId,
       isShortlisted,
@@ -1187,7 +1168,10 @@ function IdeasScreen({
             ...oldData,
             data: oldData.data.map((idea) =>
               idea.ID === socketIdea.ID
-                ? { ...idea, flgTeam: isShortlisted }
+                ? {
+                    ...idea,
+                    flgTeam: isShortlisted,
+                  }
                 : idea
             ),
           }
@@ -1207,21 +1191,6 @@ function IdeasScreen({
       })
     }
 
-    socket.on("idea_shortlist_updated", handleIdeaShortlistUpdated)
-
-    return () => {
-      socket.off("idea_shortlist_updated", handleIdeaShortlistUpdated)
-    }
-  }, [
-    workshopCode,
-    selectedTeamId,
-    selectedPillarId,
-    ideaStatusFilter,
-    queryClient,
-    ideasQueryOptions.queryKey,
-  ])
-
-  useEffect(() => {
     const handleIdeaImageGenerated = ({
       roomId,
       ideaId,
@@ -1246,12 +1215,24 @@ function IdeasScreen({
       })
     }
 
+    socket.on("idea_upserted", handleIdeaUpserted)
+    socket.on("idea_shortlist_updated", handleIdeaShortlistUpdated)
     socket.on("idea_image_generated", handleIdeaImageGenerated)
 
     return () => {
+      socket.off("idea_upserted", handleIdeaUpserted)
+      socket.off("idea_shortlist_updated", handleIdeaShortlistUpdated)
       socket.off("idea_image_generated", handleIdeaImageGenerated)
     }
-  }, [workshopCode, queryClient, ideasQueryOptions.queryKey])
+  }, [
+    workshopCode,
+    selectedTeamId,
+    selectedPillarId,
+    ideaStatusFilter,
+    teams,
+    queryClient,
+    ideasQueryOptions.queryKey,
+  ])
 
   const generateIdeaImageMutation = useGenerateIdeaImage()
   const shortlistIdeaMutation = useShortlistIdea()
@@ -1740,10 +1721,7 @@ function StageScreen() {
     const handleIdeaUpserted = ({
       roomId,
       idea: socketIdea,
-    }: {
-      roomId: string
-      idea: SocketIdea
-    }) => {
+    }: IdeaUpsertSocketPayload) => {
       if (roomId !== workshopCode) return
 
       queryClient.setQueryData(ideasQueryOptions.queryKey, (oldData) => {
@@ -1767,20 +1745,6 @@ function StageScreen() {
       })
     }
 
-    socket.on("idea_upserted", handleIdeaUpserted)
-
-    return () => {
-      socket.off("idea_upserted", handleIdeaUpserted)
-    }
-  }, [
-    workshopCode,
-    selectedTeamId,
-    selectedPillarId,
-    queryClient,
-    ideasQueryOptions.queryKey,
-  ])
-
-  useEffect(() => {
     const handleIdeaShortlistUpdated = ({
       roomId,
       isShortlisted,
@@ -1814,11 +1778,9 @@ function StageScreen() {
           (selectedPillarId === null ||
             socketIdea.CategoryID === selectedPillarId)
 
-        if (!matchesFilters) {
-          return oldData
-        }
+        if (!matchesFilters) return oldData
 
-        // Already present: only update shortlist state
+        // Already present: update shortlist state
         if (exists) {
           return {
             ...oldData,
@@ -1842,20 +1804,6 @@ function StageScreen() {
       })
     }
 
-    socket.on("idea_shortlist_updated", handleIdeaShortlistUpdated)
-
-    return () => {
-      socket.off("idea_shortlist_updated", handleIdeaShortlistUpdated)
-    }
-  }, [
-    workshopCode,
-    selectedTeamId,
-    selectedPillarId,
-    queryClient,
-    ideasQueryOptions.queryKey,
-  ])
-
-  useEffect(() => {
     const handleIdeaImageGenerated = ({
       roomId,
       ideaId,
@@ -1880,12 +1828,22 @@ function StageScreen() {
       })
     }
 
+    socket.on("idea_upserted", handleIdeaUpserted)
+    socket.on("idea_shortlist_updated", handleIdeaShortlistUpdated)
     socket.on("idea_image_generated", handleIdeaImageGenerated)
 
     return () => {
+      socket.off("idea_upserted", handleIdeaUpserted)
+      socket.off("idea_shortlist_updated", handleIdeaShortlistUpdated)
       socket.off("idea_image_generated", handleIdeaImageGenerated)
     }
-  }, [workshopCode, queryClient, ideasQueryOptions.queryKey])
+  }, [
+    workshopCode,
+    selectedTeamId,
+    selectedPillarId,
+    queryClient,
+    ideasQueryOptions.queryKey,
+  ])
 
   const shortlistIdeaMutation = useShortlistIdea()
 

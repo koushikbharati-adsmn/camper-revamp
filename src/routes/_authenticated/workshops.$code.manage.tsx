@@ -37,6 +37,7 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { Spinner } from "@/components/ui/spinner"
 import { toast } from "@/components/ui/toast"
 import { formatRelativeDate } from "@/lib/date"
+import { socket } from "@/lib/socket"
 import {
   type WorkshopLifecycleStatus,
   type WorkshopStatus,
@@ -54,7 +55,11 @@ import {
   useExportPpt,
   useUpdateWorkshopStatus,
 } from "@/services/workshops-manage"
-import { useQuery, useSuspenseQuery } from "@tanstack/react-query"
+import {
+  useQuery,
+  useQueryClient,
+  useSuspenseQuery,
+} from "@tanstack/react-query"
 import {
   createFileRoute,
   type ErrorComponentProps,
@@ -87,6 +92,11 @@ import {
 } from "lucide-react"
 import { useEffect, useRef, useState } from "react"
 import { useWorkshopTimer } from "@/hooks/use-workshop-timer"
+import type {
+  IdeaImageSocketPayload,
+  IdeaShortlistSocketPayload,
+  IdeaUpsertSocketPayload,
+} from "@/services/participants"
 import { z } from "zod"
 
 type TimerStatus = "idle" | "running" | "paused"
@@ -125,9 +135,17 @@ function RouteComponent() {
   const updateStatusMutation = useUpdateWorkshopStatus()
   const exportPptMutation = useExportPpt()
 
+  const queryClient = useQueryClient()
+
   const [pendingTransition, setPendingTransition] =
     useState<WorkshopStatus | null>(null)
   const [previewIdeaId, setPreviewIdeaId] = useState<number | null>(null)
+
+  const ideasQueryOptions = getManageIdeasOptions({
+    code,
+    team_id: team ?? null,
+    category_id: pillar ?? null,
+  })
 
   const {
     data: ideas = [],
@@ -135,11 +153,7 @@ function RouteComponent() {
     refetch: refetchIdeas,
     error: ideasError,
   } = useQuery({
-    ...getManageIdeasOptions({
-      code,
-      team_id: team ?? null,
-      category_id: pillar ?? null,
-    }),
+    ...ideasQueryOptions,
     select: (data) => data.data,
   })
 
@@ -151,6 +165,142 @@ function RouteComponent() {
   const hasPreviousIdea = previewIdeaIndex > 0
   const hasNextIdea =
     previewIdeaIndex >= 0 && previewIdeaIndex < ideas.length - 1
+
+  useEffect(() => {
+    const handleIdeaUpserted = ({
+      roomId,
+      idea: socketIdea,
+    }: IdeaUpsertSocketPayload) => {
+      if (roomId !== code) return
+
+      queryClient.setQueryData(ideasQueryOptions.queryKey, (current) => {
+        if (!current) return current
+
+        const existingIdea = current.data.find(
+          (idea) => idea.ID === socketIdea.ideaId
+        )
+
+        const matchesTeam = team === undefined || socketIdea.teamId === team
+
+        const matchesPillar =
+          pillar === undefined || socketIdea.categoryId === pillar
+
+        const matchesFilters = matchesTeam && matchesPillar
+
+        // Existing idea moved outside the currently selected filters.
+        if (existingIdea && !matchesFilters) {
+          return {
+            ...current,
+            data: current.data.filter((idea) => idea.ID !== socketIdea.ideaId),
+          }
+        }
+
+        // Update existing idea.
+        if (existingIdea) {
+          return {
+            ...current,
+            data: current.data.map((idea) =>
+              idea.ID === socketIdea.ideaId
+                ? {
+                    ...idea,
+                    TeamID: socketIdea.teamId,
+                    TeamName: socketIdea.teamName,
+                    CategoryID: socketIdea.categoryId,
+                    CategoryName: socketIdea.categoryName,
+                    Desc: socketIdea.desc,
+                    title: socketIdea.title,
+                  }
+                : idea
+            ),
+          }
+        }
+
+        // New idea does not belong to the currently selected filters.
+        if (!matchesFilters) {
+          return current
+        }
+
+        const newIdea: ManageIdea = {
+          ID: socketIdea.ideaId,
+          WorkshopID: 0,
+          TeamID: socketIdea.teamId,
+          TeamName: socketIdea.teamName,
+          CategoryID: socketIdea.categoryId,
+          CategoryName: socketIdea.categoryName,
+          title: socketIdea.title || null,
+          Desc: socketIdea.desc,
+          imageFileName: null,
+          CreatedDttm: new Date().toISOString(),
+          TotalVote: 0,
+          flgTeam: false,
+          flgCoach: false,
+        }
+
+        return {
+          ...current,
+          data: [...current.data, newIdea],
+        }
+      })
+    }
+
+    const handleIdeaShortlistUpdated = ({
+      roomId,
+      isShortlisted,
+      idea: socketIdea,
+    }: IdeaShortlistSocketPayload) => {
+      if (roomId !== code) return
+
+      queryClient.setQueryData(ideasQueryOptions.queryKey, (current) => {
+        if (!current) return current
+
+        return {
+          ...current,
+          data: current.data.map((idea) =>
+            idea.ID === socketIdea.ID
+              ? {
+                  ...idea,
+                  flgTeam: isShortlisted,
+                }
+              : idea
+          ),
+        }
+      })
+    }
+
+    const handleIdeaImageGenerated = ({
+      roomId,
+      ideaId,
+      imageUrl,
+    }: IdeaImageSocketPayload) => {
+      if (roomId !== code) return
+
+      queryClient.setQueryData(ideasQueryOptions.queryKey, (current) => {
+        if (!current) return current
+
+        return {
+          ...current,
+          data: current.data.map((idea) =>
+            idea.ID === ideaId
+              ? {
+                  ...idea,
+                  imageFileName: imageUrl,
+                }
+              : idea
+          ),
+        }
+      })
+    }
+
+    socket.on("idea_upserted", handleIdeaUpserted)
+    socket.on("idea_shortlist_updated", handleIdeaShortlistUpdated)
+    socket.on("idea_image_generated", handleIdeaImageGenerated)
+
+    return () => {
+      socket.off("idea_upserted", handleIdeaUpserted)
+      socket.off("idea_shortlist_updated", handleIdeaShortlistUpdated)
+      socket.off("idea_image_generated", handleIdeaImageGenerated)
+    }
+  }, [code, team, pillar, queryClient, ideasQueryOptions.queryKey])
 
   const {
     timer,
@@ -1127,9 +1277,10 @@ function IdeaPreviewDialog({
 }
 
 function IdeaThumbnail({ idea }: { idea: ManageIdea }) {
-  const [hasError, setHasError] = useState(false)
+  const [failedImageUrl, setFailedImageUrl] = useState<string | null>(null)
+  const imageUrl = idea.imageFileName?.trim() || null
 
-  if (!idea.imageFileName?.trim() || hasError) {
+  if (!imageUrl || failedImageUrl === imageUrl) {
     return (
       <div
         className="flex size-full items-center justify-center text-muted-foreground"
@@ -1142,10 +1293,10 @@ function IdeaThumbnail({ idea }: { idea: ManageIdea }) {
 
   return (
     <img
-      src={idea.imageFileName}
+      src={imageUrl}
       alt={`${idea.title ?? "Untitled"} submission thumbnail`}
       className="size-full object-contain"
-      onError={() => setHasError(true)}
+      onError={() => setFailedImageUrl(imageUrl)}
     />
   )
 }

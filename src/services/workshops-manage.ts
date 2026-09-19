@@ -36,6 +36,11 @@ export interface GetManageWorkshopResponse {
   data: ManageWorkshop
 }
 
+export const manageWorkshopKeys = {
+  all: ["MANAGE_WORKSHOP"] as const,
+  detail: (code: string) => [...manageWorkshopKeys.all, code] as const,
+}
+
 const getManageWorkshop = async (code: string) => {
   const res = await apiClient.get<GetManageWorkshopResponse>(
     "/admin/run/workshop",
@@ -53,7 +58,7 @@ const getManageWorkshop = async (code: string) => {
 
 export function getManageWorkshopOptions(code: string) {
   return queryOptions({
-    queryKey: ["MANAGE_WORKSHOP", code],
+    queryKey: manageWorkshopKeys.detail(code),
     queryFn: () => getManageWorkshop(code),
   })
 }
@@ -86,6 +91,12 @@ export interface GetManageIdeasParams {
   category_id: number | null
 }
 
+export const manageIdeaKeys = {
+  all: ["MANAGE_IDEAS"] as const,
+  list: (params: GetManageIdeasParams) =>
+    [...manageIdeaKeys.all, params] as const,
+}
+
 const getManageIdeas = async (params: GetManageIdeasParams) => {
   const res = await apiClient.get<GetManageIdeasResponse>("/admin/run/ideas", {
     params: { ...params, shortlist: "none" },
@@ -100,7 +111,7 @@ const getManageIdeas = async (params: GetManageIdeasParams) => {
 
 export function getManageIdeasOptions(params: GetManageIdeasParams) {
   return queryOptions({
-    queryKey: ["MANAGE_IDEAS", params],
+    queryKey: manageIdeaKeys.list(params),
     queryFn: () => getManageIdeas(params),
   })
 }
@@ -129,7 +140,7 @@ export const useUpdateWorkshopStatus = () => {
 
     onSuccess: (response, { code, status }) => {
       queryClient.setQueryData<GetManageWorkshopResponse>(
-        ["MANAGE_WORKSHOP", code],
+        manageWorkshopKeys.detail(code),
         (current) =>
           current
             ? {

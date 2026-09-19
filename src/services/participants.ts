@@ -155,6 +155,11 @@ export interface SocketIdea {
   context: string | null
 }
 
+export interface IdeaUpsertSocketPayload {
+  roomId: string
+  idea: SocketIdea
+}
+
 interface GetParticipantIdeasResponse {
   success: boolean
   data: ParticipantIdea[]
