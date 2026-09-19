@@ -38,6 +38,7 @@ import {
   ChevronRightIcon,
   ClockIcon,
   EyeIcon,
+  FullscreenIcon,
   ImagePlusIcon,
   PlusIcon,
   RefreshCwIcon,
@@ -1039,6 +1040,10 @@ function IdeasScreen({
 
   const [editingIdea, setEditingIdea] = useState<ParticipantIdea | null>(null)
 
+  const [fullscreenIdea, setFullscreenIdea] = useState<ParticipantIdea | null>(
+    null
+  )
+
   const selectedPillar = pillars.find(
     (pillar) => pillar.ID === selectedPillarId
   )
@@ -1218,6 +1223,14 @@ function IdeasScreen({
     setIsScoutDialogOpen(false)
   }
 
+  const handleOpenFullscreenImage = (idea: ParticipantIdea) => {
+    setFullscreenIdea(idea)
+  }
+
+  const handleCloseFullscreenImage = () => {
+    setFullscreenIdea(null)
+  }
+
   return (
     <section className="container mx-auto w-full p-4 sm:p-6 lg:p-8">
       <IdeaDialog
@@ -1236,6 +1249,14 @@ function IdeasScreen({
         isError={scoutIdeaMutation.isError}
         onClose={handleCloseScoutDialog}
       />
+
+      {fullscreenIdea && (
+        <IdeaImageFullscreenDialog
+          idea={fullscreenIdea}
+          open
+          onClose={handleCloseFullscreenImage}
+        />
+      )}
 
       <div className="mb-6 flex flex-col items-stretch justify-end gap-3 lg:flex-row lg:items-center">
         <label>
@@ -1325,6 +1346,7 @@ function IdeasScreen({
                   shortlistIdeaMutation.variables?.idea_id === idea.ID
                 }
                 onGenerateImage={() => handleGenerateIdeaImage(idea)}
+                onOpenImage={() => handleOpenFullscreenImage(idea)}
                 onToggleShortlist={() => handleToggleShortlist(idea)}
                 onEdit={() => handleEditIdea(idea)}
               />
@@ -1370,6 +1392,7 @@ function IdeateIdeaCard({
   isImageActionPending,
   isShortlistPending,
   onGenerateImage,
+  onOpenImage,
   onToggleShortlist,
   onEdit,
 }: {
@@ -1378,6 +1401,7 @@ function IdeateIdeaCard({
   isImageActionPending: boolean
   isShortlistPending: boolean
   onGenerateImage: () => void
+  onOpenImage: () => void
   onToggleShortlist: () => void
   onEdit: () => void
 }) {
@@ -1394,19 +1418,29 @@ function IdeateIdeaCard({
               className="size-full object-contain"
             />
 
-            <button
-              type="button"
-              className="absolute right-2 bottom-2 grid size-8 place-content-center rounded-md bg-neutral-950 text-white disabled:cursor-wait disabled:opacity-50"
-              aria-label={`Regenerate the image for ${idea.title || "idea"}`}
-              aria-busy={isGeneratingImage}
-              disabled={isImageActionPending}
-              onClick={onGenerateImage}
-            >
-              <RefreshCwIcon
-                className={cn("size-4", isGeneratingImage && "animate-spin")}
-                aria-hidden="true"
-              />
-            </button>
+            <div className="absolute right-2 bottom-2 flex items-center gap-2">
+              <button
+                type="button"
+                className="grid size-8 place-content-center rounded-md bg-neutral-950 text-white disabled:cursor-wait disabled:opacity-50"
+                aria-label={`Regenerate the image for ${idea.title || "idea"}`}
+                aria-busy={isGeneratingImage}
+                disabled={isImageActionPending}
+                onClick={onGenerateImage}
+              >
+                <RefreshCwIcon
+                  className={cn("size-4", isGeneratingImage && "animate-spin")}
+                  aria-hidden="true"
+                />
+              </button>
+              <button
+                type="button"
+                className="grid size-8 place-content-center rounded-md bg-neutral-950 text-white disabled:cursor-wait disabled:opacity-50"
+                aria-label={`Open the image for ${idea.title || "idea"} in fullscreen`}
+                onClick={onOpenImage}
+              >
+                <FullscreenIcon className="size-4" aria-hidden="true" />
+              </button>
+            </div>
           </>
         ) : (
           <button
@@ -1497,6 +1531,53 @@ function IdeateIdeaCard({
         </ExperienceButton>
       </div>
     </li>
+  )
+}
+
+/* -------------------------------------------------------------------------- */
+/* Fullscreen idea image                                                      */
+/* -------------------------------------------------------------------------- */
+
+function IdeaImageFullscreenDialog({
+  idea,
+  open,
+  onClose,
+}: {
+  idea: ParticipantIdea
+  open: boolean
+  onClose: () => void
+}) {
+  const dialogRef = useNativeDialog(open)
+  const ideaTitle = idea.title || "Untitled idea"
+
+  return (
+    <dialog
+      ref={dialogRef}
+      aria-labelledby="fullscreen-idea-image-title"
+      className="fixed inset-0 m-0 h-dvh max-h-dvh w-full max-w-none overflow-hidden border-0 bg-black/95 p-0 text-white backdrop-blur-sm"
+      onClose={onClose}
+    >
+      <div className="relative flex size-full items-center justify-center p-4 sm:p-8">
+        <h2 id="fullscreen-idea-image-title" className="sr-only">
+          {ideaTitle} image
+        </h2>
+
+        <img
+          src={idea.imageFileName}
+          alt={ideaTitle}
+          className="max-h-full max-w-full object-contain"
+        />
+
+        <button
+          type="button"
+          className="absolute top-4 right-4 grid size-10 place-items-center rounded-full bg-black/70 text-white ring-1 ring-white/30 transition-colors hover:bg-black focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white sm:top-6 sm:right-6"
+          aria-label="Close fullscreen image"
+          onClick={onClose}
+        >
+          <XIcon className="size-5" aria-hidden="true" />
+        </button>
+      </div>
+    </dialog>
   )
 }
 
