@@ -6,11 +6,11 @@ import {
   useState,
 } from "react"
 import {
+  ChevronRightIcon,
   CircleAlertIcon,
   LoaderCircleIcon,
   RefreshCwIcon,
   SendIcon,
-  SparklesIcon,
   SquarePenIcon,
   UsersIcon,
   XIcon,
@@ -215,14 +215,6 @@ function CoachSelectionView({
         style={{ borderColor: workshop.card_primary_border_color }}
       >
         <div className="min-w-0">
-          <p
-            className="mb-1 flex items-center gap-2 text-xs font-semibold tracking-[0.16em] uppercase"
-            style={{ color: workshop.txt_secondary_color }}
-          >
-            <SparklesIcon className="size-4" aria-hidden="true" />
-            Sharpen
-          </p>
-
           <h2
             id="sharpen-dialog-title"
             className="text-xl font-semibold tracking-tight sm:text-2xl"
@@ -244,7 +236,7 @@ function CoachSelectionView({
                     type="button"
                     className={cn(
                       "flex h-full min-h-52 w-full flex-col items-start rounded-lg border p-5 text-left",
-                      "transition-[transform,box-shadow] hover:-translate-y-0.5 hover:shadow-md",
+                      "transition-[transform,box-shadow]",
                       "focus-visible:outline-2 focus-visible:outline-offset-2"
                     )}
                     style={{
@@ -285,8 +277,9 @@ function CoachSelectionView({
                       {coach.Description}
                     </p>
 
-                    <span className="mt-auto pt-5 text-sm font-semibold">
+                    <span className="mt-auto inline-flex items-center pt-5 text-sm font-semibold">
                       Start a conversation
+                      <ChevronRightIcon className="size-5" aria-hidden="true" />
                     </span>
                   </button>
                 </li>
@@ -392,18 +385,18 @@ function ChatView({
             <CoachAvatar coach={coach} className="size-11" />
 
             <div className="min-w-0">
-              <p
-                className="text-xs font-semibold tracking-[0.14em] uppercase"
-                style={{ color: workshop.txt_secondary_color }}
-              >
-                Sharpening with
-              </p>
               <h2
                 id="sharpen-dialog-title"
                 className="truncate text-lg leading-tight font-semibold"
               >
                 {coach.CoachName}
               </h2>
+              <p
+                className="text-sm"
+                style={{ color: workshop.txt_secondary_color }}
+              >
+                {coach.Title}
+              </p>
             </div>
           </div>
 
@@ -541,12 +534,6 @@ function ChatView({
                   >
                     {message.text}
 
-                    {message.status === "pending" && (
-                      <span className="mt-1 block text-xs opacity-70">
-                        Sending...
-                      </span>
-                    )}
-
                     {message.status === "failed" && (
                       <span className="mt-1 block text-xs font-medium">
                         Not confirmed
@@ -562,18 +549,14 @@ function ChatView({
                 <CoachAvatar coach={coach} className="size-8 shrink-0" />
 
                 <div
-                  className="flex items-center gap-2 rounded-2xl rounded-bl-sm border px-4 py-3 text-sm"
+                  className="rounded-2xl rounded-bl-sm border px-4 py-3 text-sm"
                   style={{
                     backgroundColor: workshop.card_secondary_bg_color,
                     borderColor: workshop.card_primary_border_color,
                     color: workshop.card_secondary_txt_color,
                   }}
                 >
-                  <LoaderCircleIcon
-                    className="size-4 animate-spin"
-                    aria-hidden="true"
-                  />
-                  {coach.CoachName} is thinking...
+                  Thinking...
                 </div>
               </div>
             )}
@@ -588,28 +571,25 @@ function ChatView({
         style={{ borderColor: workshop.card_primary_border_color }}
         onSubmit={onSendMessage}
       >
-        <div className="mx-auto flex w-full max-w-3xl items-end gap-2 sm:gap-3">
-          <label className="min-w-0 flex-1">
-            <span className="sr-only">Message {coach.CoachName}</span>
-            <textarea
-              autoFocus
-              rows={1}
-              value={draft}
-              disabled={isComposerDisabled}
-              placeholder={composerPlaceholder}
-              className={cn(
-                "max-h-32 min-h-11 w-full resize-none rounded-lg border bg-transparent px-3 py-2.5",
-                "text-sm leading-6 outline-none",
-                "focus-visible:outline-2 focus-visible:outline-offset-2"
-              )}
-              style={{
-                borderColor: workshop.card_primary_border_color,
-                outlineColor: workshop.btn_primary_bg_color,
-              }}
-              onChange={(event) => onDraftChange(event.target.value)}
-              onKeyDown={onComposerKeyDown}
-            />
-          </label>
+        <div className="mx-auto flex w-full max-w-3xl items-center gap-2 sm:gap-3">
+          <textarea
+            autoFocus
+            rows={1}
+            value={draft}
+            disabled={isComposerDisabled}
+            placeholder={composerPlaceholder}
+            className={cn(
+              "max-h-32 min-h-11 w-full resize-none rounded-lg border bg-transparent px-3 py-2.5",
+              "text-sm leading-6 outline-none",
+              "focus-visible:outline-2 focus-visible:outline-offset-2"
+            )}
+            style={{
+              borderColor: workshop.card_primary_border_color,
+              outlineColor: workshop.btn_primary_bg_color,
+            }}
+            onChange={(event) => onDraftChange(event.target.value)}
+            onKeyDown={onComposerKeyDown}
+          />
 
           <ExperienceButton
             type="submit"
