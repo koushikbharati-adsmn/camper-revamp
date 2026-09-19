@@ -180,6 +180,11 @@ export const participantIdeaKeys = {
     [...participantIdeaKeys.all, params] as const,
 }
 
+export const participantIdeaMutationKeys = {
+  shortlist: ["PARTICIPANT_IDEA_SHORTLIST"] as const,
+  generateImage: ["PARTICIPANT_IDEA_GENERATE_IMAGE"] as const,
+}
+
 const getParticipantIdeas = async (params: GetParticipantIdeasParams) => {
   const res = await apiClient.get<GetParticipantIdeasResponse>(
     "/api/participant/idea",
@@ -272,6 +277,7 @@ const shortlistIdea = async (payload: ShortlistIdeaPayload) => {
 
 export const useShortlistIdea = () => {
   return useMutation({
+    mutationKey: participantIdeaMutationKeys.shortlist,
     mutationFn: shortlistIdea,
 
     onSuccess: (_response, { workshop_code, flag, idea }) => {
@@ -324,6 +330,7 @@ export const useGenerateIdeaImage = () => {
   const queryClient = useQueryClient()
 
   return useMutation({
+    mutationKey: participantIdeaMutationKeys.generateImage,
     mutationFn: generateIdeaImage,
 
     onSuccess: async () => {

@@ -1,19 +1,23 @@
 import { getVisitorId } from "@/lib/fingerprint"
 import { toast } from "@/components/ui/toast"
 import {
+  type GenerateIdeaImagePayload,
+  type IdeaShortlistSocketPayload,
   type ParticipantIdea,
   type ParticipantWorkshop,
+  type ShortlistIdeaPayload,
+  type SocketIdea,
   getParticipantIdeasOptions,
   getParticipantWorkshopOptions,
+  participantIdeaMutationKeys,
   useGenerateIdeaImage,
   useSaveIdea,
   useScoutIdea,
   useShortlistIdea,
-  type SocketIdea,
-  type IdeaShortlistSocketPayload,
 } from "@/services/participants"
 import {
   queryOptions,
+  useMutationState,
   useQuery,
   useQueryClient,
   useSuspenseQuery,
@@ -1222,6 +1226,24 @@ function IdeasScreen({
   const shortlistIdeaMutation = useShortlistIdea()
   const scoutIdeaMutation = useScoutIdea()
 
+  const pendingImageIdeaIds = useMutationState<number>({
+    filters: {
+      mutationKey: participantIdeaMutationKeys.generateImage,
+      status: "pending",
+    },
+    select: (mutation) =>
+      (mutation.state.variables as GenerateIdeaImagePayload).idea_id,
+  })
+
+  const pendingShortlistIdeaIds = useMutationState<number>({
+    filters: {
+      mutationKey: participantIdeaMutationKeys.shortlist,
+      status: "pending",
+    },
+    select: (mutation) =>
+      (mutation.state.variables as ShortlistIdeaPayload).idea_id,
+  })
+
   const handleOpenNewIdeaDialog = () => {
     setEditingIdea(null)
     setIsIdeaDialogOpen(true)
@@ -1401,15 +1423,8 @@ function IdeasScreen({
               <IdeateIdeaCard
                 key={idea.ID}
                 idea={idea}
-                isGeneratingImage={
-                  generateIdeaImageMutation.isPending &&
-                  generateIdeaImageMutation.variables?.idea_id === idea.ID
-                }
-                isImageActionPending={generateIdeaImageMutation.isPending}
-                isShortlistPending={
-                  shortlistIdeaMutation.isPending &&
-                  shortlistIdeaMutation.variables?.idea_id === idea.ID
-                }
+                isGeneratingImage={pendingImageIdeaIds.includes(idea.ID)}
+                isShortlistPending={pendingShortlistIdeaIds.includes(idea.ID)}
                 onGenerateImage={() => handleGenerateIdeaImage(idea)}
                 onOpenImage={() => handleOpenFullscreenImage(idea)}
                 onToggleShortlist={() => handleToggleShortlist(idea)}
@@ -1454,7 +1469,6 @@ function IdeasScreen({
 function IdeateIdeaCard({
   idea,
   isGeneratingImage,
-  isImageActionPending,
   isShortlistPending,
   onGenerateImage,
   onOpenImage,
@@ -1463,7 +1477,6 @@ function IdeateIdeaCard({
 }: {
   idea: ParticipantIdea
   isGeneratingImage: boolean
-  isImageActionPending: boolean
   isShortlistPending: boolean
   onGenerateImage: () => void
   onOpenImage: () => void
@@ -1489,7 +1502,7 @@ function IdeateIdeaCard({
                 className="grid size-8 place-content-center rounded-md bg-neutral-950 text-white disabled:cursor-wait disabled:opacity-50"
                 aria-label={`Regenerate the image for ${idea.title || "idea"}`}
                 aria-busy={isGeneratingImage}
-                disabled={isImageActionPending}
+                disabled={isGeneratingImage}
                 onClick={onGenerateImage}
               >
                 <RefreshCwIcon
@@ -1513,7 +1526,7 @@ function IdeateIdeaCard({
             className="flex h-full w-full flex-col items-center justify-center gap-2 text-neutral-400 disabled:cursor-wait disabled:opacity-50"
             aria-label={`Generate an image for ${idea.title || "idea"}`}
             aria-busy={isGeneratingImage}
-            disabled={isImageActionPending}
+            disabled={isGeneratingImage}
             onClick={onGenerateImage}
           >
             <ImagePlusIcon className="size-9" aria-hidden="true" />
@@ -1808,6 +1821,15 @@ function StageScreen() {
 
   const shortlistIdeaMutation = useShortlistIdea()
 
+  const pendingShortlistIdeaIds = useMutationState<number>({
+    filters: {
+      mutationKey: participantIdeaMutationKeys.shortlist,
+      status: "pending",
+    },
+    select: (mutation) =>
+      (mutation.state.variables as ShortlistIdeaPayload).idea_id,
+  })
+
   const handleTeamChange = (event: ChangeEvent<HTMLSelectElement>) => {
     setPreviewIdeaId(null)
     setSelectedTeamId(parseOptionalId(event.target.value))
@@ -1919,10 +1941,7 @@ function StageScreen() {
               <StageIdeaCard
                 key={idea.ID}
                 idea={idea}
-                isShortlistPending={
-                  shortlistIdeaMutation.isPending &&
-                  shortlistIdeaMutation.variables?.idea_id === idea.ID
-                }
+                isShortlistPending={pendingShortlistIdeaIds.includes(idea.ID)}
                 onRemoveFromShortlist={() => handleRemoveFromShortlist(idea)}
                 onPreview={() => handlePreviewIdea(idea)}
               />
