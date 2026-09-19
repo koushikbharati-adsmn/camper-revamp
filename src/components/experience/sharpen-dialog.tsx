@@ -6,6 +6,9 @@ import {
   useState,
 } from "react"
 import {
+  CircleAlertIcon,
+  LoaderCircleIcon,
+  RefreshCwIcon,
   SendIcon,
   SparklesIcon,
   SquarePenIcon,
@@ -14,24 +17,28 @@ import {
 } from "lucide-react"
 
 import { ExperienceButton } from "@/components/experience/experience-button"
+import {
+  type ParticipantChatConnectionStatus,
+  useParticipantChat,
+} from "@/hooks/use-participant-chat"
 import { cn, getInitials } from "@/lib/utils"
+import {
+  retryPendingParticipantChatDeletions,
+  type ParticipantChatMessage,
+} from "@/services/participant-chat"
 import type {
   ParticipantIdea,
   ParticipantWorkshop,
   ParticipantWorkshopCoach,
 } from "@/services/participants"
 
-type SharpenMessage = {
-  id: string
-  author: "coach" | "participant"
-  text: string
-}
-
 export function SharpenDialog({
   open,
   idea,
   coaches,
   workshop,
+  visitorId,
+  workshopCode,
   onClose,
   onEditIdea,
 }: {
@@ -39,18 +46,29 @@ export function SharpenDialog({
   idea: ParticipantIdea
   coaches: ParticipantWorkshopCoach[]
   workshop: ParticipantWorkshop
+  visitorId: string
+  workshopCode: string
   onClose: () => void
   onEditIdea: () => void
 }) {
   const dialogRef = useRef<HTMLDialogElement>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
-  const nextMessageId = useRef(1)
   const [selectedCoachId, setSelectedCoachId] = useState<number | null>(null)
-  const [messages, setMessages] = useState<SharpenMessage[]>([])
   const [draft, setDraft] = useState("")
+  const [cleanupPersistenceError, setCleanupPersistenceError] = useState<
+    string | null
+  >(null)
 
   const selectedCoach =
     coaches.find((coach) => coach.ID === selectedCoachId) ?? null
+
+  const chat = useParticipantChat({
+    open,
+    visitorId,
+    workshopCode,
+    idea,
+    coach: selectedCoach,
+  })
 
   useEffect(() => {
     const dialog = dialogRef.current
@@ -69,42 +87,38 @@ export function SharpenDialog({
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ block: "nearest" })
-  }, [messages])
+  }, [chat.isWaiting, chat.session.messages])
+
+  useEffect(() => {
+    void retryPendingParticipantChatDeletions({
+      visitorId,
+      workshopCode,
+      ideaId: idea.ID,
+    }).then(({ storageFailed }) => {
+      setCleanupPersistenceError(
+        storageFailed
+          ? "Chat cleanup could not be saved because browser storage is unavailable."
+          : null
+      )
+    })
+  }, [idea.ID, visitorId, workshopCode])
 
   const handleSelectCoach = (coach: ParticipantWorkshopCoach) => {
     setSelectedCoachId(coach.ID)
     setDraft("")
-    setMessages([
-      {
-        id: "coach-introduction",
-        author: "coach",
-        text: `Hi, I'm ${coach.CoachName}. Let's sharpen ${idea.title || "this idea"}. What would you like to explore first?`,
-      },
-    ])
   }
 
   const handleChangeCoach = () => {
+    if (chat.isWaiting) return
+
     setSelectedCoachId(null)
-    setMessages([])
     setDraft("")
   }
 
   const handleSendMessage = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
 
-    const text = draft.trim()
-
-    if (!text || !selectedCoach) return
-
-    setMessages((current) => [
-      ...current,
-      {
-        id: `participant-message-${nextMessageId.current++}`,
-        author: "participant",
-        text,
-      },
-    ])
-    setDraft("")
+    if (chat.sendMessage(draft)) setDraft("")
   }
 
   const handleComposerKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>) => {
@@ -131,6 +145,9 @@ export function SharpenDialog({
         "sm:m-auto sm:h-[min(48rem,calc(100dvh-2rem))]",
         "sm:w-[min(64rem,calc(100%-2rem))]"
       )}
+      onCancel={(event) => {
+        if (chat.isWaiting) event.preventDefault()
+      }}
       onClose={onClose}
     >
       <div
@@ -148,16 +165,24 @@ export function SharpenDialog({
         {selectedCoach ? (
           <ChatView
             coach={selectedCoach}
-            messages={messages}
+            messages={chat.session.messages}
             draft={draft}
             messagesEndRef={messagesEndRef}
             workshop={workshop}
+            connectionStatus={chat.connectionStatus}
+            connectionError={chat.connectionError}
+            requestError={chat.requestError}
+            persistenceError={chat.persistenceError ?? cleanupPersistenceError}
+            sessionStatus={chat.session.status}
+            sessionStatusMessage={chat.session.statusMessage}
+            isWaiting={chat.isWaiting}
             onChangeCoach={handleChangeCoach}
             onClose={onClose}
             onEditIdea={onEditIdea}
             onDraftChange={setDraft}
             onComposerKeyDown={handleComposerKeyDown}
             onSendMessage={handleSendMessage}
+            onReconnect={chat.reconnect}
           />
         ) : (
           <CoachSelectionView
@@ -309,25 +334,53 @@ function ChatView({
   draft,
   messagesEndRef,
   workshop,
+  connectionStatus,
+  connectionError,
+  requestError,
+  persistenceError,
+  sessionStatus,
+  sessionStatusMessage,
+  isWaiting,
   onChangeCoach,
   onClose,
   onEditIdea,
   onDraftChange,
   onComposerKeyDown,
   onSendMessage,
+  onReconnect,
 }: {
   coach: ParticipantWorkshopCoach
-  messages: SharpenMessage[]
+  messages: ParticipantChatMessage[]
   draft: string
   messagesEndRef: React.RefObject<HTMLDivElement | null>
   workshop: ParticipantWorkshop
+  connectionStatus: ParticipantChatConnectionStatus
+  connectionError: string | null
+  requestError: string | null
+  persistenceError: string | null
+  sessionStatus: "active" | "ended" | "invalid"
+  sessionStatusMessage: string | null
+  isWaiting: boolean
   onChangeCoach: () => void
   onClose: () => void
   onEditIdea: () => void
   onDraftChange: (value: string) => void
   onComposerKeyDown: (event: KeyboardEvent<HTMLTextAreaElement>) => void
   onSendMessage: (event: FormEvent<HTMLFormElement>) => void
+  onReconnect: () => void
 }) {
+  const isConnected = connectionStatus === "connected"
+  const isTerminal = sessionStatus !== "active"
+  const isComposerDisabled = !isConnected || isWaiting || isTerminal
+
+  const composerPlaceholder = isTerminal
+    ? sessionStatus === "ended"
+      ? "Session has ended."
+      : "This session cannot continue."
+    : isConnected
+      ? `Message ${coach.CoachName}`
+      : "Connecting to your coach..."
+
   return (
     <>
       <header
@@ -354,7 +407,11 @@ function ChatView({
             </div>
           </div>
 
-          <CloseButton workshop={workshop} onClick={onClose} />
+          <CloseButton
+            workshop={workshop}
+            disabled={isWaiting}
+            onClick={onClose}
+          />
         </div>
 
         <div className="mt-3 flex flex-wrap gap-2">
@@ -362,6 +419,7 @@ function ChatView({
             variant="secondary"
             workshop={workshop}
             className="min-w-0 px-3 py-1.5"
+            disabled={isWaiting}
             onClick={onChangeCoach}
           >
             <span className="flex items-center gap-2">
@@ -374,6 +432,7 @@ function ChatView({
             variant="secondary"
             workshop={workshop}
             className="min-w-0 px-3 py-1.5"
+            disabled={isWaiting}
             onClick={onEditIdea}
           >
             <span className="flex items-center gap-2">
@@ -386,6 +445,44 @@ function ChatView({
 
       <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
         <div className="mx-auto grid w-full max-w-3xl gap-6 px-4 py-5 sm:px-6 sm:py-7">
+          {!isConnected && (
+            <ChatStatusNotice
+              kind={connectionStatus === "error" ? "error" : "loading"}
+              message={
+                connectionError ??
+                (connectionStatus === "reconnecting"
+                  ? "Reconnecting to your coach..."
+                  : "Connecting to your coach...")
+              }
+              workshop={workshop}
+              onRetry={connectionStatus === "error" ? onReconnect : undefined}
+            />
+          )}
+
+          {requestError && (
+            <ChatStatusNotice
+              kind="error"
+              message={requestError}
+              workshop={workshop}
+            />
+          )}
+
+          {persistenceError && (
+            <ChatStatusNotice
+              kind="error"
+              message={persistenceError}
+              workshop={workshop}
+            />
+          )}
+
+          {sessionStatusMessage && (
+            <ChatStatusNotice
+              kind="error"
+              message={sessionStatusMessage}
+              workshop={workshop}
+            />
+          )}
+
           <div
             className="grid gap-5"
             role="log"
@@ -395,6 +492,22 @@ function ChatView({
           >
             {messages.map((message) => {
               const isCoach = message.author === "coach"
+              const isSystem = message.author === "system"
+
+              if (isSystem) {
+                return (
+                  <p
+                    key={message.id}
+                    className="justify-self-center rounded-full border px-3 py-1.5 text-center text-xs"
+                    style={{
+                      borderColor: workshop.card_primary_border_color,
+                      color: workshop.txt_secondary_color,
+                    }}
+                  >
+                    {message.text}
+                  </p>
+                )
+              }
 
               return (
                 <div
@@ -427,10 +540,43 @@ function ChatView({
                     }
                   >
                     {message.text}
+
+                    {message.status === "pending" && (
+                      <span className="mt-1 block text-xs opacity-70">
+                        Sending...
+                      </span>
+                    )}
+
+                    {message.status === "failed" && (
+                      <span className="mt-1 block text-xs font-medium">
+                        Not confirmed
+                      </span>
+                    )}
                   </div>
                 </div>
               )
             })}
+
+            {isWaiting && (
+              <div className="flex max-w-[88%] items-end gap-2 justify-self-start sm:max-w-[75%]">
+                <CoachAvatar coach={coach} className="size-8 shrink-0" />
+
+                <div
+                  className="flex items-center gap-2 rounded-2xl rounded-bl-sm border px-4 py-3 text-sm"
+                  style={{
+                    backgroundColor: workshop.card_secondary_bg_color,
+                    borderColor: workshop.card_primary_border_color,
+                    color: workshop.card_secondary_txt_color,
+                  }}
+                >
+                  <LoaderCircleIcon
+                    className="size-4 animate-spin"
+                    aria-hidden="true"
+                  />
+                  {coach.CoachName} is thinking...
+                </div>
+              </div>
+            )}
 
             <div ref={messagesEndRef} aria-hidden="true" />
           </div>
@@ -449,7 +595,8 @@ function ChatView({
               autoFocus
               rows={1}
               value={draft}
-              placeholder={`Message ${coach.CoachName}`}
+              disabled={isComposerDisabled}
+              placeholder={composerPlaceholder}
               className={cn(
                 "max-h-32 min-h-11 w-full resize-none rounded-lg border bg-transparent px-3 py-2.5",
                 "text-sm leading-6 outline-none",
@@ -468,7 +615,8 @@ function ChatView({
             type="submit"
             workshop={workshop}
             className="grid size-11 min-w-0 shrink-0 place-items-center p-0"
-            disabled={!draft.trim()}
+            disabled={isComposerDisabled || !draft.trim()}
+            aria-busy={isWaiting}
             aria-label="Send message"
           >
             <SendIcon className="size-4" aria-hidden="true" />
@@ -476,6 +624,51 @@ function ChatView({
         </div>
       </form>
     </>
+  )
+}
+
+function ChatStatusNotice({
+  kind,
+  message,
+  workshop,
+  onRetry,
+}: {
+  kind: "error" | "loading"
+  message: string
+  workshop: ParticipantWorkshop
+  onRetry?: () => void
+}) {
+  return (
+    <div
+      className="flex items-center gap-3 rounded-lg border px-4 py-3 text-sm"
+      style={{ borderColor: workshop.card_primary_border_color }}
+      role={kind === "error" ? "alert" : "status"}
+    >
+      {kind === "loading" ? (
+        <LoaderCircleIcon
+          className="size-5 shrink-0 animate-spin"
+          aria-hidden="true"
+        />
+      ) : (
+        <CircleAlertIcon className="size-5 shrink-0" aria-hidden="true" />
+      )}
+
+      <p className="min-w-0 flex-1">{message}</p>
+
+      {onRetry && (
+        <ExperienceButton
+          variant="secondary"
+          workshop={workshop}
+          className="min-w-0 px-3 py-1.5"
+          onClick={onRetry}
+        >
+          <span className="flex items-center gap-2">
+            <RefreshCwIcon className="size-4" aria-hidden="true" />
+            Retry
+          </span>
+        </ExperienceButton>
+      )}
+    </div>
   )
 }
 
@@ -513,9 +706,11 @@ function CoachAvatar({
 
 function CloseButton({
   workshop,
+  disabled = false,
   onClick,
 }: {
   workshop: ParticipantWorkshop
+  disabled?: boolean
   onClick: () => void
 }) {
   return (
@@ -524,13 +719,15 @@ function CloseButton({
       className={cn(
         "grid size-10 shrink-0 place-items-center rounded-full border",
         "transition-colors hover:bg-black/5",
-        "focus-visible:outline-2 focus-visible:outline-offset-2"
+        "focus-visible:outline-2 focus-visible:outline-offset-2",
+        "disabled:pointer-events-none disabled:opacity-50"
       )}
       style={{
         borderColor: workshop.card_primary_border_color,
         outlineColor: workshop.btn_primary_bg_color,
       }}
       aria-label="Close Sharpen"
+      disabled={disabled}
       onClick={onClick}
     >
       <XIcon className="size-5" aria-hidden="true" />

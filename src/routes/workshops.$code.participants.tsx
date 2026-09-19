@@ -71,6 +71,7 @@ import { cn } from "@/lib/utils"
 import { NewsroomStatsRows } from "@/components/experience/experience-stats-rows"
 import { ExperienceFooter } from "@/components/experience/experience-footer"
 import { SharpenDialog } from "@/components/experience/sharpen-dialog"
+// import { invalidateParticipantChatSessions } from "@/services/participant-chat"
 import { socket } from "@/lib/socket"
 
 /* -------------------------------------------------------------------------- */
@@ -1298,6 +1299,24 @@ function IdeasScreen({
     handleEditIdea(idea)
   }
 
+  // const handleIdeaSaved = ({
+  //   ideaId,
+  //   invalidateChats,
+  // }: {
+  //   ideaId: number
+  //   invalidateChats: boolean
+  // }) => {
+  //   if (!invalidateChats) return
+
+  //   void invalidateParticipantChatSessions({
+  //     visitorId,
+  //     workshopCode,
+  //     ideaId,
+  //   }).then(({ failedCount, storageFailed }) => {
+  //     if (failedCount === 0 && !storageFailed) return
+  //   })
+  // }
+
   const handleTeamSelectChange = (event: ChangeEvent<HTMLSelectElement>) => {
     onTeamChange(Number(event.target.value))
   }
@@ -1365,6 +1384,7 @@ function IdeasScreen({
         teamId={selectedTeamId}
         idea={editingIdea}
         onClose={handleCloseIdeaDialog}
+        // onSaved={handleIdeaSaved}
       />
 
       <ScoutDialog
@@ -1383,6 +1403,8 @@ function IdeasScreen({
           idea={sharpeningIdea}
           coaches={workshop.coaches}
           workshop={workshop}
+          visitorId={visitorId}
+          workshopCode={workshopCode}
           onClose={handleCloseSharpenDialog}
           onEditIdea={handleEditSharpeningIdea}
         />
@@ -2520,11 +2542,13 @@ function IdeaDialog({
   teamId,
   idea,
   onClose,
+  // onSaved,
 }: {
   open: boolean
   teamId: number
   idea: ParticipantIdea | null
   onClose: () => void
+  // onSaved: (result: { ideaId: number; invalidateChats: boolean }) => void
 }) {
   const { workshop, workshopCode, visitorId } = useParticipantExperience()
 
@@ -2622,6 +2646,11 @@ function IdeaDialog({
               context,
             },
           })
+
+          // onSaved({
+          //   ideaId: response.data.idea_id,
+          //   invalidateChats: Boolean(idea),
+          // })
 
           toast.add({
             type: "success",
