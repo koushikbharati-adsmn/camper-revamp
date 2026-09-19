@@ -1082,7 +1082,7 @@ function IdeasScreen({
                 ? {
                     ...idea,
                     CategoryID: socketIdea.categoryId,
-                    Category: socketIdea.categoryName,
+                    CategoryName: socketIdea.categoryName,
                     Desc: socketIdea.desc,
                     title: socketIdea.title,
                     Context: socketIdea.context,
@@ -1706,7 +1706,8 @@ function StageScreen() {
             idea.ID === socketIdea.ideaId
               ? {
                   ...idea,
-                  Category: socketIdea.categoryName,
+                  CategoryID: socketIdea.categoryId,
+                  CategoryName: socketIdea.categoryName,
                   Desc: socketIdea.desc,
                   title: socketIdea.title,
                   Context: socketIdea.context,
@@ -1737,6 +1738,12 @@ function StageScreen() {
       idea: socketIdea,
     }: IdeaShortlistSocketPayload) => {
       if (roomId !== workshopCode) return
+
+      if (!isShortlisted) {
+        setPreviewIdeaId((current) =>
+          current === socketIdea.ID ? null : current
+        )
+      }
 
       queryClient.setQueryData(ideasQueryOptions.queryKey, (oldData) => {
         if (!oldData?.data) return oldData
@@ -1802,10 +1809,12 @@ function StageScreen() {
   const shortlistIdeaMutation = useShortlistIdea()
 
   const handleTeamChange = (event: ChangeEvent<HTMLSelectElement>) => {
+    setPreviewIdeaId(null)
     setSelectedTeamId(parseOptionalId(event.target.value))
   }
 
   const handlePillarChange = (event: ChangeEvent<HTMLSelectElement>) => {
+    setPreviewIdeaId(null)
     setSelectedPillarId(parseOptionalId(event.target.value))
   }
 
