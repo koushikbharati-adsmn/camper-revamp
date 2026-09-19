@@ -2,6 +2,7 @@ import { getVisitorId } from "@/lib/fingerprint"
 import { toast } from "@/components/ui/toast"
 import {
   type GenerateIdeaImagePayload,
+  type IdeaImageSocketPayload,
   type IdeaShortlistSocketPayload,
   type ParticipantIdea,
   type ParticipantWorkshop,
@@ -1038,9 +1039,7 @@ function IdeasScreen({
 
   const [editingIdea, setEditingIdea] = useState<ParticipantIdea | null>(null)
 
-  const [fullscreenIdea, setFullscreenIdea] = useState<ParticipantIdea | null>(
-    null
-  )
+  const [fullscreenIdeaId, setFullscreenIdeaId] = useState<number | null>(null)
 
   const selectedPillar = pillars.find(
     (pillar) => pillar.ID === selectedPillarId
@@ -1222,9 +1221,46 @@ function IdeasScreen({
     ideasQueryOptions.queryKey,
   ])
 
+  useEffect(() => {
+    const handleIdeaImageGenerated = ({
+      roomId,
+      ideaId,
+      imageUrl,
+    }: IdeaImageSocketPayload) => {
+      if (roomId !== workshopCode) return
+
+      queryClient.setQueryData(ideasQueryOptions.queryKey, (oldData) => {
+        if (!oldData?.data) return oldData
+
+        return {
+          ...oldData,
+          data: oldData.data.map((idea) =>
+            idea.ID === ideaId
+              ? {
+                  ...idea,
+                  imageFileName: imageUrl,
+                }
+              : idea
+          ),
+        }
+      })
+    }
+
+    socket.on("idea_image_generated", handleIdeaImageGenerated)
+
+    return () => {
+      socket.off("idea_image_generated", handleIdeaImageGenerated)
+    }
+  }, [workshopCode, queryClient, ideasQueryOptions.queryKey])
+
   const generateIdeaImageMutation = useGenerateIdeaImage()
   const shortlistIdeaMutation = useShortlistIdea()
   const scoutIdeaMutation = useScoutIdea()
+
+  const fullscreenIdea =
+    fullscreenIdeaId === null
+      ? null
+      : (ideas.find((idea) => idea.ID === fullscreenIdeaId) ?? null)
 
   const pendingImageIdeaIds = useMutationState<number>({
     filters: {
@@ -1311,11 +1347,11 @@ function IdeasScreen({
   }
 
   const handleOpenFullscreenImage = (idea: ParticipantIdea) => {
-    setFullscreenIdea(idea)
+    setFullscreenIdeaId(idea.ID)
   }
 
   const handleCloseFullscreenImage = () => {
-    setFullscreenIdea(null)
+    setFullscreenIdeaId(null)
   }
 
   return (
@@ -1818,6 +1854,38 @@ function StageScreen() {
     queryClient,
     ideasQueryOptions.queryKey,
   ])
+
+  useEffect(() => {
+    const handleIdeaImageGenerated = ({
+      roomId,
+      ideaId,
+      imageUrl,
+    }: IdeaImageSocketPayload) => {
+      if (roomId !== workshopCode) return
+
+      queryClient.setQueryData(ideasQueryOptions.queryKey, (oldData) => {
+        if (!oldData?.data) return oldData
+
+        return {
+          ...oldData,
+          data: oldData.data.map((idea) =>
+            idea.ID === ideaId
+              ? {
+                  ...idea,
+                  imageFileName: imageUrl,
+                }
+              : idea
+          ),
+        }
+      })
+    }
+
+    socket.on("idea_image_generated", handleIdeaImageGenerated)
+
+    return () => {
+      socket.off("idea_image_generated", handleIdeaImageGenerated)
+    }
+  }, [workshopCode, queryClient, ideasQueryOptions.queryKey])
 
   const shortlistIdeaMutation = useShortlistIdea()
 

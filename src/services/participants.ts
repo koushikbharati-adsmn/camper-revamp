@@ -1,11 +1,7 @@
 import apiClient from "@/lib/api-client"
 import { socket } from "@/lib/socket"
 import type { WorkshopLifecycleStatus } from "@/lib/workshop-lifecycle"
-import {
-  queryOptions,
-  useMutation,
-  useQueryClient,
-} from "@tanstack/react-query"
+import { queryOptions, useMutation } from "@tanstack/react-query"
 import type { VotingScope } from "./workshops-panel"
 import { toast } from "@/components/ui/toast"
 
@@ -310,6 +306,12 @@ export interface GenerateIdeaImagePayload {
   brand_guidelines: string
 }
 
+export interface IdeaImageSocketPayload {
+  roomId: string
+  ideaId: number
+  imageUrl: string
+}
+
 interface GenerateIdeaImageResponse {
   success: boolean
   data: {
@@ -327,15 +329,15 @@ const generateIdeaImage = async (payload: GenerateIdeaImagePayload) => {
 }
 
 export const useGenerateIdeaImage = () => {
-  const queryClient = useQueryClient()
-
   return useMutation({
     mutationKey: participantIdeaMutationKeys.generateImage,
     mutationFn: generateIdeaImage,
 
-    onSuccess: async () => {
-      await queryClient.invalidateQueries({
-        queryKey: participantIdeaKeys.all,
+    onSuccess: (response, { workshop_code, idea_id }) => {
+      socket.emit("idea_image_generated", {
+        roomId: workshop_code,
+        ideaId: idea_id,
+        imageUrl: response.data.image,
       })
     },
 
