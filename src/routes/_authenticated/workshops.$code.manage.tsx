@@ -20,9 +20,9 @@ import {
 } from "@/components/ui/card"
 import {
   Dialog,
+  DialogClose,
   DialogContent,
   DialogDescription,
-  DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
@@ -64,6 +64,8 @@ import {
 import {
   ArrowLeftIcon,
   CheckIcon,
+  ChevronLeftIcon,
+  ChevronRightIcon,
   CircleIcon,
   Clock3Icon,
   DownloadIcon,
@@ -75,10 +77,13 @@ import {
   PauseIcon,
   PlayIcon,
   RotateCcwIcon,
+  ShapesIcon,
   ShieldAlertIcon,
+  SparklesIcon,
   StarIcon,
   TagsIcon,
   UsersIcon,
+  XIcon,
 } from "lucide-react"
 import { useEffect, useRef, useState } from "react"
 import { useWorkshopTimer } from "@/hooks/use-workshop-timer"
@@ -122,7 +127,7 @@ function RouteComponent() {
 
   const [pendingTransition, setPendingTransition] =
     useState<WorkshopStatus | null>(null)
-  const [previewIdea, setPreviewIdea] = useState<ManageIdea | null>(null)
+  const [previewIdeaId, setPreviewIdeaId] = useState<number | null>(null)
 
   const {
     data: ideas = [],
@@ -137,6 +142,15 @@ function RouteComponent() {
     }),
     select: (data) => data.data,
   })
+
+  const previewIdeaIndex =
+    previewIdeaId === null
+      ? -1
+      : ideas.findIndex((idea) => idea.ID === previewIdeaId)
+  const previewIdea = previewIdeaIndex === -1 ? null : ideas[previewIdeaIndex]
+  const hasPreviousIdea = previewIdeaIndex > 0
+  const hasNextIdea =
+    previewIdeaIndex >= 0 && previewIdeaIndex < ideas.length - 1
 
   const {
     timer,
@@ -224,6 +238,7 @@ function RouteComponent() {
         isLoading={isIdeasPending}
         errorMessage={ideasError?.message ?? null}
         onTeamFilterChange={(team) => {
+          setPreviewIdeaId(null)
           void navigate({
             search: (prev) => ({
               ...prev,
@@ -233,6 +248,7 @@ function RouteComponent() {
           })
         }}
         onPillarFilterChange={(pillar) => {
+          setPreviewIdeaId(null)
           void navigate({
             search: (prev) => ({
               ...prev,
@@ -241,7 +257,7 @@ function RouteComponent() {
             replace: true,
           })
         }}
-        onPreview={setPreviewIdea}
+        onPreview={(idea) => setPreviewIdeaId(idea.ID)}
         onRetry={() => void refetchIdeas()}
       />
 
@@ -264,8 +280,20 @@ function RouteComponent() {
         <IdeaPreviewDialog
           idea={previewIdea}
           open
+          position={previewIdeaIndex + 1}
+          total={ideas.length}
+          hasPrevious={hasPreviousIdea}
+          hasNext={hasNextIdea}
+          onPrevious={() => {
+            if (!hasPreviousIdea) return
+            setPreviewIdeaId(ideas[previewIdeaIndex - 1].ID)
+          }}
+          onNext={() => {
+            if (!hasNextIdea) return
+            setPreviewIdeaId(ideas[previewIdeaIndex + 1].ID)
+          }}
           onOpenChange={(open) => {
-            if (!open) setPreviewIdea(null)
+            if (!open) setPreviewIdeaId(null)
           }}
         />
       )}
@@ -879,8 +907,12 @@ function IdeaCard({
           )}
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <Badge variant="secondary">{idea.TeamName || "Unknown team"}</Badge>
+          <Badge variant="secondary">
+            <UsersIcon />
+            {idea.TeamName || "Unknown team"}
+          </Badge>
           <Badge variant="outline">
+            <ShapesIcon />
             {idea.CategoryName || "Unknown pillar"}
           </Badge>
           <span className="flex items-center gap-1 text-xs text-muted-foreground">
@@ -959,54 +991,135 @@ function IdeasError({
 function IdeaPreviewDialog({
   idea,
   open,
+  position,
+  total,
+  hasPrevious,
+  hasNext,
+  onPrevious,
+  onNext,
   onOpenChange,
 }: {
   idea: ManageIdea
   open: boolean
+  position: number
+  total: number
+  hasPrevious: boolean
+  hasNext: boolean
+  onPrevious: () => void
+  onNext: () => void
   onOpenChange: (open: boolean) => void
 }) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-3xl">
-        <DialogHeader>
-          <DialogTitle>{idea.title ?? "Untitled"}</DialogTitle>
-          <DialogDescription>
-            Full idea submission from {idea.TeamName || "Unknown team"}.
-          </DialogDescription>
-        </DialogHeader>
+      <DialogContent
+        showCloseButton={false}
+        className="top-0 left-0 flex h-dvh max-h-dvh w-full max-w-none translate-x-0 translate-y-0 flex-col gap-0 overflow-hidden bg-background p-0 text-foreground ring-0 sm:max-w-none"
+        onKeyDown={(event) => {
+          if (event.key === "ArrowLeft" && hasPrevious) {
+            event.preventDefault()
+            onPrevious()
+          }
 
-        <div className="no-scrollbar grid max-h-[70vh] gap-4 overflow-y-auto md:grid-cols-[minmax(0,1.15fr)_minmax(15rem,0.85fr)]">
-          <div className="aspect-4/3 overflow-hidden border border-border bg-muted/50">
-            <IdeaThumbnail idea={idea} />
+          if (event.key === "ArrowRight" && hasNext) {
+            event.preventDefault()
+            onNext()
+          }
+        }}
+      >
+        <header className="flex h-16 shrink-0 items-center justify-between gap-4 border-b border-border px-4 sm:px-6">
+          <div className="flex min-w-0 items-center gap-3">
+            <span className="text-sm font-semibold tracking-[0.16em] uppercase">
+              Idea preview
+            </span>
+            <span className="h-4 w-px bg-border" aria-hidden="true" />
+            <p
+              className="text-sm text-muted-foreground tabular-nums"
+              aria-live="polite"
+            >
+              Idea {position} of {total}
+            </p>
           </div>
-          <div className="min-w-0 space-y-4">
-            <div className="flex flex-wrap gap-2">
-              <Badge variant="secondary">
-                {idea.TeamName || "Unknown team"}
-              </Badge>
-              <Badge variant="outline">
-                {idea.CategoryName || "Unknown pillar"}
-              </Badge>
-              {idea.flgTeam && (
-                <Badge>
-                  <StarIcon fill="currentColor" />
-                  Shortlisted
+
+          <DialogClose
+            render={
+              <Button
+                variant="outline"
+                size="icon"
+                className="shrink-0 rounded-full"
+                aria-label="Close idea preview"
+              />
+            }
+          >
+            <XIcon />
+          </DialogClose>
+        </header>
+
+        <div className="grid min-h-0 flex-1 overflow-y-auto overscroll-contain lg:grid-cols-[minmax(0,1fr)_minmax(20rem,30rem)] lg:overflow-hidden">
+          <div className="relative flex min-h-[48dvh] items-center justify-center overflow-hidden bg-neutral-950 p-12 sm:p-16 lg:min-h-0">
+            <IdeaThumbnail key={idea.ID} idea={idea} />
+
+            <button
+              type="button"
+              className="absolute top-1/2 left-3 grid size-11 -translate-y-1/2 place-items-center rounded-full bg-white/10 text-white ring-1 ring-white/20 backdrop-blur-sm transition-colors hover:bg-white/20 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white disabled:cursor-not-allowed disabled:opacity-25 sm:left-6 sm:size-12"
+              aria-label="View previous idea"
+              disabled={!hasPrevious}
+              onClick={onPrevious}
+            >
+              <ChevronLeftIcon className="size-6" aria-hidden="true" />
+            </button>
+
+            <button
+              type="button"
+              className="absolute top-1/2 right-3 grid size-11 -translate-y-1/2 place-items-center rounded-full bg-white/10 text-white ring-1 ring-white/20 backdrop-blur-sm transition-colors hover:bg-white/20 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white disabled:cursor-not-allowed disabled:opacity-25 sm:right-6 sm:size-12"
+              aria-label="View next idea"
+              disabled={!hasNext}
+              onClick={onNext}
+            >
+              <ChevronRightIcon className="size-6" aria-hidden="true" />
+            </button>
+          </div>
+
+          <aside className="min-w-0 border-t border-border lg:overflow-y-auto lg:border-t-0 lg:border-l">
+            <div className="flex min-h-full flex-col p-6 sm:p-8 lg:p-10">
+              <div className="flex flex-col-reverse gap-2 sm:flex-col">
+                <p className="text-sm leading-6 text-muted-foreground">
+                  Submitted {formatRelativeDate(idea.CreatedDttm)}
+                </p>
+                <DialogTitle className="text-3xl leading-[1.08] font-semibold tracking-[-0.035em] text-balance sm:text-4xl">
+                  {idea.title ?? "Untitled"}
+                </DialogTitle>
+              </div>
+
+              <div className="mt-4 flex flex-wrap gap-2">
+                <Badge variant="secondary">
+                  <UsersIcon />
+                  {idea.TeamName || "Unknown team"}
                 </Badge>
-              )}
-            </div>
-            <div>
-              <p className="text-xs font-medium">Submitted</p>
-              <p className="mt-1 text-xs text-muted-foreground">
-                {formatRelativeDate(idea.CreatedDttm)}
-              </p>
-            </div>
-            <div>
-              <p className="text-xs font-medium">Description</p>
-              <p className="mt-1 text-sm leading-relaxed text-muted-foreground">
+                <Badge variant="outline">
+                  <ShapesIcon />
+                  {idea.CategoryName || "Unknown pillar"}
+                </Badge>
+                {idea.flgTeam && (
+                  <Badge>
+                    <StarIcon fill="currentColor" />
+                    Shortlisted
+                  </Badge>
+                )}
+                {idea.flgCoach && (
+                  <Badge variant="secondary">
+                    <SparklesIcon />
+                    Sharpened
+                  </Badge>
+                )}
+              </div>
+
+              <div className="my-8 border-t border-border" />
+
+              <DialogDescription className="text-base leading-7 whitespace-pre-line">
                 {idea.Desc}
-              </p>
+              </DialogDescription>
             </div>
-          </div>
+          </aside>
         </div>
       </DialogContent>
     </Dialog>
