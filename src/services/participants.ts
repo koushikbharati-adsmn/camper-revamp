@@ -243,12 +243,13 @@ export interface ShortlistIdeaPayload {
   workshop_code: string
   idea_id: number
   flag: boolean
+  idea: ParticipantIdea
 }
 
 export type IdeaShortlistSocketPayload = {
   roomId: string
-  ideaId: number
   isShortlisted: boolean
+  idea: ParticipantIdea
 }
 
 interface ShortlistIdeaResponse {
@@ -259,7 +260,11 @@ interface ShortlistIdeaResponse {
 const shortlistIdea = async (payload: ShortlistIdeaPayload) => {
   const res = await apiClient.post<ShortlistIdeaResponse>(
     "/api/participant/idea/shortlist",
-    payload
+    {
+      workshop_code: payload.workshop_code,
+      idea_id: payload.idea_id,
+      flag: payload.flag,
+    }
   )
 
   return res.data
@@ -269,11 +274,14 @@ export const useShortlistIdea = () => {
   return useMutation({
     mutationFn: shortlistIdea,
 
-    onSuccess: (_response, { workshop_code, idea_id, flag }) => {
+    onSuccess: (_response, { workshop_code, flag, idea }) => {
       socket.emit("update_idea_shortlist", {
         roomId: workshop_code,
-        ideaId: idea_id,
         isShortlisted: flag,
+        idea: {
+          ...idea,
+          flgTeam: flag,
+        },
       } satisfies IdeaShortlistSocketPayload)
     },
 
