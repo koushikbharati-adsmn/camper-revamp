@@ -1116,7 +1116,7 @@ function IdeasScreen({
           TeamID: socketIdea.teamId,
           TeamName: team?.TeamName ?? "",
           CategoryID: socketIdea.categoryId,
-          Category: socketIdea.categoryName,
+          CategoryName: socketIdea.categoryName,
           Desc: socketIdea.desc,
           title: socketIdea.title,
           Context: socketIdea.context,
@@ -1181,7 +1181,7 @@ function IdeasScreen({
   }
 
   const handleGenerateIdeaImage = (idea: ParticipantIdea) => {
-    const pillar = pillars.find((item) => item.Name === idea.Category)
+    const pillar = pillars.find((item) => item.ID === idea.CategoryID)
 
     generateIdeaImageMutation.mutate({
       idea_id: idea.ID,
@@ -1224,7 +1224,6 @@ function IdeasScreen({
         key={editingIdea?.ID ?? "new"}
         open={isIdeaDialogOpen}
         teamId={selectedTeamId}
-        selectedPillarId={selectedPillarId}
         idea={editingIdea}
         onClose={handleCloseIdeaDialog}
       />
@@ -1339,7 +1338,7 @@ function IdeasScreen({
       )}
 
       <button
-        className="fixed right-4 bottom-16 z-20 flex items-center justify-center gap-2 drop-shadow-sm disabled:opacity-70 sm:right-6"
+        className="fixed right-4 bottom-16 z-20 flex items-center justify-center gap-2 drop-shadow-sm disabled:opacity-50 sm:right-6"
         type="button"
         disabled={
           !selectedPillar || ideas.length === 0 || scoutIdeaMutation.isPending
@@ -1355,7 +1354,7 @@ function IdeasScreen({
             : "Select a pillar to use Scout"
         }
       >
-        <img className="size-12 sm:size-20" src="/scout.svg" alt="scout" />
+        <img className="size-12 sm:size-18" src="/scout.svg" alt="scout" />
       </button>
     </section>
   )
@@ -1475,6 +1474,16 @@ function IdeateIdeaCard({
 
             {formatRelativeDate(idea.CreatedDttm)}
           </p>
+        </div>
+
+        <div className="flex flex-wrap gap-2 text-xs">
+          <span className="rounded-full bg-neutral-100 px-2.5 py-1">
+            {idea.TeamName || "Unknown team"}
+          </span>
+
+          <span className="rounded-full border px-2.5 py-1">
+            {idea.CategoryName || "Unknown pillar"}
+          </span>
         </div>
 
         <p className="line-clamp-3 text-sm text-neutral-600">{idea.Desc}</p>
@@ -1752,7 +1761,7 @@ function StageIdeaCard({
           </span>
 
           <span className="rounded-full border px-2.5 py-1">
-            {idea.Category || "Unknown pillar"}
+            {idea.CategoryName || "Unknown pillar"}
           </span>
         </div>
 
@@ -1912,7 +1921,7 @@ function IdeaPreviewDialog({
                     borderColor: workshop.card_primary_border_color,
                   }}
                 >
-                  {idea.Category || "Unknown pillar"}
+                  {idea.CategoryName || "Unknown pillar"}
                 </span>
 
                 <span className="rounded-full bg-neutral-900 px-2.5 py-1 text-white">
@@ -2123,13 +2132,11 @@ function ScoutDialog({
 function IdeaDialog({
   open,
   teamId,
-  selectedPillarId,
   idea,
   onClose,
 }: {
   open: boolean
   teamId: number
-  selectedPillarId: number | null
   idea: ParticipantIdea | null
   onClose: () => void
 }) {
@@ -2138,18 +2145,25 @@ function IdeaDialog({
   const pillars = workshop.category
 
   const dialogRef = useNativeDialog(open)
-  const formRef = useRef<HTMLFormElement>(null)
-
   const saveIdeaMutation = useSaveIdea()
 
-  const ideaPillarId = idea
-    ? pillars.find((pillar) => pillar.Name === idea.Category)?.ID
-    : undefined
+  const initialForm = {
+    categoryId: idea?.CategoryID ?? null,
+    description: idea?.Desc ?? "",
+    title: idea?.title ?? "",
+    context: idea?.Context ?? "",
+  }
 
-  const defaultPillarId = ideaPillarId ?? selectedPillarId ?? pillars[0]?.ID
+  const [form, setForm] = useState(initialForm)
+
+  const [errors, setErrors] = useState<{
+    categoryId?: string
+    description?: string
+  }>({})
 
   const closeDialog = () => {
-    formRef.current?.reset()
+    setForm(initialForm)
+    setErrors({})
     onClose()
   }
 
@@ -2168,24 +2182,36 @@ function IdeaDialog({
   const handleSubmitIdea = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
 
-    const formData = new FormData(event.currentTarget)
+    const categoryId = form.categoryId
+    const description = form.description.trim()
 
-    const categoryId = Number(formData.get("categoryId"))
-    const description = String(formData.get("description")).trim()
-    const title = String(formData.get("title")).trim() || null
-    const context = String(formData.get("context")).trim() || null
+    const validationErrors = {
+      ...(categoryId === null && {
+        categoryId: "Please select a pillar.",
+      }),
+      ...(!description && {
+        description: "Idea description is required.",
+      }),
+    }
+
+    if (Object.keys(validationErrors).length) {
+      setErrors(validationErrors)
+      return
+    }
+
+    setErrors({})
+
+    // TypeScript now knows categoryId is number
+    const title = form.title.trim() || null
+    const context = form.context.trim() || null
 
     saveIdeaMutation.mutate(
       {
-        ...(idea
-          ? {
-              idea_id: idea.ID,
-            }
-          : {}),
+        ...(idea && { idea_id: idea.ID }),
         visitor_id: visitorId,
         workshop_code: workshopCode,
         team_id: teamId,
-        category_id: categoryId,
+        category_id: categoryId!,
         desc: description,
         title,
         context,
@@ -2238,7 +2264,7 @@ function IdeaDialog({
       onClose={handleClose}
     >
       <form
-        ref={formRef}
+        noValidate
         className={cn(
           "flex h-full max-h-dvh min-h-0 flex-col overflow-hidden",
           "sm:h-auto sm:max-h-[calc(100dvh-2rem)]",
@@ -2307,17 +2333,27 @@ function IdeaDialog({
 
               <ExperienceSelect
                 workshop={workshop}
-                name="categoryId"
-                required
-                defaultValue={defaultPillarId}
+                value={form.categoryId ?? ""}
                 disabled={saveIdeaMutation.isPending}
                 className="w-full"
+                aria-invalid={Boolean(errors.categoryId)}
+                onChange={(event) => {
+                  setForm((current) => ({
+                    ...current,
+                    categoryId: event.target.value
+                      ? Number(event.target.value)
+                      : null,
+                  }))
+
+                  setErrors((current) => ({
+                    ...current,
+                    categoryId: undefined,
+                  }))
+                }}
               >
-                {pillars.length === 0 && (
-                  <ExperienceSelectOption value="">
-                    No pillars available
-                  </ExperienceSelectOption>
-                )}
+                <ExperienceSelectOption value="">
+                  {pillars.length ? "Select a pillar" : "No pillars available"}
+                </ExperienceSelectOption>
 
                 {pillars.map((pillar) => (
                   <ExperienceSelectOption key={pillar.ID} value={pillar.ID}>
@@ -2325,19 +2361,35 @@ function IdeaDialog({
                   </ExperienceSelectOption>
                 ))}
               </ExperienceSelect>
+
+              {errors.categoryId && (
+                <p className="text-sm text-red-600" role="alert">
+                  {errors.categoryId}
+                </p>
+              )}
             </label>
 
-            <label className="grid gap-1.5 sm:gap-2">
-              <span className="text-sm font-medium">Description</span>
-
+            <div className="grid gap-1.5 sm:gap-2">
+              <span className="sr-only text-sm font-medium">Description</span>
               <textarea
-                name="description"
-                required
                 autoFocus
                 rows={4}
-                defaultValue={idea?.Desc ?? ""}
+                value={form.description}
                 disabled={saveIdeaMutation.isPending}
-                placeholder="Describe the idea, the problem it solves, and its impact"
+                aria-label="Idea description"
+                aria-invalid={Boolean(errors.description)}
+                placeholder="Describe your idea"
+                onChange={(event) => {
+                  setForm((current) => ({
+                    ...current,
+                    description: event.target.value,
+                  }))
+
+                  setErrors((current) => ({
+                    ...current,
+                    description: undefined,
+                  }))
+                }}
                 className={cn(
                   "min-h-24 w-full resize-none rounded-md border",
                   "bg-transparent px-3 py-2 text-sm leading-6",
@@ -2346,32 +2398,44 @@ function IdeaDialog({
                   "disabled:cursor-not-allowed disabled:opacity-50"
                 )}
                 style={{
-                  borderColor: workshop.card_primary_border_color,
+                  borderColor: errors.description
+                    ? "#dc2626"
+                    : workshop.card_primary_border_color,
                   outlineColor: workshop.btn_primary_bg_color,
                 }}
               />
-            </label>
+
+              {errors.description && (
+                <p className="text-sm text-red-600" role="alert">
+                  {errors.description}
+                </p>
+              )}
+            </div>
 
             <label className="grid gap-1.5 sm:gap-2">
-              <div className="flex items-center gap-2">
-                <span className="text-sm font-medium">Title</span>
-
+              <span className="text-sm font-medium">
+                Title{" "}
                 <span
-                  className="text-sm"
+                  className="font-normal"
                   style={{
                     color: workshop.txt_secondary_color,
                   }}
                 >
                   (Optional)
                 </span>
-              </div>
+              </span>
 
               <input
-                name="title"
                 type="text"
-                defaultValue={idea?.title ?? ""}
+                value={form.title}
                 disabled={saveIdeaMutation.isPending}
                 placeholder="Give your idea a clear title"
+                onChange={(event) =>
+                  setForm((current) => ({
+                    ...current,
+                    title: event.target.value,
+                  }))
+                }
                 className={cn(
                   "h-10 w-full rounded-md border bg-transparent px-3",
                   "text-sm transition-colors outline-none",
@@ -2386,25 +2450,29 @@ function IdeaDialog({
             </label>
 
             <label className="grid gap-1.5 sm:gap-2">
-              <div className="flex items-center gap-2">
-                <span className="text-sm font-medium">Context</span>
-
+              <span className="text-sm font-medium">
+                Context{" "}
                 <span
-                  className="text-sm"
+                  className="font-normal"
                   style={{
                     color: workshop.txt_secondary_color,
                   }}
                 >
                   (Optional)
                 </span>
-              </div>
+              </span>
 
               <textarea
-                name="context"
                 rows={4}
-                defaultValue={idea?.Context ?? ""}
+                value={form.context}
                 disabled={saveIdeaMutation.isPending}
                 placeholder="Describe the context in which this idea will be used"
+                onChange={(event) =>
+                  setForm((current) => ({
+                    ...current,
+                    context: event.target.value,
+                  }))
+                }
                 className={cn(
                   "min-h-24 w-full resize-none rounded-md border",
                   "bg-transparent px-3 py-2 text-sm leading-6",

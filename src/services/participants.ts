@@ -137,7 +137,7 @@ export interface ParticipantIdea {
   TeamID: number
   TeamName: string
   CategoryID: number
-  Category: string
+  CategoryName: string
   Desc: string
   title: string | null
   Context: string | null
