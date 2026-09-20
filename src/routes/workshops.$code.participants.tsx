@@ -41,19 +41,20 @@ import {
 } from "react"
 import {
   BellIcon,
-  CheckIcon,
   ChevronLeftIcon,
   ChevronRightIcon,
   ClockIcon,
   EyeIcon,
   FullscreenIcon,
   ImagePlusIcon,
+  LoaderCircleIcon,
   PlusIcon,
   RefreshCwIcon,
   ShapesIcon,
   SparklesIcon,
   SquarePenIcon,
   StarIcon,
+  ThumbsUpIcon,
   UsersIcon,
   XIcon,
 } from "lucide-react"
@@ -754,21 +755,27 @@ function VotingScreen() {
                 </p>
 
                 <div className="mt-auto pt-8">
-                  <ExperienceButton
-                    workshop={workshop}
+                  <button
+                    className="mx-auto flex w-24 items-center justify-center rounded-full px-5 py-2.5 disabled:opacity-50"
                     aria-pressed={currentIdea.flgSelf}
                     aria-busy={voteIdeaMutation.isPending}
                     disabled={voteIdeaMutation.isPending}
-                    className="flex w-full items-center justify-center gap-2"
                     onClick={handleToggleVote}
+                    style={{
+                      backgroundColor: workshop.btn_primary_bg_color,
+                      color: workshop.btn_primary_txt_color,
+                    }}
                   >
-                    <CheckIcon className="size-4" aria-hidden="true" />
-                    {voteIdeaMutation.isPending
-                      ? "Saving..."
-                      : currentIdea.flgSelf
-                        ? "Remove vote"
-                        : "Vote for this idea"}
-                  </ExperienceButton>
+                    {voteIdeaMutation.isPending ? (
+                      <LoaderCircleIcon className="size-4 animate-spin" />
+                    ) : (
+                      <ThumbsUpIcon
+                        fill={currentIdea.flgSelf ? "currentColor" : "none"}
+                        className="size-5"
+                        aria-hidden="true"
+                      />
+                    )}
+                  </button>
                 </div>
               </div>
             </aside>
