@@ -97,6 +97,7 @@ import type {
   IdeaImageSocketPayload,
   IdeaShortlistSocketPayload,
   IdeaUpsertSocketPayload,
+  IdeaVoteSocketPayload,
 } from "@/services/participants"
 import { z } from "zod"
 
@@ -294,14 +295,42 @@ function RouteComponent() {
       })
     }
 
+    const handleIdeaVoteUpdated = ({
+      roomId,
+      ideaId,
+      isVoted,
+    }: IdeaVoteSocketPayload) => {
+      if (roomId !== code) return
+
+      queryClient.setQueryData(ideasQueryOptions.queryKey, (current) => {
+        if (!current) return current
+
+        const voteDelta = isVoted ? 1 : -1
+
+        return {
+          ...current,
+          data: current.data.map((idea) =>
+            idea.ID === ideaId
+              ? {
+                  ...idea,
+                  TotalVote: Math.max(0, idea.TotalVote + voteDelta),
+                }
+              : idea
+          ),
+        }
+      })
+    }
+
     socket.on("idea_upserted", handleIdeaUpserted)
     socket.on("idea_shortlist_updated", handleIdeaShortlistUpdated)
     socket.on("idea_image_generated", handleIdeaImageGenerated)
+    socket.on("idea_vote_updated", handleIdeaVoteUpdated)
 
     return () => {
       socket.off("idea_upserted", handleIdeaUpserted)
       socket.off("idea_shortlist_updated", handleIdeaShortlistUpdated)
       socket.off("idea_image_generated", handleIdeaImageGenerated)
+      socket.off("idea_vote_updated", handleIdeaVoteUpdated)
     }
   }, [code, team, pillar, queryClient, ideasQueryOptions.queryKey])
 
