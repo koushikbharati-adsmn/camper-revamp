@@ -165,6 +165,12 @@ export interface IdeaUpsertSocketPayload {
   idea: SocketIdea
 }
 
+export interface IdeaCoachSocketPayload {
+  roomId: string
+  flgCoach: boolean
+  idea: ParticipantIdea
+}
+
 interface GetParticipantIdeasResponse {
   success: boolean
   data: ParticipantIdea[]

@@ -94,6 +94,7 @@ import {
 import { useEffect, useRef, useState } from "react"
 import { useWorkshopTimer } from "@/hooks/use-workshop-timer"
 import type {
+  IdeaCoachSocketPayload,
   IdeaImageSocketPayload,
   IdeaShortlistSocketPayload,
   IdeaUpsertSocketPayload,
@@ -247,6 +248,25 @@ function RouteComponent() {
       })
     }
 
+    const handleIdeaCoachUpdated = ({
+      roomId,
+      flgCoach,
+      idea: socketIdea,
+    }: IdeaCoachSocketPayload) => {
+      if (roomId !== code) return
+
+      queryClient.setQueryData(ideasQueryOptions.queryKey, (current) => {
+        if (!current) return current
+
+        return {
+          ...current,
+          data: current.data.map((idea) =>
+            idea.ID === socketIdea.ID ? { ...idea, flgCoach } : idea
+          ),
+        }
+      })
+    }
+
     const handleIdeaShortlistUpdated = ({
       roomId,
       isShortlisted,
@@ -322,12 +342,14 @@ function RouteComponent() {
     }
 
     socket.on("idea_upserted", handleIdeaUpserted)
+    socket.on("idea_coach_updated", handleIdeaCoachUpdated)
     socket.on("idea_shortlist_updated", handleIdeaShortlistUpdated)
     socket.on("idea_image_generated", handleIdeaImageGenerated)
     socket.on("idea_vote_updated", handleIdeaVoteUpdated)
 
     return () => {
       socket.off("idea_upserted", handleIdeaUpserted)
+      socket.off("idea_coach_updated", handleIdeaCoachUpdated)
       socket.off("idea_shortlist_updated", handleIdeaShortlistUpdated)
       socket.off("idea_image_generated", handleIdeaImageGenerated)
       socket.off("idea_vote_updated", handleIdeaVoteUpdated)

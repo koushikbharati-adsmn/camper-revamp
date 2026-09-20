@@ -1,6 +1,7 @@
 import { getVisitorId } from "@/lib/fingerprint"
 import {
   type GenerateIdeaImagePayload,
+  type IdeaCoachSocketPayload,
   type IdeaImageSocketPayload,
   type IdeaShortlistSocketPayload,
   type IdeaUpsertSocketPayload,
@@ -81,7 +82,10 @@ import { cn } from "@/lib/utils"
 import { NewsroomStatsRows } from "@/components/experience/experience-stats-rows"
 import { ExperienceFooter } from "@/components/experience/experience-footer"
 import { SharpenDialog } from "@/components/experience/sharpen-dialog"
-// import { invalidateParticipantChatSessions } from "@/services/participant-chat"
+import {
+  hasParticipantChatSession,
+  invalidateParticipantChatSessions,
+} from "@/services/participant-chat"
 import { socket } from "@/lib/socket"
 
 /* -------------------------------------------------------------------------- */
@@ -1873,6 +1877,49 @@ function IdeasScreen({
       })
     }
 
+    const handleIdeaCoachUpdated = ({
+      roomId,
+      flgCoach,
+      idea: socketIdea,
+    }: IdeaCoachSocketPayload) => {
+      if (roomId !== workshopCode) return
+
+      queryClient.setQueryData(ideasQueryOptions.queryKey, (oldData) => {
+        if (!oldData?.data) return oldData
+
+        const exists = oldData.data.some((idea) => idea.ID === socketIdea.ID)
+        const matchesFilters =
+          socketIdea.TeamID === selectedTeamId &&
+          (selectedPillarId === null ||
+            socketIdea.CategoryID === selectedPillarId) &&
+          (ideaStatusFilter !== "shortlisted" || socketIdea.flgTeam) &&
+          (ideaStatusFilter !== "sharpened" || flgCoach)
+
+        if (!matchesFilters) {
+          if (!exists) return oldData
+
+          return {
+            ...oldData,
+            data: oldData.data.filter((idea) => idea.ID !== socketIdea.ID),
+          }
+        }
+
+        if (exists) {
+          return {
+            ...oldData,
+            data: oldData.data.map((idea) =>
+              idea.ID === socketIdea.ID ? { ...idea, flgCoach } : idea
+            ),
+          }
+        }
+
+        return {
+          ...oldData,
+          data: [...oldData.data, { ...socketIdea, flgCoach }],
+        }
+      })
+    }
+
     const handleIdeaShortlistUpdated = ({
       roomId,
       isShortlisted,
@@ -1956,11 +2003,13 @@ function IdeasScreen({
     }
 
     socket.on("idea_upserted", handleIdeaUpserted)
+    socket.on("idea_coach_updated", handleIdeaCoachUpdated)
     socket.on("idea_shortlist_updated", handleIdeaShortlistUpdated)
     socket.on("idea_image_generated", handleIdeaImageGenerated)
 
     return () => {
       socket.off("idea_upserted", handleIdeaUpserted)
+      socket.off("idea_coach_updated", handleIdeaCoachUpdated)
       socket.off("idea_shortlist_updated", handleIdeaShortlistUpdated)
       socket.off("idea_image_generated", handleIdeaImageGenerated)
     }
@@ -2033,23 +2082,48 @@ function IdeasScreen({
     handleEditIdea(idea)
   }
 
-  // const handleIdeaSaved = ({
-  //   ideaId,
-  //   invalidateChats,
-  // }: {
-  //   ideaId: number
-  //   invalidateChats: boolean
-  // }) => {
-  //   if (!invalidateChats) return
+  const handleIdeaSaved = ({
+    idea,
+    coachUpdated,
+  }: {
+    idea: ParticipantIdea
+    coachUpdated: boolean
+  }) => {
+    queryClient.setQueryData(ideasQueryOptions.queryKey, (oldData) => {
+      if (!oldData?.data) return oldData
 
-  //   void invalidateParticipantChatSessions({
-  //     visitorId,
-  //     workshopCode,
-  //     ideaId,
-  //   }).then(({ failedCount, storageFailed }) => {
-  //     if (failedCount === 0 && !storageFailed) return
-  //   })
-  // }
+      const exists = oldData.data.some((item) => item.ID === idea.ID)
+      const matchesFilters =
+        idea.TeamID === selectedTeamId &&
+        (selectedPillarId === null || idea.CategoryID === selectedPillarId) &&
+        (ideaStatusFilter !== "shortlisted" || idea.flgTeam) &&
+        (ideaStatusFilter !== "sharpened" || idea.flgCoach)
+
+      if (!matchesFilters) {
+        if (!exists) return oldData
+
+        return {
+          ...oldData,
+          data: oldData.data.filter((item) => item.ID !== idea.ID),
+        }
+      }
+
+      return {
+        ...oldData,
+        data: exists
+          ? oldData.data.map((item) => (item.ID === idea.ID ? idea : item))
+          : [...oldData.data, idea],
+      }
+    })
+
+    if (!coachUpdated) return
+
+    socket.emit("update_idea_coach", {
+      roomId: workshopCode,
+      flgCoach: idea.flgCoach,
+      idea,
+    } satisfies IdeaCoachSocketPayload)
+  }
 
   const handleTeamSelectChange = (event: ChangeEvent<HTMLSelectElement>) => {
     onTeamChange(Number(event.target.value))
@@ -2118,7 +2192,7 @@ function IdeasScreen({
         teamId={selectedTeamId}
         idea={editingIdea}
         onClose={handleCloseIdeaDialog}
-        // onSaved={handleIdeaSaved}
+        onSaved={handleIdeaSaved}
       />
 
       <ScoutDialog
@@ -2542,6 +2616,25 @@ function StageScreen() {
       })
     }
 
+    const handleIdeaCoachUpdated = ({
+      roomId,
+      flgCoach,
+      idea: socketIdea,
+    }: IdeaCoachSocketPayload) => {
+      if (roomId !== workshopCode) return
+
+      queryClient.setQueryData(ideasQueryOptions.queryKey, (oldData) => {
+        if (!oldData?.data) return oldData
+
+        return {
+          ...oldData,
+          data: oldData.data.map((idea) =>
+            idea.ID === socketIdea.ID ? { ...idea, flgCoach } : idea
+          ),
+        }
+      })
+    }
+
     const handleIdeaShortlistUpdated = ({
       roomId,
       isShortlisted,
@@ -2626,11 +2719,13 @@ function StageScreen() {
     }
 
     socket.on("idea_upserted", handleIdeaUpserted)
+    socket.on("idea_coach_updated", handleIdeaCoachUpdated)
     socket.on("idea_shortlist_updated", handleIdeaShortlistUpdated)
     socket.on("idea_image_generated", handleIdeaImageGenerated)
 
     return () => {
       socket.off("idea_upserted", handleIdeaUpserted)
+      socket.off("idea_coach_updated", handleIdeaCoachUpdated)
       socket.off("idea_shortlist_updated", handleIdeaShortlistUpdated)
       socket.off("idea_image_generated", handleIdeaImageGenerated)
     }
@@ -3264,13 +3359,13 @@ function IdeaDialog({
   teamId,
   idea,
   onClose,
-  // onSaved,
+  onSaved,
 }: {
   open: boolean
   teamId: number
   idea: ParticipantIdea | null
   onClose: () => void
-  // onSaved: (result: { ideaId: number; invalidateChats: boolean }) => void
+  onSaved: (result: { idea: ParticipantIdea; coachUpdated: boolean }) => void
 }) {
   const { workshop, workshopCode, visitorId } = useParticipantExperience()
 
@@ -3336,6 +3431,14 @@ function IdeaDialog({
     // TypeScript now knows categoryId is number
     const title = form.title.trim() || null
     const context = form.context.trim() || null
+    const hasCoachSession = Boolean(
+      idea &&
+      hasParticipantChatSession({
+        visitorId,
+        workshopCode,
+        ideaId: idea.ID,
+      })
+    )
 
     saveIdeaMutation.mutate(
       {
@@ -3347,12 +3450,31 @@ function IdeaDialog({
         desc: description,
         title,
         context,
+        ...(hasCoachSession && { flgCoach: true }),
       },
       {
         onSuccess: (response) => {
           const category = pillars.find((pillar) => pillar.ID === categoryId)
 
           const team = workshop.teams.find((team) => team.ID === teamId)
+          const updatedIdea: ParticipantIdea = {
+            ID: response.data.idea_id,
+            TeamID: teamId,
+            TeamName: team?.TeamName ?? "",
+            CategoryID: categoryId!,
+            CategoryName: category?.Name ?? "",
+            Desc: description,
+            title,
+            Context: context,
+            imageFileName: idea?.imageFileName ?? "",
+            TotalVote: idea?.TotalVote ?? 0,
+            flgSelf: idea?.flgSelf ?? false,
+            flgTeam: idea?.flgTeam ?? false,
+            flgCoach: hasCoachSession || idea?.flgCoach || false,
+            CreatedDttm:
+              idea?.CreatedDttm ??
+              new Date(Date.now() + 5.5 * 60 * 60 * 1000).toISOString(),
+          }
 
           socket.emit("upsert_idea", {
             roomId: workshopCode,
@@ -3369,10 +3491,18 @@ function IdeaDialog({
             },
           })
 
-          // onSaved({
-          //   ideaId: response.data.idea_id,
-          //   invalidateChats: Boolean(idea),
-          // })
+          onSaved({
+            idea: updatedIdea,
+            coachUpdated: hasCoachSession,
+          })
+
+          if (hasCoachSession) {
+            void invalidateParticipantChatSessions({
+              visitorId,
+              workshopCode,
+              ideaId: response.data.idea_id,
+            })
+          }
 
           closeDialog()
         },

@@ -141,7 +141,7 @@ function readIdeaChats(identity: ParticipantChatIdentity): StoredIdeaChats {
   if (volatileStorageKeys.has(storageKey)) return fallback
 
   try {
-    const value = localStorage.getItem(storageKey)
+    const value = sessionStorage.getItem(storageKey)
 
     if (!value) return fallback
 
@@ -200,13 +200,13 @@ function writeIdeaChats(
       value.pendingDeletionSessionIds.length === 0 &&
       value.revision === 0
     ) {
-      localStorage.removeItem(storageKey)
+      sessionStorage.removeItem(storageKey)
       memoryIdeaChats.delete(storageKey)
       volatileStorageKeys.delete(storageKey)
       return true
     }
 
-    localStorage.setItem(storageKey, JSON.stringify(value))
+    sessionStorage.setItem(storageKey, JSON.stringify(value))
     volatileStorageKeys.delete(storageKey)
     return true
   } catch {
@@ -221,6 +221,12 @@ export function loadParticipantChatSession(
   coachKey: string
 ) {
   return readIdeaChats(identity).sessions[coachKey] ?? null
+}
+
+export function hasParticipantChatSession(identity: ParticipantChatIdentity) {
+  return Object.values(readIdeaChats(identity).sessions).some(
+    (session) => session.sessionId !== null
+  )
 }
 
 export function getParticipantChatRevision(identity: ParticipantChatIdentity) {
