@@ -1,5 +1,4 @@
 import { getVisitorId } from "@/lib/fingerprint"
-import { toast } from "@/components/ui/toast"
 import {
   type GenerateIdeaImagePayload,
   type IdeaImageSocketPayload,
@@ -366,7 +365,7 @@ function ParticipantExperience() {
     if (isWalkthroughActive) {
       return (
         <WalkthroughScreen
-          key={workshop.ID}
+          key={workshopCode}
           steps={walkthroughSteps}
           onComplete={handleWalkthroughComplete}
         />
@@ -1582,10 +1581,13 @@ function IdeasScreen({
           title: socketIdea.title,
           Context: socketIdea.context,
           imageFileName: "",
+          TotalVote: 0,
           flgSelf: false,
           flgTeam: false,
           flgCoach: false,
-          CreatedDttm: new Date().toISOString(),
+          CreatedDttm: new Date(
+            Date.now() + 5.5 * 60 * 60 * 1000
+          ).toISOString(),
         }
 
         return {
@@ -3107,12 +3109,6 @@ function IdeaDialog({
           //   ideaId: response.data.idea_id,
           //   invalidateChats: Boolean(idea),
           // })
-
-          toast.add({
-            type: "success",
-            title: idea ? "Idea updated" : "Idea added",
-            description: response.message,
-          })
 
           closeDialog()
         },

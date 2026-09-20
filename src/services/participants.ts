@@ -137,6 +137,7 @@ export interface ParticipantIdea {
   title: string | null
   Context: string | null
   imageFileName: string
+  TotalVote: number
   flgSelf: boolean
   flgTeam: boolean
   flgCoach: boolean

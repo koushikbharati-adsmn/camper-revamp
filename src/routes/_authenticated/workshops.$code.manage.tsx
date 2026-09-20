@@ -230,7 +230,9 @@ function RouteComponent() {
           title: socketIdea.title || null,
           Desc: socketIdea.desc,
           imageFileName: null,
-          CreatedDttm: new Date().toISOString(),
+          CreatedDttm: new Date(
+            Date.now() + 5.5 * 60 * 60 * 1000
+          ).toISOString(),
           TotalVote: 0,
           flgTeam: false,
           flgCoach: false,
