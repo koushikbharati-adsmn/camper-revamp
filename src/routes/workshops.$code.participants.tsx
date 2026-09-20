@@ -2640,17 +2640,6 @@ function StageScreen() {
     ideasQueryOptions.queryKey,
   ])
 
-  const shortlistIdeaMutation = useShortlistIdea()
-
-  const pendingShortlistIdeaIds = useMutationState<number>({
-    filters: {
-      mutationKey: participantIdeaMutationKeys.shortlist,
-      status: "pending",
-    },
-    select: (mutation) =>
-      (mutation.state.variables as ShortlistIdeaPayload).idea_id,
-  })
-
   const handleTeamChange = (event: ChangeEvent<HTMLSelectElement>) => {
     setPreviewIdeaId(null)
     setSelectedTeamId(parseOptionalId(event.target.value))
@@ -2659,15 +2648,6 @@ function StageScreen() {
   const handlePillarChange = (event: ChangeEvent<HTMLSelectElement>) => {
     setPreviewIdeaId(null)
     setSelectedPillarId(parseOptionalId(event.target.value))
-  }
-
-  const handleRemoveFromShortlist = (idea: ParticipantIdea) => {
-    shortlistIdeaMutation.mutate({
-      workshop_code: workshopCode,
-      idea_id: idea.ID,
-      flag: false,
-      idea,
-    })
   }
 
   const handlePreviewIdea = (idea: ParticipantIdea) => {
@@ -2762,8 +2742,6 @@ function StageScreen() {
               <StageIdeaCard
                 key={idea.ID}
                 idea={idea}
-                isShortlistPending={pendingShortlistIdeaIds.includes(idea.ID)}
-                onRemoveFromShortlist={() => handleRemoveFromShortlist(idea)}
                 onPreview={() => handlePreviewIdea(idea)}
               />
             ))}
@@ -2784,13 +2762,9 @@ function StageScreen() {
 
 function StageIdeaCard({
   idea,
-  isShortlistPending,
-  onRemoveFromShortlist,
   onPreview,
 }: {
   idea: ParticipantIdea
-  isShortlistPending: boolean
-  onRemoveFromShortlist: () => void
   onPreview: () => void
 }) {
   const { workshop } = useParticipantExperience()
@@ -2814,27 +2788,6 @@ function StageIdeaCard({
       </div>
 
       <div className="flex flex-1 flex-col gap-4 p-4">
-        <div className="flex items-center justify-between gap-3">
-          <button
-            type="button"
-            aria-label={`Remove ${idea.title || "idea"} from shortlist`}
-            aria-pressed="true"
-            disabled={isShortlistPending}
-            className="disabled:cursor-wait disabled:opacity-50"
-            onClick={onRemoveFromShortlist}
-          >
-            <StarIcon
-              className="size-5"
-              fill="currentColor"
-              aria-hidden="true"
-            />
-          </button>
-
-          {idea.flgCoach && (
-            <SparklesIcon className="size-5" aria-hidden="true" />
-          )}
-        </div>
-
         <div>
           <h2 className="text-xl leading-tight font-semibold">
             {idea.title || "Untitled"}
@@ -2861,13 +2814,22 @@ function StageIdeaCard({
         </div>
 
         <div className="flex flex-wrap gap-2 text-xs">
-          <span className="rounded-full bg-neutral-100 px-2.5 py-1">
+          <span className="inline-flex items-center gap-1 rounded-full bg-neutral-100 px-2.5 py-1">
+            <UsersIcon className="size-3.5" aria-hidden="true" />
             {idea.TeamName || "Unknown team"}
           </span>
 
-          <span className="rounded-full border px-2.5 py-1">
+          <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1">
+            <ShapesIcon className="size-3.5" aria-hidden="true" />
             {idea.CategoryName || "Unknown pillar"}
           </span>
+
+          {idea.flgCoach && (
+            <span className="inline-flex items-center gap-1 rounded-full bg-violet-50 px-2.5 py-1 text-violet-700">
+              <SparklesIcon className="size-3.5" aria-hidden="true" />
+              Sharpened
+            </span>
+          )}
         </div>
 
         <p className="line-clamp-3 text-sm text-neutral-600">{idea.Desc}</p>
@@ -3056,7 +3018,7 @@ function IdeaPreviewDialog({
                   className="text-sm leading-6"
                   style={{ color: workshop.txt_secondary_color }}
                 >
-                  {formatRelativeDate(idea.CreatedDttm)}
+                  Submitted {formatRelativeDate(idea.CreatedDttm)}
                 </p>
                 <h2
                   id="idea-preview-title"
@@ -3081,15 +3043,12 @@ function IdeaPreviewDialog({
                   <ShapesIcon className="size-3.5" aria-hidden="true" />
                   {idea.CategoryName || "Unknown pillar"}
                 </span>
-
-                <span className="inline-flex items-center gap-1.5 rounded-full bg-neutral-900 px-3 py-1.5 text-white">
-                  <StarIcon
-                    className="size-3.5"
-                    fill="currentColor"
-                    aria-hidden="true"
-                  />
-                  Shortlisted
-                </span>
+                {idea.flgCoach && (
+                  <span className="inline-flex items-center gap-1.5 rounded-full bg-violet-50 px-3 py-1.5 text-violet-700">
+                    <SparklesIcon className="size-3.5" aria-hidden="true" />
+                    Sharpened
+                  </span>
+                )}
                 {!!idea.TotalVote && (
                   <span className="inline-flex items-center gap-1.5 rounded-full bg-blue-50 px-3 py-1.5 text-blue-700">
                     <ThumbsUpIcon
@@ -3098,13 +3057,6 @@ function IdeaPreviewDialog({
                       aria-hidden="true"
                     />
                     {idea.TotalVote} {idea.TotalVote === 1 ? "vote" : "votes"}
-                  </span>
-                )}
-
-                {idea.flgCoach && (
-                  <span className="inline-flex items-center gap-1.5 rounded-full bg-violet-50 px-3 py-1.5 text-violet-700">
-                    <SparklesIcon className="size-3.5" aria-hidden="true" />
-                    Sharpened
                   </span>
                 )}
               </div>
