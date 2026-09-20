@@ -2773,7 +2773,7 @@ function StageIdeaCard({
 
   return (
     <li className="flex flex-col overflow-hidden rounded-lg border bg-white shadow-xs">
-      <div className="aspect-4/3 w-full overflow-hidden bg-neutral-100">
+      <div className="relative aspect-4/3 w-full overflow-hidden bg-neutral-100">
         {idea.imageFileName?.trim() ? (
           <img
             src={idea.imageFileName}
@@ -2786,6 +2786,16 @@ function StageIdeaCard({
 
             <span>No image available</span>
           </div>
+        )}
+        {!!idea.TotalVote && (
+          <span className="absolute top-2 right-2 text-right text-white [text-shadow:0_1px_4px_rgb(0_0_0/0.6)]">
+            <p className="text-center text-2xl leading-none font-bold">
+              {String(idea.TotalVote).padStart(2, "0")}
+            </p>
+            <p className="text-center text-xs font-semibold tracking-wider uppercase">
+              Votes
+            </p>
+          </span>
         )}
       </div>
 
