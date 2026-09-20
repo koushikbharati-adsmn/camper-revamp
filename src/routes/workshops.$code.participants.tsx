@@ -1120,17 +1120,13 @@ function NewsroomScreen() {
                         <BellIcon className="mt-1 size-5" aria-hidden="true" />
 
                         <div>
-                          <strong className="capitalize">
-                            {activity.Type ?? "Notification"}
-                          </strong>
-
                           <p
                             className="text-sm"
                             style={{
                               color: workshop.txt_secondary_color,
                             }}
                           >
-                            {activity.TeamName}: {activity.Message}
+                            {activity.Message}
                           </p>
                         </div>
                       </div>
@@ -2563,11 +2559,24 @@ function StageIdeaCard({
             {idea.title || "Untitled"}
           </h2>
 
-          <p className="flex items-center gap-2 text-sm text-neutral-600">
-            <ClockIcon className="size-3.5" aria-hidden="true" />
-
-            {formatRelativeDate(idea.CreatedDttm)}
-          </p>
+          <div className="flex flex-wrap items-center gap-2.5">
+            <p className="flex items-center gap-2 text-sm text-neutral-600">
+              <ClockIcon className="size-3.5" aria-hidden="true" />
+              {formatRelativeDate(idea.CreatedDttm)}
+            </p>
+            {!!idea.TotalVote && (
+              <>
+                <span
+                  className="size-1 rounded-full bg-neutral-300"
+                  aria-hidden="true"
+                />
+                <p className="flex items-center gap-2 text-sm text-neutral-600">
+                  <ThumbsUpIcon className="size-3.5" aria-hidden="true" />
+                  {idea.TotalVote} {idea.TotalVote === 1 ? "vote" : "votes"}
+                </p>
+              </>
+            )}
+          </div>
         </div>
 
         <div className="flex flex-wrap gap-2 text-xs">
@@ -2800,9 +2809,19 @@ function IdeaPreviewDialog({
                   />
                   Shortlisted
                 </span>
+                {!!idea.TotalVote && (
+                  <span className="inline-flex items-center gap-1.5 rounded-full bg-blue-50 px-3 py-1.5 text-blue-700">
+                    <ThumbsUpIcon
+                      className="size-3.5"
+                      fill="currentColor"
+                      aria-hidden="true"
+                    />
+                    {idea.TotalVote} {idea.TotalVote === 1 ? "vote" : "votes"}
+                  </span>
+                )}
 
                 {idea.flgCoach && (
-                  <span className="inline-flex items-center gap-1.5 rounded-full bg-neutral-100 px-3 py-1.5 text-neutral-900">
+                  <span className="inline-flex items-center gap-1.5 rounded-full bg-violet-50 px-3 py-1.5 text-violet-700">
                     <SparklesIcon className="size-3.5" aria-hidden="true" />
                     Sharpened
                   </span>

@@ -87,6 +87,7 @@ import {
   SparklesIcon,
   StarIcon,
   TagsIcon,
+  ThumbsUpIcon,
   UsersIcon,
   XIcon,
 } from "lucide-react"
@@ -1051,12 +1052,6 @@ function IdeaCard({
       <CardHeader className="gap-3 py-4">
         <div className="flex min-w-0 items-start justify-between gap-3">
           <CardTitle>{idea.title ?? "Untitled"}</CardTitle>
-          {idea.flgTeam && (
-            <Badge className="shrink-0">
-              <StarIcon fill="currentColor" />
-              Shortlisted
-            </Badge>
-          )}
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <Badge variant="secondary">
@@ -1067,10 +1062,36 @@ function IdeaCard({
             <ShapesIcon />
             {idea.CategoryName || "Unknown pillar"}
           </Badge>
+          {idea.flgTeam && (
+            <Badge>
+              <StarIcon fill="currentColor" />
+              Shortlisted
+            </Badge>
+          )}
+          {idea.flgCoach && (
+            <Badge className="bg-blue-50 text-blue-700 dark:bg-blue-950 dark:text-blue-300">
+              <SparklesIcon />
+              Sharpened
+            </Badge>
+          )}
+        </div>
+        <div className="flex flex-wrap items-center gap-2.5">
           <span className="flex items-center gap-1 text-xs text-muted-foreground">
             <Clock3Icon className="size-3" />
             Submitted {formatRelativeDate(idea.CreatedDttm)}
           </span>
+          {!!idea.TotalVote && (
+            <>
+              <span
+                className="size-0.5 rounded-full bg-muted-foreground"
+                aria-hidden="true"
+              />
+              <span className="flex items-center gap-1 text-xs text-muted-foreground">
+                <ThumbsUpIcon className="size-3" />
+                {idea.TotalVote} {idea.TotalVote === 1 ? "vote" : "votes"}
+              </span>
+            </>
+          )}
         </div>
       </CardHeader>
       <CardContent className="flex flex-1 flex-col pb-4">
@@ -1258,9 +1279,15 @@ function IdeaPreviewDialog({
                   </Badge>
                 )}
                 {idea.flgCoach && (
-                  <Badge variant="secondary">
+                  <Badge className="bg-blue-50 text-blue-700 dark:bg-blue-950 dark:text-blue-300">
                     <SparklesIcon />
                     Sharpened
+                  </Badge>
+                )}
+                {!!idea.TotalVote && (
+                  <Badge className="bg-green-50 text-green-700 dark:bg-green-950 dark:text-green-300">
+                    <ThumbsUpIcon />
+                    {idea.TotalVote} {idea.TotalVote === 1 ? "vote" : "votes"}
                   </Badge>
                 )}
               </div>
