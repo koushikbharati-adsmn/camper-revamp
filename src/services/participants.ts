@@ -389,3 +389,77 @@ export const useScoutIdea = () => {
     },
   })
 }
+
+interface GetParticipantVoteIdeasResponse {
+  success: boolean
+  data: ParticipantIdea[]
+}
+
+export interface GetParticipantVoteIdeasParams {
+  visitor_id: string
+  workshop_code: string
+  category_id: number | null
+  team_id: number | null
+}
+
+export const participantVoteIdeaKeys = {
+  all: ["PARTICIPANT_VOTE_IDEAS"] as const,
+
+  list: (params: GetParticipantVoteIdeasParams) =>
+    [...participantVoteIdeaKeys.all, params] as const,
+}
+
+const getParticipantVoteIdeas = async (
+  params: GetParticipantVoteIdeasParams
+) => {
+  const res = await apiClient.get<GetParticipantVoteIdeasResponse>(
+    "/api/participant/idea/vote",
+    {
+      params,
+    }
+  )
+
+  return res.data
+}
+
+export function getParticipantVoteIdeasOptions(
+  params: GetParticipantVoteIdeasParams
+) {
+  return queryOptions({
+    queryKey: participantVoteIdeaKeys.list(params),
+    queryFn: () => getParticipantVoteIdeas(params),
+  })
+}
+
+interface VoteIdeaPayload {
+  workshop_code: string
+  visitor_id: string
+  idea_id: number
+  action: "add" | "remove"
+}
+
+interface VoteIdeaResponse {
+  success: boolean
+  message: string
+}
+
+const voteIdea = async (payload: VoteIdeaPayload) => {
+  const res = await apiClient.post<VoteIdeaResponse>(
+    "/api/participant/idea/vote",
+    payload
+  )
+  return res.data
+}
+
+export const useVoteIdea = () => {
+  return useMutation({
+    mutationFn: (payload: VoteIdeaPayload) => voteIdea(payload),
+    onError: (error) => {
+      toast.add({
+        type: "error",
+        title: "Oops! Something went wrong",
+        description: error.message,
+      })
+    },
+  })
+}
