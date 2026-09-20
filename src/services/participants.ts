@@ -1,7 +1,11 @@
 import apiClient from "@/lib/api-client"
 import { socket } from "@/lib/socket"
 import type { WorkshopLifecycleStatus } from "@/lib/workshop-lifecycle"
-import { queryOptions, useMutation } from "@tanstack/react-query"
+import {
+  queryOptions,
+  useMutation,
+  useQueryClient,
+} from "@tanstack/react-query"
 import type { VotingScope } from "./workshops-panel"
 import { toast } from "@/components/ui/toast"
 
@@ -472,6 +476,60 @@ export const useVoteIdea = () => {
       } satisfies IdeaVoteSocketPayload)
     },
 
+    onError: (error) => {
+      toast.add({
+        type: "error",
+        title: "Oops! Something went wrong",
+        description: error.message,
+      })
+    },
+  })
+}
+
+interface SelectTeamPayload {
+  visitor_id: string
+  workshop_code: string
+  team_id: number
+  team_code?: string
+}
+
+interface SelectTeamResponse {
+  success: boolean
+  message: string
+}
+
+const selectTeam = async (payload: SelectTeamPayload) => {
+  const res = await apiClient.post<SelectTeamResponse>(
+    "/api/participant/team/select",
+    payload
+  )
+
+  return res.data
+}
+
+export const useSelectTeam = () => {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (payload: SelectTeamPayload) => selectTeam(payload),
+    onSuccess: (_response, payload) => {
+      queryClient.setQueryData<GetParticipantWorkshopResponse>(
+        participantWorkshopKeys.detail({
+          code: payload.workshop_code,
+          visitor_id: payload.visitor_id,
+        }),
+        (current) =>
+          current
+            ? {
+                ...current,
+                data: {
+                  ...current.data,
+                  teamID: payload.team_id,
+                },
+              }
+            : current
+      )
+    },
     onError: (error) => {
       toast.add({
         type: "error",

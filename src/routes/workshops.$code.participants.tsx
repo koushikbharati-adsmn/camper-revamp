@@ -15,8 +15,14 @@ import {
   useSaveIdea,
   useScoutIdea,
   useShortlistIdea,
+  useSelectTeam,
   useVoteIdea,
 } from "@/services/participants"
+import {
+  InputOTP,
+  InputOTPGroup,
+  InputOTPSlot,
+} from "@/components/ui/input-otp"
 import {
   queryOptions,
   useMutationState,
@@ -58,6 +64,7 @@ import {
   XIcon,
 } from "lucide-react"
 import useEmblaCarousel from "embla-carousel-react"
+import { REGEXP_ONLY_DIGITS } from "input-otp"
 import { formatRelativeDate } from "@/lib/date"
 import { ExperienceButton } from "@/components/experience/experience-button"
 import {
@@ -270,7 +277,14 @@ function ParticipantExperience() {
 
   const [activeView, setActiveView] = useState<ParticipantView>("home")
 
-  const [selectedTeamId, setSelectedTeamId] = useState<number | null>(null)
+  const [selectedTeamId, setSelectedTeamId] = useState<number | null>(() =>
+    workshop.teamID !== null ? workshop.teamID : null
+  )
+
+  const [pendingTeamId, setPendingTeamId] = useState<number | null>(null)
+  const selectTeamMutation = useSelectTeam()
+
+  const pendingTeam = workshop.teams.find((team) => team.ID === pendingTeamId)
 
   const isVoting = workshop.status === "Vote"
 
@@ -353,12 +367,49 @@ function ParticipantExperience() {
     setActiveView("newsroom")
   }
 
-  const handleSelectTeam = (teamId: number) => {
-    setSelectedTeamId(teamId)
+  const submitTeamSelection = (teamId: number, teamCode?: string) => {
+    if (selectTeamMutation.isPending) return
+
+    selectTeamMutation.mutate(
+      {
+        visitor_id: visitorId,
+        workshop_code: workshopCode,
+        team_id: teamId,
+        ...(teamCode && { team_code: teamCode }),
+      },
+      {
+        onSuccess: () => {
+          setSelectedTeamId(teamId)
+          setPendingTeamId(null)
+        },
+      }
+    )
   }
 
-  const handleChangeTeam = (teamId: number) => {
-    setSelectedTeamId(teamId)
+  const handleRequestTeam = (teamId: number) => {
+    if (teamId === selectedTeamId || selectTeamMutation.isPending) return
+
+    selectTeamMutation.reset()
+
+    if (workshop.IsProtected) {
+      setPendingTeamId(teamId)
+      return
+    }
+
+    submitTeamSelection(teamId)
+  }
+
+  const handleConfirmTeamCode = (teamCode: string) => {
+    if (pendingTeamId === null) return
+
+    submitTeamSelection(pendingTeamId, teamCode)
+  }
+
+  const handleCloseTeamCodeDialog = () => {
+    if (selectTeamMutation.isPending) return
+
+    setPendingTeamId(null)
+    selectTeamMutation.reset()
   }
 
   const renderCurrentView = () => {
@@ -384,13 +435,18 @@ function ParticipantExperience() {
       return (
         <IdeasScreen
           selectedTeamId={selectedTeamId}
-          onTeamChange={handleChangeTeam}
+          isTeamSelectionPending={selectTeamMutation.isPending}
+          onTeamChange={handleRequestTeam}
         />
       )
     }
 
     return (
-      <TeamsScreen teams={workshop.teams} onSelectTeam={handleSelectTeam} />
+      <TeamsScreen
+        teams={workshop.teams}
+        isTeamSelectionPending={selectTeamMutation.isPending}
+        onSelectTeam={handleRequestTeam}
+      />
     )
   }
 
@@ -420,6 +476,19 @@ function ParticipantExperience() {
       </div>
 
       {isVoting && <VotingScreen />}
+
+      {pendingTeam && (
+        <TeamPasscodeDialog
+          key={pendingTeam.ID}
+          open
+          team={pendingTeam}
+          isPending={selectTeamMutation.isPending}
+          error={selectTeamMutation.error?.message}
+          onErrorReset={selectTeamMutation.reset}
+          onSubmit={handleConfirmTeamCode}
+          onClose={handleCloseTeamCodeDialog}
+        />
+      )}
     </>
   )
 }
@@ -1292,14 +1361,221 @@ function WalkthroughScreen({
 }
 
 /* -------------------------------------------------------------------------- */
+/* Team passcode                                                              */
+/* -------------------------------------------------------------------------- */
+
+function TeamPasscodeDialog({
+  open,
+  team,
+  isPending,
+  error,
+  onErrorReset,
+  onSubmit,
+  onClose,
+}: {
+  open: boolean
+  team: ParticipantWorkshop["teams"][number]
+  isPending: boolean
+  error?: string
+  onErrorReset: () => void
+  onSubmit: (teamCode: string) => void
+  onClose: () => void
+}) {
+  const { workshop } = useParticipantExperience()
+  const dialogRef = useNativeDialog(open)
+  const [teamCode, setTeamCode] = useState("")
+  const [validationError, setValidationError] = useState<string>()
+
+  const errorMessage = validationError ?? error
+
+  const handleClose = () => {
+    if (isPending) return
+
+    onClose()
+  }
+
+  const handleCancel = (event: SyntheticEvent<HTMLDialogElement>) => {
+    if (isPending) {
+      event.preventDefault()
+    }
+  }
+
+  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+
+    if (!/^\d{4}$/.test(teamCode)) {
+      setValidationError("Enter a four-digit PIN.")
+      return
+    }
+
+    setValidationError(undefined)
+    onSubmit(teamCode)
+  }
+
+  const handleTeamCodeChange = (value: string) => {
+    setTeamCode(value)
+    setValidationError(undefined)
+    onErrorReset()
+  }
+
+  return (
+    <dialog
+      ref={dialogRef}
+      aria-labelledby="team-passcode-dialog-title"
+      aria-describedby="team-passcode-dialog-description"
+      className={cn(
+        "fixed inset-0 m-0 h-dvh max-h-dvh w-full max-w-none",
+        "overflow-hidden border-0 bg-transparent p-0",
+        "backdrop:bg-black/50",
+        "sm:m-auto sm:h-fit sm:max-h-[calc(100dvh-2rem)]",
+        "sm:w-[min(28rem,calc(100%-2rem))]"
+      )}
+      onCancel={handleCancel}
+      onClose={handleClose}
+    >
+      <form
+        noValidate
+        className={cn(
+          "flex h-full max-h-dvh min-h-0 flex-col overflow-hidden",
+          "sm:h-auto sm:max-h-[calc(100dvh-2rem)]",
+          "sm:rounded-lg sm:border sm:shadow-lg"
+        )}
+        style={{
+          backgroundColor: workshop.card_primary_bg_color,
+          borderColor: workshop.card_primary_border_color,
+          color: workshop.txt_primary_color,
+        }}
+        aria-busy={isPending}
+        onSubmit={handleSubmit}
+      >
+        <header
+          className="flex shrink-0 items-start justify-between gap-3 border-b px-4 py-4 sm:px-6"
+          style={{ borderColor: workshop.card_primary_border_color }}
+        >
+          <div className="min-w-0">
+            <h2
+              id="team-passcode-dialog-title"
+              className="text-lg font-semibold tracking-[-0.02em] sm:text-xl"
+            >
+              Enter team PIN
+            </h2>
+
+            <p
+              id="team-passcode-dialog-description"
+              className="mt-1 text-sm"
+              style={{ color: workshop.txt_secondary_color }}
+            >
+              Enter the four-digit PIN for {team.TeamName}.
+            </p>
+          </div>
+
+          <button
+            type="button"
+            className={cn(
+              "grid size-9 shrink-0 place-items-center rounded-md border",
+              "transition-colors focus-visible:outline-2 focus-visible:outline-offset-2",
+              "disabled:pointer-events-none disabled:opacity-50"
+            )}
+            style={{
+              borderColor: workshop.card_primary_border_color,
+              outlineColor: workshop.btn_primary_bg_color,
+            }}
+            aria-label="Close dialog"
+            disabled={isPending}
+            onClick={handleClose}
+          >
+            <XIcon className="size-4" aria-hidden="true" />
+          </button>
+        </header>
+
+        <div className="flex flex-1 flex-col items-center justify-center gap-3 px-4 py-8 sm:px-6">
+          <label htmlFor="team-passcode" className="text-sm font-medium">
+            Four-digit PIN
+          </label>
+
+          <InputOTP
+            id="team-passcode"
+            name="team-passcode"
+            maxLength={4}
+            inputMode="numeric"
+            pattern={REGEXP_ONLY_DIGITS}
+            value={teamCode}
+            disabled={isPending}
+            autoFocus
+            aria-label={`PIN for ${team.TeamName}`}
+            aria-invalid={Boolean(errorMessage)}
+            aria-describedby={
+              errorMessage ? "team-passcode-dialog-error" : undefined
+            }
+            containerClassName="justify-center"
+            onChange={handleTeamCodeChange}
+          >
+            <InputOTPGroup>
+              {[0, 1, 2, 3].map((slot) => (
+                <InputOTPSlot
+                  key={slot}
+                  index={slot}
+                  className="size-12 text-lg"
+                />
+              ))}
+            </InputOTPGroup>
+          </InputOTP>
+
+          {errorMessage && (
+            <p
+              id="team-passcode-dialog-error"
+              className="text-sm text-red-600"
+              role="alert"
+            >
+              {errorMessage}
+            </p>
+          )}
+        </div>
+
+        <footer
+          className="flex shrink-0 flex-col-reverse gap-2 border-t px-4 py-4 sm:flex-row sm:justify-end sm:px-6"
+          style={{ borderColor: workshop.card_primary_border_color }}
+        >
+          <ExperienceButton
+            variant="secondary"
+            workshop={workshop}
+            disabled={isPending}
+            onClick={handleClose}
+          >
+            Cancel
+          </ExperienceButton>
+
+          <ExperienceButton
+            type="submit"
+            variant="primary"
+            workshop={workshop}
+            disabled={isPending}
+          >
+            {isPending && (
+              <LoaderCircleIcon
+                className="mr-2 inline size-4 animate-spin"
+                aria-hidden="true"
+              />
+            )}
+            {isPending ? "Checking..." : "Join team"}
+          </ExperienceButton>
+        </footer>
+      </form>
+    </dialog>
+  )
+}
+
+/* -------------------------------------------------------------------------- */
 /* Teams                                                                      */
 /* -------------------------------------------------------------------------- */
 
 function TeamsScreen({
   teams,
+  isTeamSelectionPending,
   onSelectTeam,
 }: {
   teams: ParticipantWorkshop["teams"]
+  isTeamSelectionPending: boolean
   onSelectTeam: (teamId: number) => void
 }) {
   const { workshop } = useParticipantExperience()
@@ -1353,6 +1629,7 @@ function TeamsScreen({
       className="flex min-h-full flex-col justify-center py-4 sm:py-6"
       aria-label="Select a team"
       aria-roledescription="carousel"
+      aria-busy={isTeamSelectionPending}
     >
       <div className="mx-auto w-full max-w-7xl">
         <div className="relative">
@@ -1372,12 +1649,13 @@ function TeamsScreen({
                     <button
                       type="button"
                       className={cn(
-                        "flex h-full w-full flex-col overflow-hidden rounded-md bg-white text-left shadow-xs transition-[transform,opacity] duration-300 focus-visible:outline-2 focus-visible:outline-offset-4",
+                        "flex h-full w-full flex-col overflow-hidden rounded-md bg-white text-left shadow-xs transition-[transform,opacity] duration-300 focus-visible:outline-2 focus-visible:outline-offset-4 disabled:pointer-events-none disabled:opacity-50",
                         isSelected
                           ? "scale-100 opacity-100 sm:scale-105"
                           : "scale-[0.90] opacity-55"
                       )}
                       onClick={() => handleSelectTeam(team.ID)}
+                      disabled={isTeamSelectionPending}
                       style={{
                         borderColor: workshop.card_primary_border_color,
                       }}
@@ -1470,9 +1748,11 @@ function TeamsScreen({
 
 function IdeasScreen({
   selectedTeamId,
+  isTeamSelectionPending,
   onTeamChange,
 }: {
   selectedTeamId: number
+  isTeamSelectionPending: boolean
   onTeamChange: (teamId: number) => void
 }) {
   const queryClient = useQueryClient()
@@ -1879,6 +2159,7 @@ function IdeasScreen({
           <ExperienceSelect
             workshop={workshop}
             value={selectedTeamId}
+            disabled={isTeamSelectionPending}
             onChange={handleTeamSelectChange}
             className="w-full lg:w-auto"
           >
