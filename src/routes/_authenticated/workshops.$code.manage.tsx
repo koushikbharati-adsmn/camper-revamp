@@ -48,10 +48,12 @@ import {
 } from "@/lib/workshop-lifecycle"
 import { cn, getDurationParts } from "@/lib/utils"
 import {
+  type GetManageWorkshopResponse,
   type ManageIdea,
   type ManageWorkshop,
   getManageIdeasOptions,
   getManageWorkshopOptions,
+  manageWorkshopKeys,
   useExportPpt,
   useUpdateWorkshopStatus,
 } from "@/services/workshops-manage"
@@ -172,9 +174,26 @@ function RouteComponent() {
   useEffect(() => {
     const handleIdeaUpserted = ({
       roomId,
+      action,
       idea: socketIdea,
     }: IdeaUpsertSocketPayload) => {
       if (roomId !== code) return
+
+      if (action === "add") {
+        queryClient.setQueryData<GetManageWorkshopResponse>(
+          manageWorkshopKeys.detail(code),
+          (current) =>
+            current
+              ? {
+                  ...current,
+                  data: {
+                    ...current.data,
+                    TotalIdea: current.data.TotalIdea + 1,
+                  },
+                }
+              : current
+        )
+      }
 
       queryClient.setQueryData(ideasQueryOptions.queryKey, (current) => {
         if (!current) return current
