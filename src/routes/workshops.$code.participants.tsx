@@ -20,11 +20,6 @@ import {
   useVoteIdea,
 } from "@/services/participants"
 import {
-  InputOTP,
-  InputOTPGroup,
-  InputOTPSlot,
-} from "@/components/ui/input-otp"
-import {
   queryOptions,
   useMutationState,
   useQuery,
@@ -65,7 +60,6 @@ import {
   XIcon,
 } from "lucide-react"
 import useEmblaCarousel from "embla-carousel-react"
-import { REGEXP_ONLY_DIGITS } from "input-otp"
 import { formatRelativeDate } from "@/lib/date"
 import { ExperienceButton } from "@/components/experience/experience-button"
 import {
@@ -1519,7 +1513,7 @@ function TeamPasscodeDialog({
   }
 
   const handleTeamCodeChange = (value: string) => {
-    setTeamCode(value)
+    setTeamCode(value.replace(/\D/g, "").slice(0, 4))
     setValidationError(undefined)
     onErrorReset()
   }
@@ -1599,33 +1593,37 @@ function TeamPasscodeDialog({
             Four-digit PIN
           </label>
 
-          <InputOTP
+          <input
+            type="text"
             id="team-passcode"
             name="team-passcode"
-            maxLength={4}
             inputMode="numeric"
-            pattern={REGEXP_ONLY_DIGITS}
+            pattern="[0-9]*"
+            maxLength={4}
             value={teamCode}
             disabled={isPending}
             autoFocus
+            spellCheck={false}
             aria-label={`PIN for ${team.TeamName}`}
             aria-invalid={Boolean(errorMessage)}
             aria-describedby={
               errorMessage ? "team-passcode-dialog-error" : undefined
             }
-            containerClassName="justify-center"
-            onChange={handleTeamCodeChange}
-          >
-            <InputOTPGroup>
-              {[0, 1, 2, 3].map((slot) => (
-                <InputOTPSlot
-                  key={slot}
-                  index={slot}
-                  className="size-12 text-lg"
-                />
-              ))}
-            </InputOTPGroup>
-          </InputOTP>
+            className={cn(
+              "h-12 w-44 rounded-md border bg-transparent px-4 text-center",
+              "[text-indent:0.5em] font-mono text-xl tracking-[0.5em] tabular-nums",
+              "transition-colors outline-none",
+              "focus-visible:outline-2 focus-visible:outline-offset-2",
+              "disabled:cursor-not-allowed disabled:opacity-50"
+            )}
+            style={{
+              borderColor: errorMessage
+                ? "#dc2626"
+                : workshop.card_primary_border_color,
+              outlineColor: workshop.btn_primary_bg_color,
+            }}
+            onChange={(event) => handleTeamCodeChange(event.target.value)}
+          />
 
           {errorMessage && (
             <p
