@@ -2352,39 +2352,33 @@ function IdeateIdeaCard({
       </div>
 
       <div className="flex flex-1 flex-col gap-4 p-4">
-        <div className="flex items-center justify-between gap-3">
-          <div className="flex items-center gap-3">
-            <button
-              type="button"
-              aria-label={
-                idea.flgTeam
-                  ? `Remove ${idea.title || "idea"} from shortlist`
-                  : `Shortlist ${idea.title || "idea"}`
-              }
-              aria-pressed={idea.flgTeam}
-              disabled={isShortlistPending}
-              className="disabled:cursor-wait disabled:opacity-50"
-              onClick={onToggleShortlist}
-            >
-              <StarIcon
-                className="size-5"
-                fill={idea.flgTeam ? "currentColor" : "none"}
-                aria-hidden="true"
-              />
-            </button>
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
+            aria-label={
+              idea.flgTeam
+                ? `Remove ${idea.title || "idea"} from shortlist`
+                : `Shortlist ${idea.title || "idea"}`
+            }
+            aria-pressed={idea.flgTeam}
+            disabled={isShortlistPending}
+            className="disabled:cursor-wait disabled:opacity-50"
+            onClick={onToggleShortlist}
+          >
+            <StarIcon
+              className="size-5"
+              fill={idea.flgTeam ? "currentColor" : "none"}
+              aria-hidden="true"
+            />
+          </button>
 
-            <button
-              type="button"
-              aria-label={`Edit ${idea.title || "idea"}`}
-              onClick={onEdit}
-            >
-              <SquarePenIcon className="size-5" aria-hidden="true" />
-            </button>
-          </div>
-
-          {idea.flgCoach && (
-            <SparklesIcon className="size-5" aria-hidden="true" />
-          )}
+          <button
+            type="button"
+            aria-label={`Edit ${idea.title || "idea"}`}
+            onClick={onEdit}
+          >
+            <SquarePenIcon className="size-5" aria-hidden="true" />
+          </button>
         </div>
 
         <div>
@@ -2400,13 +2394,21 @@ function IdeateIdeaCard({
         </div>
 
         <div className="flex flex-wrap gap-2 text-xs">
-          <span className="rounded-full bg-neutral-100 px-2.5 py-1">
+          <span className="inline-flex items-center gap-1 rounded-full bg-neutral-100 px-2.5 py-1">
+            <UsersIcon className="size-3.5" aria-hidden="true" />
             {idea.TeamName || "Unknown team"}
           </span>
 
-          <span className="rounded-full border px-2.5 py-1">
+          <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1">
+            <ShapesIcon className="size-3.5" aria-hidden="true" />
             {idea.CategoryName || "Unknown pillar"}
           </span>
+          {idea.flgCoach && (
+            <span className="inline-flex items-center gap-1 rounded-full bg-violet-50 px-2.5 py-1 text-violet-700">
+              <SparklesIcon className="size-3.5" aria-hidden="true" />
+              Sharpened
+            </span>
+          )}
         </div>
 
         <p className="line-clamp-3 text-sm text-neutral-600">{idea.Desc}</p>
@@ -2414,7 +2416,7 @@ function IdeateIdeaCard({
         <ExperienceButton
           variant="primary"
           workshop={workshop}
-          className="w-28"
+          className="mt-auto w-28"
           onClick={onSharpen}
         >
           Sharpen
