@@ -1023,6 +1023,7 @@ function NewsroomScreen({
   onRetryActivities: () => void
 }) {
   const { workshop, workshopCode } = useParticipantExperience()
+  const queryClient = useQueryClient()
 
   const {
     data: dashboard,
@@ -1033,6 +1034,101 @@ function NewsroomScreen({
     ...getDashboardOptions(workshopCode),
     select: (response) => response.data,
   })
+
+  useEffect(() => {
+    const dashboardQueryKey = getDashboardOptions(workshopCode).queryKey
+
+    const updateDashboard = (
+      teamId: number,
+      delta: {
+        draft?: number
+        shortlisted?: number
+        sharpened?: number
+        totalIdeas?: number
+      }
+    ) => {
+      const {
+        draft = 0,
+        shortlisted = 0,
+        sharpened = 0,
+        totalIdeas = 0,
+      } = delta
+
+      queryClient.setQueryData(dashboardQueryKey, (current) => {
+        if (!current) return current
+
+        return {
+          ...current,
+          data: {
+            ...current.data,
+            overall: {
+              ...current.data.overall,
+              Draft: current.data.overall.Draft + draft,
+              Shortlisted: current.data.overall.Shortlisted + shortlisted,
+              Sharpened: current.data.overall.Sharpened + sharpened,
+              TotalIdeas: current.data.overall.TotalIdeas + totalIdeas,
+            },
+            teams: current.data.teams.map((team) =>
+              team.TeamID === teamId
+                ? {
+                    ...team,
+                    Drafts: team.Drafts + draft,
+                    Shortlisted: team.Shortlisted + shortlisted,
+                    Sharpened: team.Sharpened + sharpened,
+                    TotalIdeas: team.TotalIdeas + totalIdeas,
+                  }
+                : team
+            ),
+          },
+        }
+      })
+    }
+
+    const handleIdeaUpserted = ({
+      roomId,
+      action,
+      idea,
+    }: IdeaUpsertSocketPayload) => {
+      if (roomId !== workshopCode || action !== "add") return
+
+      updateDashboard(idea.teamId, { draft: 1, totalIdeas: 1 })
+    }
+
+    const handleIdeaShortlistUpdated = ({
+      roomId,
+      isShortlisted,
+      idea,
+    }: IdeaShortlistSocketPayload) => {
+      if (roomId !== workshopCode) return
+
+      const delta = isShortlisted ? 1 : -1
+
+      updateDashboard(idea.TeamID, {
+        draft: -delta,
+        shortlisted: delta,
+      })
+    }
+
+    const handleIdeaCoachUpdated = ({
+      roomId,
+      flgCoach,
+      idea,
+    }: IdeaCoachSocketPayload) => {
+      if (roomId !== workshopCode) return
+
+      updateDashboard(idea.TeamID, { sharpened: flgCoach ? 1 : -1 })
+    }
+
+    socket.on("idea_upserted", handleIdeaUpserted)
+    socket.on("idea_shortlist_updated", handleIdeaShortlistUpdated)
+    socket.on("idea_coach_updated", handleIdeaCoachUpdated)
+
+    return () => {
+      socket.off("idea_upserted", handleIdeaUpserted)
+      socket.off("idea_shortlist_updated", handleIdeaShortlistUpdated)
+      socket.off("idea_coach_updated", handleIdeaCoachUpdated)
+    }
+  }, [queryClient, workshopCode])
 
   const summary = [
     {
@@ -3484,18 +3580,19 @@ function IdeaDialog({
 
           socket.emit("upsert_idea", {
             roomId: workshopCode,
+            action: idea ? "update" : "add",
             idea: {
               roomId: workshopCode,
               ideaId: response.data.idea_id,
               teamId,
               teamName: team?.TeamName ?? "",
-              categoryId,
+              categoryId: categoryId!,
               categoryName: category?.Name ?? "",
               desc: description,
               title,
               context,
             },
-          })
+          } satisfies IdeaUpsertSocketPayload)
 
           onSaved({
             idea: updatedIdea,

@@ -162,6 +162,7 @@ export interface SocketIdea {
 
 export interface IdeaUpsertSocketPayload {
   roomId: string
+  action: "add" | "update"
   idea: SocketIdea
 }
 
