@@ -1,13 +1,16 @@
 import {
   type FormEvent,
   type KeyboardEvent,
+  type ReactNode,
   useEffect,
   useRef,
   useState,
 } from "react"
 import {
+  ArrowDownIcon,
   ChevronRightIcon,
   CircleAlertIcon,
+  CopyIcon,
   LoaderCircleIcon,
   RefreshCwIcon,
   SendIcon,
@@ -17,7 +20,9 @@ import {
 } from "lucide-react"
 
 import { ExperienceButton } from "@/components/experience/experience-button"
+import { Textarea } from "@/components/ui/textarea"
 import {
+  PARTICIPANT_CHAT_MESSAGE_MAX_LENGTH,
   type ParticipantChatConnectionStatus,
   useParticipantChat,
 } from "@/hooks/use-participant-chat"
@@ -52,7 +57,6 @@ export function SharpenDialog({
   onEditIdea: () => void
 }) {
   const dialogRef = useRef<HTMLDialogElement>(null)
-  const messagesEndRef = useRef<HTMLDivElement>(null)
   const [selectedCoachId, setSelectedCoachId] = useState<number | null>(null)
   const [draft, setDraft] = useState("")
   const [cleanupPersistenceError, setCleanupPersistenceError] = useState<
@@ -80,14 +84,8 @@ export function SharpenDialog({
       return
     }
 
-    if (!open && dialog.open) {
-      dialog.close()
-    }
+    if (!open && dialog.open) dialog.close()
   }, [open])
-
-  useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ block: "nearest" })
-  }, [chat.isWaiting, chat.session.messages])
 
   useEffect(() => {
     void retryPendingParticipantChatDeletions({
@@ -103,21 +101,8 @@ export function SharpenDialog({
     })
   }, [idea.ID, visitorId, workshopCode])
 
-  const handleSelectCoach = (coach: ParticipantWorkshopCoach) => {
-    setSelectedCoachId(coach.ID)
-    setDraft("")
-  }
-
-  const handleChangeCoach = () => {
-    if (chat.isWaiting) return
-
-    setSelectedCoachId(null)
-    setDraft("")
-  }
-
   const handleSendMessage = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
-
     if (chat.sendMessage(draft)) setDraft("")
   }
 
@@ -138,36 +123,22 @@ export function SharpenDialog({
     <dialog
       ref={dialogRef}
       aria-labelledby="sharpen-dialog-title"
-      className={cn(
-        "fixed inset-0 m-0 h-dvh max-h-dvh w-full max-w-none",
-        "overflow-hidden border-0 bg-transparent p-0",
-        "backdrop:bg-black/60",
-        "sm:m-auto sm:h-[min(48rem,calc(100dvh-2rem))]",
-        "sm:w-[min(64rem,calc(100%-2rem))]"
-      )}
-      onCancel={(event) => {
-        if (chat.isWaiting) event.preventDefault()
-      }}
+      className="fixed inset-0 m-0 h-dvh max-h-dvh w-full max-w-none overflow-hidden border-0 bg-transparent p-0 backdrop:bg-black/70"
       onClose={onClose}
     >
       <div
-        className={cn(
-          "flex h-full max-h-dvh min-h-0 flex-col overflow-hidden",
-          "sm:max-h-[min(48rem,calc(100dvh-2rem))]",
-          "sm:rounded-lg sm:border sm:shadow-xl"
-        )}
+        className="flex h-full min-h-0 flex-col overflow-hidden"
         style={{
           backgroundColor: workshop.card_primary_bg_color,
-          borderColor: workshop.card_primary_border_color,
           color: workshop.txt_primary_color,
         }}
       >
         {selectedCoach ? (
-          <ChatView
+          <ChatWorkspace
             coach={selectedCoach}
+            coaches={coaches}
             messages={chat.session.messages}
             draft={draft}
-            messagesEndRef={messagesEndRef}
             workshop={workshop}
             connectionStatus={chat.connectionStatus}
             connectionError={chat.connectionError}
@@ -176,20 +147,33 @@ export function SharpenDialog({
             sessionStatus={chat.session.status}
             sessionStatusMessage={chat.session.statusMessage}
             isWaiting={chat.isWaiting}
-            onChangeCoach={handleChangeCoach}
+            onChangeCoach={() => {
+              if (chat.isWaiting) return
+              setSelectedCoachId(null)
+              setDraft("")
+            }}
+            onSelectCoach={(coach) => {
+              if (chat.isWaiting || coach.ID === selectedCoach.ID) return
+              setSelectedCoachId(coach.ID)
+              setDraft("")
+            }}
             onClose={onClose}
             onEditIdea={onEditIdea}
             onDraftChange={setDraft}
             onComposerKeyDown={handleComposerKeyDown}
             onSendMessage={handleSendMessage}
             onReconnect={chat.reconnect}
+            onRetryMessage={chat.retryMessage}
           />
         ) : (
           <CoachSelectionView
             coaches={coaches}
             workshop={workshop}
             onClose={onClose}
-            onSelectCoach={handleSelectCoach}
+            onSelectCoach={(coach) => {
+              setSelectedCoachId(coach.ID)
+              setDraft("")
+            }}
           />
         )}
       </div>
@@ -210,35 +194,26 @@ function CoachSelectionView({
 }) {
   return (
     <>
-      <header
-        className="flex shrink-0 items-center justify-between gap-4 border-b px-4 py-4 sm:px-6"
-        style={{ borderColor: workshop.card_primary_border_color }}
-      >
+      <WorkspaceHeader workshop={workshop} onClose={onClose}>
         <div className="min-w-0">
           <h2
             id="sharpen-dialog-title"
-            className="text-xl font-semibold tracking-tight sm:text-2xl"
+            className="truncate text-lg font-semibold tracking-tight sm:text-xl"
           >
-            Choose your coach
+            Choose a coach
           </h2>
         </div>
+      </WorkspaceHeader>
 
-        <CloseButton workshop={workshop} onClick={onClose} />
-      </header>
-
-      <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
-        <div className="mx-auto grid w-full max-w-5xl gap-6 px-4 py-5 sm:px-6 sm:py-7">
+      <main className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
+        <div className="mx-auto w-full max-w-5xl px-4 py-6 sm:px-8 sm:py-10">
           {coaches.length ? (
-            <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            <ul className="grid gap-3 md:grid-cols-2">
               {coaches.map((coach) => (
                 <li key={coach.ID} className="min-w-0">
                   <button
                     type="button"
-                    className={cn(
-                      "flex h-full min-h-52 w-full flex-col items-start rounded-lg border p-5 text-left",
-                      "transition-[transform,box-shadow]",
-                      "focus-visible:outline-2 focus-visible:outline-offset-2"
-                    )}
+                    className="group flex h-full w-full items-center gap-4 rounded-2xl border p-4 text-left transition-[transform,box-shadow] hover:-translate-y-0.5 hover:shadow-md focus-visible:outline-2 focus-visible:outline-offset-2 sm:p-5"
                     style={{
                       backgroundColor: workshop.card_secondary_bg_color,
                       borderColor: workshop.card_primary_border_color,
@@ -249,45 +224,43 @@ function CoachSelectionView({
                     aria-label={`Select ${coach.CoachName} as your coach`}
                     onClick={() => onSelectCoach(coach)}
                   >
-                    <CoachAvatar coach={coach} className="size-16" />
-
-                    <h3 className="mt-4 text-lg leading-tight font-semibold">
-                      {coach.CoachName}
-                    </h3>
-
-                    <p
-                      className="mt-1 text-sm font-medium"
-                      style={{
-                        color:
-                          coach.SecondaryTxtColor ||
-                          workshop.txt_secondary_color,
-                      }}
-                    >
-                      {coach.Title}
-                    </p>
-
-                    <p
-                      className="mt-3 line-clamp-3 text-sm leading-6"
-                      style={{
-                        color:
-                          coach.SecondaryTxtColor ||
-                          workshop.txt_secondary_color,
-                      }}
-                    >
-                      {coach.Description}
-                    </p>
-
-                    <span className="mt-auto inline-flex items-center pt-5 text-sm font-semibold">
-                      Start a conversation
-                      <ChevronRightIcon className="size-5" aria-hidden="true" />
+                    <CoachAvatar coach={coach} className="size-14 sm:size-16" />
+                    <span className="min-w-0 flex-1">
+                      <span className="block text-base font-semibold sm:text-lg">
+                        {coach.CoachName}
+                      </span>
+                      <span
+                        className="mt-0.5 block text-sm font-medium"
+                        style={{
+                          color:
+                            coach.SecondaryTxtColor ||
+                            workshop.txt_secondary_color,
+                        }}
+                      >
+                        {coach.Title}
+                      </span>
+                      <span
+                        className="mt-2 line-clamp-2 block text-sm leading-5"
+                        style={{
+                          color:
+                            coach.SecondaryTxtColor ||
+                            workshop.txt_secondary_color,
+                        }}
+                      >
+                        {coach.Description}
+                      </span>
                     </span>
+                    <ChevronRightIcon
+                      className="size-5 shrink-0 transition-transform group-hover:translate-x-0.5"
+                      aria-hidden="true"
+                    />
                   </button>
                 </li>
               ))}
             </ul>
           ) : (
             <div
-              className="grid min-h-56 place-content-center rounded-lg border px-6 text-center"
+              className="grid min-h-64 place-content-center rounded-2xl border px-6 text-center"
               style={{ borderColor: workshop.card_primary_border_color }}
             >
               <UsersIcon className="mx-auto size-9" aria-hidden="true" />
@@ -303,29 +276,16 @@ function CoachSelectionView({
             </div>
           )}
         </div>
-      </div>
-
-      <footer
-        className="flex shrink-0 justify-end border-t px-4 py-3 sm:px-6"
-        style={{ borderColor: workshop.card_primary_border_color }}
-      >
-        <ExperienceButton
-          variant="secondary"
-          workshop={workshop}
-          onClick={onClose}
-        >
-          Cancel
-        </ExperienceButton>
-      </footer>
+      </main>
     </>
   )
 }
 
-function ChatView({
+function ChatWorkspace({
   coach,
+  coaches,
   messages,
   draft,
-  messagesEndRef,
   workshop,
   connectionStatus,
   connectionError,
@@ -335,17 +295,19 @@ function ChatView({
   sessionStatusMessage,
   isWaiting,
   onChangeCoach,
+  onSelectCoach,
   onClose,
   onEditIdea,
   onDraftChange,
   onComposerKeyDown,
   onSendMessage,
   onReconnect,
+  onRetryMessage,
 }: {
   coach: ParticipantWorkshopCoach
+  coaches: ParticipantWorkshopCoach[]
   messages: ParticipantChatMessage[]
   draft: string
-  messagesEndRef: React.RefObject<HTMLDivElement | null>
   workshop: ParticipantWorkshop
   connectionStatus: ParticipantChatConnectionStatus
   connectionError: string | null
@@ -355,16 +317,41 @@ function ChatView({
   sessionStatusMessage: string | null
   isWaiting: boolean
   onChangeCoach: () => void
+  onSelectCoach: (coach: ParticipantWorkshopCoach) => void
   onClose: () => void
   onEditIdea: () => void
   onDraftChange: (value: string) => void
   onComposerKeyDown: (event: KeyboardEvent<HTMLTextAreaElement>) => void
   onSendMessage: (event: FormEvent<HTMLFormElement>) => void
   onReconnect: () => void
+  onRetryMessage: (messageId: string) => boolean
 }) {
+  const scrollViewportRef = useRef<HTMLDivElement>(null)
+  const messagesEndRef = useRef<HTMLDivElement>(null)
+  const isNearBottomRef = useRef(true)
+  const previousMessageCountRef = useRef(messages.length)
+  const [hasNewMessages, setHasNewMessages] = useState(false)
   const isConnected = connectionStatus === "connected"
   const isTerminal = sessionStatus !== "active"
   const isComposerDisabled = !isConnected || isWaiting || isTerminal
+
+  useEffect(() => {
+    const hasAddedMessage = messages.length > previousMessageCountRef.current
+    previousMessageCountRef.current = messages.length
+
+    if (isNearBottomRef.current) {
+      messagesEndRef.current?.scrollIntoView({ block: "end" })
+      setHasNewMessages(false)
+    } else if (hasAddedMessage) {
+      setHasNewMessages(true)
+    }
+  }, [isWaiting, messages])
+
+  const scrollToBottom = () => {
+    isNearBottomRef.current = true
+    setHasNewMessages(false)
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth", block: "end" })
+  }
 
   const composerPlaceholder = isTerminal
     ? sessionStatus === "ended"
@@ -376,234 +363,404 @@ function ChatView({
 
   return (
     <>
-      <header
-        className="shrink-0 border-b px-4 py-3 sm:px-6"
-        style={{ borderColor: workshop.card_primary_border_color }}
-      >
-        <div className="flex items-center justify-between gap-3">
+      <WorkspaceHeader workshop={workshop} onClose={onClose}>
+        <div className="flex min-w-0 flex-1 items-center justify-between gap-3">
           <div className="flex min-w-0 items-center gap-3">
-            <CoachAvatar coach={coach} className="size-11" />
-
+            <CoachAvatar coach={coach} className="size-10 sm:size-11" />
             <div className="min-w-0">
               <h2
                 id="sharpen-dialog-title"
-                className="truncate text-lg leading-tight font-semibold"
+                className="truncate text-base leading-tight font-semibold sm:text-lg"
               >
                 {coach.CoachName}
               </h2>
               <p
-                className="text-sm"
+                className="truncate text-xs sm:text-sm"
                 style={{ color: workshop.txt_secondary_color }}
               >
                 {coach.Title}
               </p>
             </div>
           </div>
-
-          <CloseButton
-            workshop={workshop}
-            disabled={isWaiting}
-            onClick={onClose}
-          />
-        </div>
-
-        <div className="mt-3 flex flex-wrap gap-2">
-          <ExperienceButton
-            variant="secondary"
-            workshop={workshop}
-            className="min-w-0 px-3 py-1.5"
-            disabled={isWaiting}
-            onClick={onChangeCoach}
-          >
-            <span className="flex items-center gap-2">
-              <UsersIcon className="size-4" aria-hidden="true" />
-              Change coach
-            </span>
-          </ExperienceButton>
-
-          <ExperienceButton
-            variant="secondary"
-            workshop={workshop}
-            className="min-w-0 px-3 py-1.5"
-            disabled={isWaiting}
-            onClick={onEditIdea}
-          >
-            <span className="flex items-center gap-2">
+          <div className="flex shrink-0 items-center gap-2">
+            <ExperienceButton
+              variant="secondary"
+              workshop={workshop}
+              className="flex size-9 min-w-0 items-center justify-center gap-2 p-0 sm:h-9 sm:w-auto sm:px-3"
+              disabled={isWaiting}
+              onClick={onEditIdea}
+              aria-label="Edit idea"
+            >
               <SquarePenIcon className="size-4" aria-hidden="true" />
-              Edit idea
-            </span>
-          </ExperienceButton>
+              <span className="hidden sm:inline">Edit idea</span>
+            </ExperienceButton>
+            <ExperienceButton
+              variant="secondary"
+              workshop={workshop}
+              className="flex size-9 min-w-0 items-center justify-center gap-2 p-0 sm:h-9 sm:w-auto sm:px-3"
+              disabled={isWaiting}
+              onClick={onChangeCoach}
+              aria-label="Change coach"
+            >
+              <UsersIcon className="size-4" aria-hidden="true" />
+              <span className="hidden sm:inline">Change coach</span>
+            </ExperienceButton>
+          </div>
         </div>
-      </header>
+      </WorkspaceHeader>
 
-      <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
-        <div className="mx-auto grid w-full max-w-3xl gap-6 px-4 py-5 sm:px-6 sm:py-7">
-          {!isConnected && (
-            <ChatStatusNotice
-              kind={connectionStatus === "error" ? "error" : "loading"}
-              message={
-                connectionError ??
-                (connectionStatus === "reconnecting"
-                  ? "Reconnecting to your coach..."
-                  : "Connecting to your coach...")
-              }
-              workshop={workshop}
-              onRetry={connectionStatus === "error" ? onReconnect : undefined}
-            />
-          )}
+      <div className="grid min-h-0 flex-1 lg:grid-cols-[16rem_minmax(0,1fr)]">
+        <aside
+          className="hidden min-h-0 border-r lg:flex lg:flex-col"
+          style={{ borderColor: workshop.card_primary_border_color }}
+        >
+          <div className="min-h-0 flex-1 overflow-y-auto p-3">
+            <p
+              className="px-2 py-2 text-xs font-semibold tracking-wider uppercase"
+              style={{ color: workshop.txt_secondary_color }}
+            >
+              Coaches
+            </p>
+            <ul className="grid gap-1.5">
+              {coaches.map((candidate) => {
+                const isSelected = candidate.ID === coach.ID
 
-          {requestError && (
-            <ChatStatusNotice
-              kind="error"
-              message={requestError}
-              workshop={workshop}
-            />
-          )}
-
-          {persistenceError && (
-            <ChatStatusNotice
-              kind="error"
-              message={persistenceError}
-              workshop={workshop}
-            />
-          )}
-
-          {sessionStatusMessage && (
-            <ChatStatusNotice
-              kind="error"
-              message={sessionStatusMessage}
-              workshop={workshop}
-            />
-          )}
-
-          <div
-            className="grid gap-5"
-            role="log"
-            aria-label={`Conversation with ${coach.CoachName}`}
-            aria-live="polite"
-            aria-relevant="additions"
-          >
-            {messages.map((message) => {
-              const isCoach = message.author === "coach"
-              const isSystem = message.author === "system"
-
-              if (isSystem) {
                 return (
-                  <p
-                    key={message.id}
-                    className="justify-self-center rounded-full border px-3 py-1.5 text-center text-xs"
-                    style={{
-                      borderColor: workshop.card_primary_border_color,
-                      color: workshop.txt_secondary_color,
-                    }}
-                  >
-                    {message.text}
-                  </p>
-                )
-              }
-
-              return (
-                <div
-                  key={message.id}
-                  className={cn(
-                    "flex max-w-[88%] items-end gap-2 sm:max-w-[75%]",
-                    isCoach ? "justify-self-start" : "justify-self-end"
-                  )}
-                >
-                  {isCoach && (
-                    <CoachAvatar coach={coach} className="size-8 shrink-0" />
-                  )}
-
-                  <div
-                    className={cn(
-                      "rounded-2xl px-4 py-3 text-sm leading-6 whitespace-pre-wrap",
-                      isCoach ? "rounded-bl-sm border" : "rounded-br-sm"
-                    )}
-                    style={
-                      isCoach
-                        ? {
-                            backgroundColor: workshop.card_secondary_bg_color,
-                            borderColor: workshop.card_primary_border_color,
-                            color: workshop.card_secondary_txt_color,
-                          }
-                        : {
-                            backgroundColor: workshop.btn_primary_bg_color,
-                            color: workshop.btn_primary_txt_color,
-                          }
-                    }
-                  >
-                    {message.text}
-
-                    {message.status === "failed" && (
-                      <span className="mt-1 block text-xs font-medium">
-                        Not confirmed
+                  <li key={candidate.ID}>
+                    <button
+                      type="button"
+                      className="flex w-full items-center gap-3 rounded-xl border px-3 py-2.5 text-left transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 disabled:cursor-default"
+                      style={{
+                        backgroundColor: isSelected
+                          ? workshop.card_secondary_bg_color
+                          : "transparent",
+                        borderColor: isSelected
+                          ? workshop.card_primary_border_color
+                          : "transparent",
+                        outlineColor: workshop.btn_primary_bg_color,
+                      }}
+                      disabled={isSelected || isWaiting}
+                      aria-current={isSelected ? "true" : undefined}
+                      onClick={() => onSelectCoach(candidate)}
+                    >
+                      <CoachAvatar coach={candidate} className="size-9" />
+                      <span className="min-w-0">
+                        <span className="block truncate text-sm font-semibold">
+                          {candidate.CoachName}
+                        </span>
+                        <span
+                          className="block truncate text-xs"
+                          style={{ color: workshop.txt_secondary_color }}
+                        >
+                          {candidate.Title}
+                        </span>
                       </span>
-                    )}
+                    </button>
+                  </li>
+                )
+              })}
+            </ul>
+          </div>
+        </aside>
+
+        <section className="relative flex min-h-0 min-w-0 flex-col">
+          <div
+            ref={scrollViewportRef}
+            className="relative min-h-0 flex-1 overflow-y-auto overscroll-contain"
+            onScroll={(event) => {
+              const viewport = event.currentTarget
+              const distanceFromBottom =
+                viewport.scrollHeight -
+                viewport.scrollTop -
+                viewport.clientHeight
+              isNearBottomRef.current = distanceFromBottom < 96
+              if (isNearBottomRef.current) setHasNewMessages(false)
+            }}
+          >
+            <div className="mx-auto grid w-full max-w-3xl gap-4 px-4 pt-4 pb-52 sm:px-6 sm:pt-6 sm:pb-56">
+              {!isConnected && (
+                <ChatStatusNotice
+                  kind={connectionStatus === "error" ? "error" : "loading"}
+                  message={
+                    connectionError ??
+                    (connectionStatus === "reconnecting"
+                      ? "Reconnecting to your coach..."
+                      : "Connecting to your coach...")
+                  }
+                  workshop={workshop}
+                  onRetry={
+                    connectionStatus === "error" ? onReconnect : undefined
+                  }
+                />
+              )}
+
+              {requestError && (
+                <ChatStatusNotice
+                  kind="error"
+                  message={requestError}
+                  workshop={workshop}
+                />
+              )}
+
+              {persistenceError && (
+                <ChatStatusNotice
+                  kind="warning"
+                  message={persistenceError}
+                  workshop={workshop}
+                />
+              )}
+
+              {sessionStatusMessage && (
+                <ChatStatusNotice
+                  kind="error"
+                  message={sessionStatusMessage}
+                  workshop={workshop}
+                />
+              )}
+
+              <div
+                className="grid gap-4"
+                role="log"
+                aria-label={`Conversation with ${coach.CoachName}`}
+                aria-live="polite"
+                aria-relevant="additions"
+              >
+                {messages.map((message) => (
+                  <ChatMessage
+                    key={message.id}
+                    message={message}
+                    coach={coach}
+                    workshop={workshop}
+                    canRetry={isConnected && !isWaiting && !isTerminal}
+                    onRetry={() => onRetryMessage(message.id)}
+                  />
+                ))}
+
+                {isWaiting && (
+                  <div className="flex max-w-[88%] items-end gap-2 justify-self-start sm:max-w-[75%]">
+                    <CoachAvatar coach={coach} className="size-8" />
+                    <div
+                      className="rounded-2xl rounded-bl-sm border px-4 py-3"
+                      style={{
+                        backgroundColor: workshop.card_secondary_bg_color,
+                        borderColor: workshop.card_primary_border_color,
+                        color: workshop.card_secondary_txt_color,
+                      }}
+                    >
+                      <span className="sr-only">Coach is thinking</span>
+                      <span className="flex gap-1" aria-hidden="true">
+                        <span className="size-1.5 animate-bounce rounded-full bg-current [animation-delay:-0.3s]" />
+                        <span className="size-1.5 animate-bounce rounded-full bg-current [animation-delay:-0.15s]" />
+                        <span className="size-1.5 animate-bounce rounded-full bg-current" />
+                      </span>
+                    </div>
                   </div>
-                </div>
-              )
-            })}
+                )}
+                <div ref={messagesEndRef} aria-hidden="true" />
+              </div>
+            </div>
+          </div>
 
-            {isWaiting && (
-              <div className="flex max-w-[88%] items-end gap-2 justify-self-start sm:max-w-[75%]">
-                <CoachAvatar coach={coach} className="size-8 shrink-0" />
-
-                <div
-                  className="rounded-2xl rounded-bl-sm border px-4 py-3 text-sm"
+          <form
+            className="pointer-events-none absolute inset-x-0 bottom-0 z-20 px-3 pt-10 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:px-6 sm:pb-5"
+            style={{
+              background: `linear-gradient(to top, ${workshop.card_primary_bg_color} 55%, transparent)`,
+            }}
+            onSubmit={(event) => {
+              isNearBottomRef.current = true
+              onSendMessage(event)
+            }}
+          >
+            <div className="pointer-events-auto mx-auto w-full max-w-3xl">
+              {hasNewMessages && (
+                <button
+                  type="button"
+                  className="mx-auto mb-2 flex items-center gap-2 rounded-full border px-3 py-2 text-xs font-semibold shadow-lg focus-visible:outline-2 focus-visible:outline-offset-2"
                   style={{
                     backgroundColor: workshop.card_secondary_bg_color,
                     borderColor: workshop.card_primary_border_color,
                     color: workshop.card_secondary_txt_color,
+                    outlineColor: workshop.btn_primary_bg_color,
                   }}
+                  onClick={scrollToBottom}
                 >
-                  Thinking...
-                </div>
+                  <ArrowDownIcon className="size-4" aria-hidden="true" />
+                  New message
+                </button>
+              )}
+              <label htmlFor="participant-chat-message" className="sr-only">
+                Message {coach.CoachName}
+              </label>
+              <div
+                className="flex items-end gap-2 rounded-2xl border p-2 shadow-sm"
+                style={{
+                  backgroundColor: workshop.card_secondary_bg_color,
+                  borderColor: workshop.card_primary_border_color,
+                }}
+              >
+                <Textarea
+                  id="participant-chat-message"
+                  rows={1}
+                  value={draft}
+                  maxLength={PARTICIPANT_CHAT_MESSAGE_MAX_LENGTH}
+                  disabled={isComposerDisabled}
+                  placeholder={composerPlaceholder}
+                  className="max-h-40 min-h-10 flex-1 resize-none overflow-y-auto rounded-xl border-0 bg-transparent px-2 py-2 text-sm leading-6 shadow-none focus-visible:ring-0 md:text-sm dark:bg-transparent"
+                  style={{ color: workshop.card_secondary_txt_color }}
+                  onChange={(event) => onDraftChange(event.target.value)}
+                  onKeyDown={onComposerKeyDown}
+                />
+                <ExperienceButton
+                  type="submit"
+                  workshop={workshop}
+                  className="grid size-10 min-w-0 shrink-0 place-items-center rounded-xl p-0"
+                  disabled={isComposerDisabled || !draft.trim()}
+                  aria-busy={isWaiting}
+                  aria-label={isWaiting ? "Waiting for coach" : "Send message"}
+                >
+                  <SendIcon className="size-4" aria-hidden="true" />
+                </ExperienceButton>
               </div>
-            )}
+              <div
+                className="mt-1.5 flex justify-between gap-3 px-1 text-[11px]"
+                style={{ color: workshop.txt_secondary_color }}
+              >
+                <p className="w-full text-center">
+                  Enter to send, Shift + Enter for a new line
+                </p>
+                {draft.length > PARTICIPANT_CHAT_MESSAGE_MAX_LENGTH * 0.8 && (
+                  <span className="tabular-nums">
+                    {draft.length}/{PARTICIPANT_CHAT_MESSAGE_MAX_LENGTH}
+                  </span>
+                )}
+              </div>
+            </div>
+          </form>
+        </section>
+      </div>
+    </>
+  )
+}
 
-            <div ref={messagesEndRef} aria-hidden="true" />
-          </div>
+function WorkspaceHeader({
+  workshop,
+  onClose,
+  children,
+}: {
+  workshop: ParticipantWorkshop
+  onClose: () => void
+  children: ReactNode
+}) {
+  return (
+    <header
+      className="flex shrink-0 items-center justify-between gap-4 border-b px-4 py-3 pt-[max(0.75rem,env(safe-area-inset-top))] sm:px-6"
+      style={{ borderColor: workshop.card_primary_border_color }}
+    >
+      {children}
+      <CloseButton workshop={workshop} onClick={onClose} />
+    </header>
+  )
+}
+
+function ChatMessage({
+  message,
+  coach,
+  workshop,
+  canRetry,
+  onRetry,
+}: {
+  message: ParticipantChatMessage
+  coach: ParticipantWorkshopCoach
+  workshop: ParticipantWorkshop
+  canRetry: boolean
+  onRetry: () => void
+}) {
+  const isCoach = message.author === "coach"
+
+  if (message.author === "system") {
+    return (
+      <p
+        className="max-w-xl justify-self-center rounded-full border px-3 py-1.5 text-center text-xs break-words"
+        style={{
+          borderColor: workshop.card_primary_border_color,
+          color: workshop.txt_secondary_color,
+        }}
+      >
+        {message.text}
+      </p>
+    )
+  }
+
+  return (
+    <div
+      className={cn(
+        "flex max-w-[88%] items-end gap-2 sm:max-w-[75%]",
+        isCoach ? "justify-self-start" : "justify-self-end"
+      )}
+    >
+      {isCoach && <CoachAvatar coach={coach} className="size-8" />}
+      <div className="min-w-0">
+        <span className="sr-only">
+          {isCoach ? coach.CoachName : "You"} said:
+        </span>
+        <div
+          className={cn(
+            "rounded-2xl px-4 py-2.5 text-sm leading-6 break-words whitespace-pre-wrap",
+            isCoach ? "rounded-bl-sm border" : "rounded-br-sm"
+          )}
+          style={
+            isCoach
+              ? {
+                  backgroundColor: workshop.card_secondary_bg_color,
+                  borderColor: workshop.card_primary_border_color,
+                  color: workshop.card_secondary_txt_color,
+                }
+              : {
+                  backgroundColor: workshop.btn_primary_bg_color,
+                  color: workshop.btn_primary_txt_color,
+                  opacity: message.status === "pending" ? 0.75 : 1,
+                }
+          }
+        >
+          {message.text}
+        </div>
+        <div
+          className={cn(
+            "mt-1 flex items-center gap-2 text-[11px]",
+            isCoach ? "justify-start" : "justify-end"
+          )}
+          style={{ color: workshop.txt_secondary_color }}
+        >
+          {message.createdAt && (
+            <time dateTime={new Date(message.createdAt).toISOString()}>
+              {formatMessageTime(message.createdAt)}
+            </time>
+          )}
+          {message.status === "pending" && <span>Sending</span>}
+          {message.status === "failed" && (
+            <>
+              <span>Not sent</span>
+              <button
+                type="button"
+                className="font-semibold underline underline-offset-2 disabled:opacity-50"
+                disabled={!canRetry}
+                onClick={onRetry}
+              >
+                Retry
+              </button>
+            </>
+          )}
+          <button
+            type="button"
+            className="rounded p-0.5 opacity-70 hover:opacity-100 focus-visible:outline-2"
+            aria-label="Copy message"
+            onClick={() => void navigator.clipboard?.writeText(message.text)}
+          >
+            <CopyIcon className="size-3" aria-hidden="true" />
+          </button>
         </div>
       </div>
-
-      <form
-        className="shrink-0 border-t px-4 py-3 sm:px-6 sm:py-4"
-        style={{ borderColor: workshop.card_primary_border_color }}
-        onSubmit={onSendMessage}
-      >
-        <div className="mx-auto flex w-full max-w-3xl items-center gap-2 sm:gap-3">
-          <textarea
-            autoFocus
-            rows={1}
-            value={draft}
-            disabled={isComposerDisabled}
-            placeholder={composerPlaceholder}
-            className={cn(
-              "max-h-32 min-h-11 w-full resize-none rounded-lg border bg-transparent px-3 py-2.5",
-              "text-sm leading-6 outline-none",
-              "focus-visible:outline-2 focus-visible:outline-offset-2"
-            )}
-            style={{
-              borderColor: workshop.card_primary_border_color,
-              outlineColor: workshop.btn_primary_bg_color,
-            }}
-            onChange={(event) => onDraftChange(event.target.value)}
-            onKeyDown={onComposerKeyDown}
-          />
-
-          <ExperienceButton
-            type="submit"
-            workshop={workshop}
-            className="grid size-11 min-w-0 shrink-0 place-items-center p-0"
-            disabled={isComposerDisabled || !draft.trim()}
-            aria-busy={isWaiting}
-            aria-label="Send message"
-          >
-            <SendIcon className="size-4" aria-hidden="true" />
-          </ExperienceButton>
-        </div>
-      </form>
-    </>
+    </div>
   )
 }
 
@@ -613,14 +770,14 @@ function ChatStatusNotice({
   workshop,
   onRetry,
 }: {
-  kind: "error" | "loading"
+  kind: "error" | "loading" | "warning"
   message: string
   workshop: ParticipantWorkshop
   onRetry?: () => void
 }) {
   return (
     <div
-      className="flex items-center gap-3 rounded-lg border px-4 py-3 text-sm"
+      className="flex items-center gap-3 rounded-xl border px-4 py-3 text-sm"
       style={{ borderColor: workshop.card_primary_border_color }}
       role={kind === "error" ? "alert" : "status"}
     >
@@ -632,9 +789,7 @@ function ChatStatusNotice({
       ) : (
         <CircleAlertIcon className="size-5 shrink-0" aria-hidden="true" />
       )}
-
       <p className="min-w-0 flex-1">{message}</p>
-
       {onRetry && (
         <ExperienceButton
           variant="secondary"
@@ -686,31 +841,30 @@ function CoachAvatar({
 
 function CloseButton({
   workshop,
-  disabled = false,
   onClick,
 }: {
   workshop: ParticipantWorkshop
-  disabled?: boolean
   onClick: () => void
 }) {
   return (
     <button
       type="button"
-      className={cn(
-        "grid size-10 shrink-0 place-items-center rounded-full border",
-        "transition-colors hover:bg-black/5",
-        "focus-visible:outline-2 focus-visible:outline-offset-2",
-        "disabled:pointer-events-none disabled:opacity-50"
-      )}
+      className="grid size-10 shrink-0 place-items-center rounded-full border transition-colors hover:bg-black/5 focus-visible:outline-2 focus-visible:outline-offset-2"
       style={{
         borderColor: workshop.card_primary_border_color,
         outlineColor: workshop.btn_primary_bg_color,
       }}
       aria-label="Close Sharpen"
-      disabled={disabled}
       onClick={onClick}
     >
       <XIcon className="size-5" aria-hidden="true" />
     </button>
   )
+}
+
+function formatMessageTime(timestamp: number) {
+  return new Intl.DateTimeFormat(undefined, {
+    hour: "numeric",
+    minute: "2-digit",
+  }).format(timestamp)
 }

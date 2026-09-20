@@ -22,6 +22,8 @@ import type {
 export type ParticipantChatConnectionStatus =
   "connecting" | "connected" | "reconnecting" | "error"
 
+export const PARTICIPANT_CHAT_MESSAGE_MAX_LENGTH = 4000
+
 type PendingRequest = {
   coachKey: string
   revision: number
@@ -50,6 +52,7 @@ function getInitialSession(coach: ParticipantWorkshopCoach) {
         author: "coach" as const,
         text: `Hi, I'm ${coach.CoachName}. What would you like to explore first?`,
         status: "sent" as const,
+        createdAt: Date.now(),
       },
     ],
   }
@@ -149,6 +152,7 @@ export function useParticipantChat({
             author: "coach",
             text,
             status: "sent",
+            createdAt: Date.now(),
           },
         ],
         status: "active",
@@ -167,15 +171,7 @@ export function useParticipantChat({
       if (!isSaved) {
         const staleSession: ParticipantChatSession = {
           sessionId: null,
-          messages: [
-            ...updateMessageStatus(pending.messages, "sent"),
-            {
-              id: crypto.randomUUID(),
-              author: "system",
-              text: STALE_SESSION_MESSAGE,
-              status: "sent",
-            },
-          ],
+          messages: updateMessageStatus(pending.messages, "sent"),
           status: "invalid",
           statusMessage: STALE_SESSION_MESSAGE,
         }
@@ -213,18 +209,10 @@ export function useParticipantChat({
 
     const nextSession: ParticipantChatSession = {
       sessionId: pending.previousSessionId,
-      messages: [
-        ...updateMessageStatus(
-          pending.messages,
-          requestWasReceived ? "sent" : "failed"
-        ),
-        {
-          id: crypto.randomUUID(),
-          author: "system",
-          text: message,
-          status: "sent",
-        },
-      ],
+      messages: updateMessageStatus(
+        pending.messages,
+        requestWasReceived ? "sent" : "failed"
+      ),
       status: terminalStatus ?? "active",
       statusMessage: terminalStatus ? message : null,
     }
@@ -241,15 +229,7 @@ export function useParticipantChat({
       setRequestError(null)
       setSession({
         sessionId: null,
-        messages: [
-          ...updateMessageStatus(pending.messages, "sent"),
-          {
-            id: crypto.randomUUID(),
-            author: "system",
-            text: STALE_SESSION_MESSAGE,
-            status: "sent",
-          },
-        ],
+        messages: updateMessageStatus(pending.messages, "sent"),
         status: "invalid",
         statusMessage: STALE_SESSION_MESSAGE,
       })
@@ -318,7 +298,7 @@ export function useParticipantChat({
   })
 
   useEffect(() => {
-    if (!open) return
+    if (!open || !coachKey) return
 
     let reconnectTimer: number | undefined
     let reconnectCount = 0
@@ -388,9 +368,9 @@ export function useParticipantChat({
       socketRef.current = null
       socket?.close()
     }
-  }, [connectionAttempt, open])
+  }, [coachKey, connectionAttempt, open])
 
-  const sendMessage = (value: string) => {
+  const sendMessage = (value: string, replacingMessageId?: string) => {
     const text = value.trim()
     const socket = socketRef.current
 
@@ -402,6 +382,13 @@ export function useParticipantChat({
       !socket ||
       socket.readyState !== WebSocket.OPEN
     ) {
+      return false
+    }
+
+    if (text.length > PARTICIPANT_CHAT_MESSAGE_MAX_LENGTH) {
+      setRequestError(
+        `Messages can be up to ${PARTICIPANT_CHAT_MESSAGE_MAX_LENGTH.toLocaleString()} characters.`
+      )
       return false
     }
 
@@ -438,12 +425,15 @@ export function useParticipantChat({
     }
 
     const messages: ParticipantChatMessage[] = [
-      ...session.messages,
+      ...session.messages.filter(
+        (message) => message.id !== replacingMessageId
+      ),
       {
         id: crypto.randomUUID(),
         author: "participant",
         text,
         status: "pending",
+        createdAt: Date.now(),
       },
     ]
 
@@ -465,12 +455,23 @@ export function useParticipantChat({
         message: "Your message could not be sent. Please try again.",
         requestWasReceived: false,
       })
-      return false
+      return true
     }
   }
 
   const reconnect = () => {
     setConnectionAttempt((attempt) => attempt + 1)
+  }
+
+  const retryMessage = (messageId: string) => {
+    const message = session.messages.find(
+      (candidate) =>
+        candidate.id === messageId &&
+        candidate.author === "participant" &&
+        candidate.status === "failed"
+    )
+
+    return message ? sendMessage(message.text, message.id) : false
   }
 
   return {
@@ -481,6 +482,7 @@ export function useParticipantChat({
     isWaiting,
     session,
     sendMessage,
+    retryMessage,
     reconnect,
   }
 }
