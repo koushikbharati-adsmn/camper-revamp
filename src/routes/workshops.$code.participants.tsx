@@ -75,6 +75,7 @@ import {
 import { ExperienceSegmentedControl } from "@/components/experience/experience-segmented-control"
 import { ExperienceStatsCard } from "@/components/experience/experience-stats-card"
 import {
+  type WorkshopActivity,
   getActivitiesOptions,
   getDashboardOptions,
 } from "@/services/big-screen"
@@ -341,6 +342,7 @@ function ParticipantExperience() {
     data: activities = [],
     isPending: isActivitiesPending,
     isError: isActivitiesError,
+    refetch: refetchActivities,
   } = useQuery({
     ...getActivitiesOptions({
       code: workshopCode,
@@ -369,6 +371,10 @@ function ParticipantExperience() {
 
   const handleNavigateNewsroom = () => {
     setActiveView("newsroom")
+  }
+
+  const handleRetryActivities = () => {
+    void refetchActivities()
   }
 
   const submitTeamSelection = (teamId: number, teamCode?: string) => {
@@ -428,7 +434,14 @@ function ParticipantExperience() {
     }
 
     if (activeView === "newsroom") {
-      return <NewsroomScreen />
+      return (
+        <NewsroomScreen
+          activities={activities}
+          isActivitiesPending={isActivitiesPending}
+          isActivitiesError={isActivitiesError}
+          onRetryActivities={handleRetryActivities}
+        />
+      )
     }
 
     if (activeView === "stage") {
@@ -998,7 +1011,17 @@ function ParticipantNavigation({
 /* Newsroom                                                                   */
 /* -------------------------------------------------------------------------- */
 
-function NewsroomScreen() {
+function NewsroomScreen({
+  activities,
+  isActivitiesPending,
+  isActivitiesError,
+  onRetryActivities,
+}: {
+  activities: WorkshopActivity[]
+  isActivitiesPending: boolean
+  isActivitiesError: boolean
+  onRetryActivities: () => void
+}) {
   const { workshop, workshopCode } = useParticipantExperience()
 
   const {
@@ -1008,19 +1031,6 @@ function NewsroomScreen() {
     refetch: refetchDashboard,
   } = useQuery({
     ...getDashboardOptions(workshopCode),
-    select: (response) => response.data,
-  })
-
-  const {
-    data: activities = [],
-    isPending: isActivitiesPending,
-    isError: isActivitiesError,
-    refetch: refetchActivities,
-  } = useQuery({
-    ...getActivitiesOptions({
-      code: workshopCode,
-      type: null,
-    }),
     select: (response) => response.data,
   })
 
@@ -1045,10 +1055,6 @@ function NewsroomScreen() {
 
   const handleRetryDashboard = () => {
     void refetchDashboard()
-  }
-
-  const handleRetryActivities = () => {
-    void refetchActivities()
   }
 
   return (
@@ -1159,7 +1165,7 @@ function NewsroomScreen() {
                   <ExperienceButton
                     workshop={workshop}
                     variant="secondary"
-                    onClick={handleRetryActivities}
+                    onClick={onRetryActivities}
                   >
                     Try again
                   </ExperienceButton>
