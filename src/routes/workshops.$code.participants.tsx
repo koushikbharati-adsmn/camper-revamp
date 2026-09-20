@@ -5,16 +5,19 @@ import {
   type IdeaImageSocketPayload,
   type IdeaShortlistSocketPayload,
   type IdeaUpsertSocketPayload,
+  type IdeaVoteSocketPayload,
   type ParticipantIdea,
   type ParticipantWorkshop,
   type ShortlistIdeaPayload,
   getParticipantIdeasOptions,
+  getParticipantVoteIdeasOptions,
   getParticipantWorkshopOptions,
   participantIdeaMutationKeys,
   useGenerateIdeaImage,
   useSaveIdea,
   useScoutIdea,
   useShortlistIdea,
+  useVoteIdea,
 } from "@/services/participants"
 import {
   queryOptions,
@@ -39,6 +42,7 @@ import {
 } from "react"
 import {
   BellIcon,
+  CheckIcon,
   ChevronLeftIcon,
   ChevronRightIcon,
   ClockIcon,
@@ -232,7 +236,7 @@ function RouteComponent() {
       visitorId={visitorId}
       workshop={workshop}
     >
-      <ParticipantExperience key={workshop.ID} />
+      <ParticipantExperience key={code} />
     </ParticipantExperienceProvider>
   )
 }
@@ -269,12 +273,42 @@ function ParticipantExperience() {
 
   const [selectedTeamId, setSelectedTeamId] = useState<number | null>(null)
 
+  const isVoting = workshop.status === "Vote"
+
   useEffect(() => {
     const joinWorkshopRoom = () => {
       socket.emit("join_room", { roomId: workshopCode })
     }
 
+    const handleWorkshopStatus = ({
+      roomId,
+      status,
+    }: {
+      roomId: string
+      status: ParticipantWorkshop["status"]
+    }) => {
+      if (roomId !== workshopCode) return
+
+      queryClient.setQueryData(
+        getParticipantWorkshopOptions({
+          code: workshopCode,
+          visitor_id: visitorId,
+        }).queryKey,
+        (current) =>
+          current
+            ? {
+                ...current,
+                data: {
+                  ...current.data,
+                  status,
+                },
+              }
+            : current
+      )
+    }
+
     socket.on("connect", joinWorkshopRoom)
+    socket.on("workshop_status", handleWorkshopStatus)
 
     if (socket.connected) {
       joinWorkshopRoom()
@@ -282,8 +316,9 @@ function ParticipantExperience() {
 
     return () => {
       socket.off("connect", joinWorkshopRoom)
+      socket.off("workshop_status", handleWorkshopStatus)
     }
-  }, [queryClient, workshopCode])
+  }, [queryClient, visitorId, workshopCode])
 
   const {
     data: activities = [],
@@ -361,24 +396,518 @@ function ParticipantExperience() {
   }
 
   return (
-    <div className="flex h-dvh flex-col">
-      <ParticipantNavigation
-        activeView={activeView}
-        isDisabled={isWalkthroughActive}
-        onNavigateHome={handleNavigateHome}
-        onNavigateStage={handleNavigateStage}
-        onNavigateNewsroom={handleNavigateNewsroom}
-      />
+    <>
+      <div
+        className="flex h-dvh flex-col"
+        aria-hidden={isVoting || undefined}
+        inert={isVoting || undefined}
+      >
+        <ParticipantNavigation
+          activeView={activeView}
+          isDisabled={isWalkthroughActive}
+          onNavigateHome={handleNavigateHome}
+          onNavigateStage={handleNavigateStage}
+          onNavigateNewsroom={handleNavigateNewsroom}
+        />
 
-      <main className="flex-1 overflow-y-auto">{renderCurrentView()}</main>
+        <main className="flex-1 overflow-y-auto">{renderCurrentView()}</main>
 
-      <ExperienceFooter
-        activities={activities}
-        workshop={workshop}
-        isError={isActivitiesError}
-        isPending={isActivitiesPending}
-      />
-    </div>
+        <ExperienceFooter
+          activities={activities}
+          workshop={workshop}
+          isError={isActivitiesError}
+          isPending={isActivitiesPending}
+        />
+      </div>
+
+      {isVoting && <VotingScreen />}
+    </>
+  )
+}
+
+/* -------------------------------------------------------------------------- */
+/* Voting                                                                     */
+/* -------------------------------------------------------------------------- */
+
+function VotingScreen() {
+  const { workshop, workshopCode, visitorId } = useParticipantExperience()
+  const queryClient = useQueryClient()
+  const dialogRef = useNativeDialog(true)
+
+  const teams = workshop.teams
+  const pillars = workshop.category
+
+  const [selectedTeamId, setSelectedTeamId] = useState<number | null>(null)
+  const [selectedPillarId, setSelectedPillarId] = useState<number | null>(null)
+  const [currentIdeaIndex, setCurrentIdeaIndex] = useState(0)
+
+  const voteIdeasQueryOptions = getParticipantVoteIdeasOptions({
+    visitor_id: visitorId,
+    workshop_code: workshopCode,
+    category_id: null,
+    team_id: null,
+  })
+
+  const {
+    data: ideas = [],
+    isPending: isIdeasPending,
+    isError: isIdeasError,
+    refetch: refetchIdeas,
+  } = useQuery({
+    ...voteIdeasQueryOptions,
+    select: (response) => response.data,
+  })
+
+  const filteredIdeas = useMemo(
+    () =>
+      ideas.filter(
+        (idea) =>
+          (selectedTeamId === null || idea.TeamID === selectedTeamId) &&
+          (selectedPillarId === null || idea.CategoryID === selectedPillarId)
+      ),
+    [ideas, selectedPillarId, selectedTeamId]
+  )
+
+  const boundedIdeaIndex = Math.min(
+    currentIdeaIndex,
+    Math.max(filteredIdeas.length - 1, 0)
+  )
+  const currentIdea = filteredIdeas[boundedIdeaIndex]
+  const hasPreviousIdea = boundedIdeaIndex > 0
+  const hasNextIdea = boundedIdeaIndex < filteredIdeas.length - 1
+
+  const voteIdeaMutation = useVoteIdea()
+
+  const votesUsed = currentIdea
+    ? ideas.filter(
+        (idea) =>
+          idea.flgSelf &&
+          (workshop.votingScope === "workshop" ||
+            idea.CategoryID === currentIdea.CategoryID)
+      ).length
+    : 0
+
+  const hasReachedVoteLimit =
+    workshop.votingLimit !== null && votesUsed >= workshop.votingLimit
+
+  useEffect(() => {
+    const handleIdeaVoteUpdated = ({
+      roomId,
+      visitorId: eventVisitorId,
+      ideaId,
+      isVoted,
+    }: IdeaVoteSocketPayload) => {
+      if (roomId !== workshopCode || eventVisitorId !== visitorId) return
+
+      queryClient.setQueryData(voteIdeasQueryOptions.queryKey, (current) => {
+        if (!current?.data) return current
+
+        return {
+          ...current,
+          data: current.data.map((idea) =>
+            idea.ID === ideaId ? { ...idea, flgSelf: isVoted } : idea
+          ),
+        }
+      })
+    }
+
+    socket.on("idea_vote_updated", handleIdeaVoteUpdated)
+
+    return () => {
+      socket.off("idea_vote_updated", handleIdeaVoteUpdated)
+    }
+  }, [queryClient, visitorId, voteIdeasQueryOptions.queryKey, workshopCode])
+
+  const handleTeamChange = (event: ChangeEvent<HTMLSelectElement>) => {
+    setSelectedTeamId(parseOptionalId(event.target.value))
+    setCurrentIdeaIndex(0)
+  }
+
+  const handlePillarChange = (event: ChangeEvent<HTMLSelectElement>) => {
+    setSelectedPillarId(parseOptionalId(event.target.value))
+    setCurrentIdeaIndex(0)
+  }
+
+  const handlePreviousIdea = () => {
+    if (!hasPreviousIdea) return
+    setCurrentIdeaIndex(boundedIdeaIndex - 1)
+  }
+
+  const handleNextIdea = () => {
+    if (!hasNextIdea) return
+    setCurrentIdeaIndex(boundedIdeaIndex + 1)
+  }
+
+  const handleToggleVote = () => {
+    if (!currentIdea || voteIdeaMutation.isPending) return
+
+    const isVoted = !currentIdea.flgSelf
+
+    if (isVoted && hasReachedVoteLimit) return
+
+    voteIdeaMutation.mutate(
+      {
+        workshop_code: workshopCode,
+        visitor_id: visitorId,
+        idea_id: currentIdea.ID,
+        action: isVoted ? "add" : "remove",
+      },
+      {
+        onSuccess: () => {
+          queryClient.setQueryData(
+            voteIdeasQueryOptions.queryKey,
+            (current) => {
+              if (!current?.data) return current
+
+              return {
+                ...current,
+                data: current.data.map((idea) =>
+                  idea.ID === currentIdea.ID
+                    ? { ...idea, flgSelf: isVoted }
+                    : idea
+                ),
+              }
+            }
+          )
+        },
+      }
+    )
+  }
+
+  const handleRetryIdeas = () => {
+    void refetchIdeas()
+  }
+
+  const voteUsageLabel =
+    workshop.votingLimit === null
+      ? `${ideas.filter((idea) => idea.flgSelf).length} / Unlimited votes`
+      : workshop.votingScope === "pillar"
+        ? `${votesUsed} / ${workshop.votingLimit} votes`
+        : `${votesUsed} / ${workshop.votingLimit} votes`
+
+  return (
+    <dialog
+      ref={dialogRef}
+      aria-labelledby="participant-voting-heading"
+      aria-describedby="participant-voting-description"
+      className="fixed inset-0 m-0 h-dvh max-h-dvh w-full max-w-none overflow-hidden border-0 bg-transparent p-0 backdrop:bg-transparent"
+      onCancel={(event) => event.preventDefault()}
+    >
+      <div
+        className="flex h-full max-h-dvh min-h-0 flex-col overflow-hidden"
+        style={{
+          backgroundColor: workshop.card_primary_bg_color,
+          color: workshop.txt_primary_color,
+        }}
+      >
+        <header
+          className="flex min-h-16 shrink-0 items-center justify-between gap-4 border-b px-4 py-3 sm:px-6"
+          style={{
+            borderColor: workshop.card_primary_border_color,
+          }}
+        >
+          <div className="flex min-w-0 items-center gap-3">
+            <h1
+              id="participant-voting-heading"
+              className="text-sm font-semibold tracking-[0.16em] uppercase"
+            >
+              Voting
+            </h1>
+
+            <span
+              className="h-4 w-px"
+              style={{ backgroundColor: workshop.card_primary_border_color }}
+              aria-hidden="true"
+            />
+
+            <p
+              className="text-sm tabular-nums"
+              style={{ color: workshop.txt_secondary_color }}
+              aria-live="polite"
+            >
+              {isIdeasPending
+                ? "Loading ideas"
+                : filteredIdeas.length > 0
+                  ? `Idea ${boundedIdeaIndex + 1} of ${filteredIdeas.length}`
+                  : "No ideas"}
+            </p>
+          </div>
+
+          <p
+            className="max-w-48 text-right text-xs leading-5 font-medium tabular-nums sm:max-w-none sm:text-sm"
+            style={{ color: workshop.txt_secondary_color }}
+          >
+            {voteUsageLabel}
+          </p>
+        </header>
+
+        {isIdeasPending ? (
+          <div
+            className="grid min-h-0 flex-1 animate-pulse overflow-y-auto lg:grid-cols-[minmax(0,1fr)_minmax(20rem,30rem)] lg:overflow-hidden"
+            aria-label="Loading ideas available for voting"
+            aria-busy="true"
+          >
+            <div className="min-h-[48dvh] bg-neutral-900 lg:min-h-0" />
+            <div
+              className="space-y-5 border-t p-6 sm:p-8 lg:border-t-0 lg:border-l lg:p-10"
+              style={{ borderColor: workshop.card_primary_border_color }}
+            >
+              <div className="h-10 rounded bg-neutral-100" />
+              <div className="h-10 rounded bg-neutral-100" />
+              <div className="h-5 w-24 rounded bg-neutral-100" />
+              <div className="h-10 w-3/4 rounded bg-neutral-100" />
+              <div className="h-24 rounded bg-neutral-100" />
+            </div>
+          </div>
+        ) : isIdeasError ? (
+          <div className="grid min-h-0 flex-1 place-content-center gap-4 overflow-y-auto p-6 text-center">
+            <div>
+              <h2 className="text-xl font-semibold">
+                Unable to load voting ideas
+              </h2>
+              <p
+                className="mt-1 text-sm"
+                style={{ color: workshop.txt_secondary_color }}
+              >
+                Check your connection and try again.
+              </p>
+            </div>
+            <ExperienceButton
+              workshop={workshop}
+              className="mx-auto"
+              onClick={handleRetryIdeas}
+            >
+              Try again
+            </ExperienceButton>
+          </div>
+        ) : currentIdea ? (
+          <div className="grid min-h-0 flex-1 overflow-y-auto overscroll-contain lg:grid-cols-[minmax(0,1fr)_minmax(20rem,30rem)] lg:overflow-hidden">
+            <div className="relative flex min-h-[48dvh] items-center justify-center overflow-hidden bg-neutral-950 p-12 sm:p-16 lg:min-h-0">
+              {currentIdea.imageFileName?.trim() ? (
+                <img
+                  src={currentIdea.imageFileName}
+                  alt={currentIdea.title || "Idea"}
+                  className="max-h-full max-w-full object-contain"
+                />
+              ) : (
+                <div className="flex flex-col items-center justify-center gap-3 text-neutral-500">
+                  <ImagePlusIcon className="size-12" aria-hidden="true" />
+                  <span>No image available</span>
+                </div>
+              )}
+
+              <button
+                type="button"
+                className="absolute top-1/2 left-3 grid size-11 -translate-y-1/2 place-items-center rounded-full bg-white/10 text-white ring-1 ring-white/20 backdrop-blur-sm transition-colors hover:bg-white/20 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white disabled:cursor-not-allowed disabled:opacity-25 sm:left-6 sm:size-12"
+                aria-label="View previous idea"
+                disabled={!hasPreviousIdea}
+                onClick={handlePreviousIdea}
+              >
+                <ChevronLeftIcon className="size-6" aria-hidden="true" />
+              </button>
+
+              <button
+                type="button"
+                className="absolute top-1/2 right-3 grid size-11 -translate-y-1/2 place-items-center rounded-full bg-white/10 text-white ring-1 ring-white/20 backdrop-blur-sm transition-colors hover:bg-white/20 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white disabled:cursor-not-allowed disabled:opacity-25 sm:right-6 sm:size-12"
+                aria-label="View next idea"
+                disabled={!hasNextIdea}
+                onClick={handleNextIdea}
+              >
+                <ChevronRightIcon className="size-6" aria-hidden="true" />
+              </button>
+            </div>
+
+            <aside
+              className="min-w-0 border-t lg:overflow-y-auto lg:border-t-0 lg:border-l"
+              style={{ borderColor: workshop.card_primary_border_color }}
+            >
+              <div className="flex min-h-full flex-col p-6 sm:p-8 lg:p-10">
+                <div className="grid grid-cols-2 gap-2">
+                  <label>
+                    <span className="sr-only">Filter voting ideas by team</span>
+                    <ExperienceSelect
+                      workshop={workshop}
+                      value={selectedTeamId ?? "all"}
+                      onChange={handleTeamChange}
+                      className="w-full"
+                    >
+                      <ExperienceSelectOption value="all">
+                        All teams
+                      </ExperienceSelectOption>
+                      {teams.map((team) => (
+                        <ExperienceSelectOption key={team.ID} value={team.ID}>
+                          {team.TeamName}
+                        </ExperienceSelectOption>
+                      ))}
+                    </ExperienceSelect>
+                  </label>
+
+                  <label>
+                    <span className="sr-only">
+                      Filter voting ideas by pillar
+                    </span>
+                    <ExperienceSelect
+                      workshop={workshop}
+                      value={selectedPillarId ?? "all"}
+                      onChange={handlePillarChange}
+                      className="w-full"
+                    >
+                      <ExperienceSelectOption value="all">
+                        All pillars
+                      </ExperienceSelectOption>
+                      {pillars.map((pillar) => (
+                        <ExperienceSelectOption
+                          key={pillar.ID}
+                          value={pillar.ID}
+                        >
+                          {pillar.Name}
+                        </ExperienceSelectOption>
+                      ))}
+                    </ExperienceSelect>
+                  </label>
+                </div>
+
+                <div className="mt-8 flex flex-col-reverse gap-2 sm:flex-col">
+                  <p
+                    className="text-sm leading-6"
+                    style={{ color: workshop.txt_secondary_color }}
+                  >
+                    {formatRelativeDate(currentIdea.CreatedDttm)}
+                  </p>
+                  <h2 className="text-3xl leading-[1.08] font-semibold tracking-[-0.035em] text-balance sm:text-4xl">
+                    {currentIdea.title || "Untitled"}
+                  </h2>
+                </div>
+
+                <div className="mt-4 flex flex-wrap gap-2 text-xs">
+                  <span className="inline-flex items-center gap-1.5 rounded-full bg-neutral-100 px-3 py-1.5 text-neutral-900">
+                    <UsersIcon className="size-3.5" aria-hidden="true" />
+                    {currentIdea.TeamName || "Unknown team"}
+                  </span>
+                  <span
+                    className="inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5"
+                    style={{ borderColor: workshop.card_primary_border_color }}
+                  >
+                    <ShapesIcon className="size-3.5" aria-hidden="true" />
+                    {currentIdea.CategoryName || "Unknown pillar"}
+                  </span>
+                  <span className="inline-flex items-center gap-1.5 rounded-full bg-neutral-900 px-3 py-1.5 text-white">
+                    <StarIcon
+                      className="size-3.5"
+                      fill="currentColor"
+                      aria-hidden="true"
+                    />
+                    Shortlisted
+                  </span>
+                  {currentIdea.flgCoach && (
+                    <span className="inline-flex items-center gap-1.5 rounded-full bg-neutral-100 px-3 py-1.5 text-neutral-900">
+                      <SparklesIcon className="size-3.5" aria-hidden="true" />
+                      Sharpened
+                    </span>
+                  )}
+                </div>
+
+                <div
+                  className="my-8 border-t"
+                  style={{ borderColor: workshop.card_primary_border_color }}
+                />
+
+                <p
+                  id="participant-voting-description"
+                  className="text-base leading-7 whitespace-pre-line"
+                  style={{ color: workshop.txt_secondary_color }}
+                >
+                  {currentIdea.Desc}
+                </p>
+
+                <div className="mt-auto pt-8">
+                  {hasReachedVoteLimit && !currentIdea.flgSelf && (
+                    <p
+                      className="mb-3 text-sm"
+                      style={{ color: workshop.txt_secondary_color }}
+                      role="status"
+                    >
+                      Remove another vote before voting for this idea.
+                    </p>
+                  )}
+
+                  <ExperienceButton
+                    workshop={workshop}
+                    aria-pressed={currentIdea.flgSelf}
+                    aria-busy={voteIdeaMutation.isPending}
+                    disabled={
+                      voteIdeaMutation.isPending ||
+                      (hasReachedVoteLimit && !currentIdea.flgSelf)
+                    }
+                    className="flex w-full items-center justify-center gap-2"
+                    onClick={handleToggleVote}
+                  >
+                    <CheckIcon className="size-4" aria-hidden="true" />
+                    {voteIdeaMutation.isPending
+                      ? "Saving..."
+                      : currentIdea.flgSelf
+                        ? "Remove vote"
+                        : "Vote for this idea"}
+                  </ExperienceButton>
+                </div>
+              </div>
+            </aside>
+          </div>
+        ) : (
+          <div className="grid min-h-0 flex-1 place-content-center overflow-y-auto p-6 text-center">
+            <div>
+              <h2 className="text-xl font-semibold">No ideas available</h2>
+              <p
+                className="mt-1 text-sm"
+                style={{ color: workshop.txt_secondary_color }}
+              >
+                No voting ideas match the selected team and pillar.
+              </p>
+
+              <div className="mt-6 grid grid-cols-2 gap-2">
+                <label>
+                  <span className="sr-only">Filter voting ideas by team</span>
+                  <ExperienceSelect
+                    workshop={workshop}
+                    value={selectedTeamId ?? "all"}
+                    onChange={handleTeamChange}
+                    className="w-full"
+                  >
+                    <ExperienceSelectOption value="all">
+                      All teams
+                    </ExperienceSelectOption>
+                    {teams.map((team) => (
+                      <ExperienceSelectOption key={team.ID} value={team.ID}>
+                        {team.TeamName}
+                      </ExperienceSelectOption>
+                    ))}
+                  </ExperienceSelect>
+                </label>
+
+                <label>
+                  <span className="sr-only">Filter voting ideas by pillar</span>
+                  <ExperienceSelect
+                    workshop={workshop}
+                    value={selectedPillarId ?? "all"}
+                    onChange={handlePillarChange}
+                    className="w-full"
+                  >
+                    <ExperienceSelectOption value="all">
+                      All pillars
+                    </ExperienceSelectOption>
+                    {pillars.map((pillar) => (
+                      <ExperienceSelectOption key={pillar.ID} value={pillar.ID}>
+                        {pillar.Name}
+                      </ExperienceSelectOption>
+                    ))}
+                  </ExperienceSelect>
+                </label>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    </dialog>
   )
 }
 

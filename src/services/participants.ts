@@ -431,11 +431,18 @@ export function getParticipantVoteIdeasOptions(
   })
 }
 
-interface VoteIdeaPayload {
+export interface VoteIdeaPayload {
   workshop_code: string
   visitor_id: string
   idea_id: number
   action: "add" | "remove"
+}
+
+export interface IdeaVoteSocketPayload {
+  roomId: string
+  visitorId: string
+  ideaId: number
+  isVoted: boolean
 }
 
 interface VoteIdeaResponse {
@@ -454,6 +461,16 @@ const voteIdea = async (payload: VoteIdeaPayload) => {
 export const useVoteIdea = () => {
   return useMutation({
     mutationFn: (payload: VoteIdeaPayload) => voteIdea(payload),
+
+    onSuccess: (_response, payload) => {
+      socket.emit("update_idea_vote", {
+        roomId: payload.workshop_code,
+        visitorId: payload.visitor_id,
+        ideaId: payload.idea_id,
+        isVoted: payload.action === "add",
+      } satisfies IdeaVoteSocketPayload)
+    },
+
     onError: (error) => {
       toast.add({
         type: "error",
