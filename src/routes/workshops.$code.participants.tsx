@@ -5,7 +5,6 @@ import {
   type IdeaImageSocketPayload,
   type IdeaShortlistSocketPayload,
   type IdeaUpsertSocketPayload,
-  type IdeaVoteSocketPayload,
   type ParticipantIdea,
   type ParticipantWorkshop,
   type ShortlistIdeaPayload,
@@ -444,8 +443,8 @@ function VotingScreen() {
   const voteIdeasQueryOptions = getParticipantVoteIdeasOptions({
     visitor_id: visitorId,
     workshop_code: workshopCode,
-    category_id: null,
-    team_id: null,
+    category_id: selectedPillarId,
+    team_id: selectedTeamId,
   })
 
   const {
@@ -458,65 +457,15 @@ function VotingScreen() {
     select: (response) => response.data,
   })
 
-  const filteredIdeas = useMemo(
-    () =>
-      ideas.filter(
-        (idea) =>
-          (selectedTeamId === null || idea.TeamID === selectedTeamId) &&
-          (selectedPillarId === null || idea.CategoryID === selectedPillarId)
-      ),
-    [ideas, selectedPillarId, selectedTeamId]
-  )
-
   const boundedIdeaIndex = Math.min(
     currentIdeaIndex,
-    Math.max(filteredIdeas.length - 1, 0)
+    Math.max(ideas.length - 1, 0)
   )
-  const currentIdea = filteredIdeas[boundedIdeaIndex]
+  const currentIdea = ideas[boundedIdeaIndex]
   const hasPreviousIdea = boundedIdeaIndex > 0
-  const hasNextIdea = boundedIdeaIndex < filteredIdeas.length - 1
+  const hasNextIdea = boundedIdeaIndex < ideas.length - 1
 
   const voteIdeaMutation = useVoteIdea()
-
-  const votesUsed = currentIdea
-    ? ideas.filter(
-        (idea) =>
-          idea.flgSelf &&
-          (workshop.votingScope === "workshop" ||
-            idea.CategoryID === currentIdea.CategoryID)
-      ).length
-    : 0
-
-  const hasReachedVoteLimit =
-    workshop.votingLimit !== null && votesUsed >= workshop.votingLimit
-
-  useEffect(() => {
-    const handleIdeaVoteUpdated = ({
-      roomId,
-      visitorId: eventVisitorId,
-      ideaId,
-      isVoted,
-    }: IdeaVoteSocketPayload) => {
-      if (roomId !== workshopCode || eventVisitorId !== visitorId) return
-
-      queryClient.setQueryData(voteIdeasQueryOptions.queryKey, (current) => {
-        if (!current?.data) return current
-
-        return {
-          ...current,
-          data: current.data.map((idea) =>
-            idea.ID === ideaId ? { ...idea, flgSelf: isVoted } : idea
-          ),
-        }
-      })
-    }
-
-    socket.on("idea_vote_updated", handleIdeaVoteUpdated)
-
-    return () => {
-      socket.off("idea_vote_updated", handleIdeaVoteUpdated)
-    }
-  }, [queryClient, visitorId, voteIdeasQueryOptions.queryKey, workshopCode])
 
   const handleTeamChange = (event: ChangeEvent<HTMLSelectElement>) => {
     setSelectedTeamId(parseOptionalId(event.target.value))
@@ -542,8 +491,6 @@ function VotingScreen() {
     if (!currentIdea || voteIdeaMutation.isPending) return
 
     const isVoted = !currentIdea.flgSelf
-
-    if (isVoted && hasReachedVoteLimit) return
 
     voteIdeaMutation.mutate(
       {
@@ -578,13 +525,6 @@ function VotingScreen() {
     void refetchIdeas()
   }
 
-  const voteUsageLabel =
-    workshop.votingLimit === null
-      ? `${ideas.filter((idea) => idea.flgSelf).length} / Unlimited votes`
-      : workshop.votingScope === "pillar"
-        ? `${votesUsed} / ${workshop.votingLimit} votes`
-        : `${votesUsed} / ${workshop.votingLimit} votes`
-
   return (
     <dialog
       ref={dialogRef}
@@ -601,7 +541,7 @@ function VotingScreen() {
         }}
       >
         <header
-          className="flex min-h-16 shrink-0 items-center justify-between gap-4 border-b px-4 py-3 sm:px-6"
+          className="flex min-h-16 shrink-0 items-center gap-4 border-b px-4 py-3 sm:px-6"
           style={{
             borderColor: workshop.card_primary_border_color,
           }}
@@ -627,18 +567,11 @@ function VotingScreen() {
             >
               {isIdeasPending
                 ? "Loading ideas"
-                : filteredIdeas.length > 0
-                  ? `Idea ${boundedIdeaIndex + 1} of ${filteredIdeas.length}`
+                : ideas.length > 0
+                  ? `Idea ${boundedIdeaIndex + 1} of ${ideas.length}`
                   : "No ideas"}
             </p>
           </div>
-
-          <p
-            className="max-w-48 text-right text-xs leading-5 font-medium tabular-nums sm:max-w-none sm:text-sm"
-            style={{ color: workshop.txt_secondary_color }}
-          >
-            {voteUsageLabel}
-          </p>
         </header>
 
         {isIdeasPending ? (
@@ -821,24 +754,11 @@ function VotingScreen() {
                 </p>
 
                 <div className="mt-auto pt-8">
-                  {hasReachedVoteLimit && !currentIdea.flgSelf && (
-                    <p
-                      className="mb-3 text-sm"
-                      style={{ color: workshop.txt_secondary_color }}
-                      role="status"
-                    >
-                      Remove another vote before voting for this idea.
-                    </p>
-                  )}
-
                   <ExperienceButton
                     workshop={workshop}
                     aria-pressed={currentIdea.flgSelf}
                     aria-busy={voteIdeaMutation.isPending}
-                    disabled={
-                      voteIdeaMutation.isPending ||
-                      (hasReachedVoteLimit && !currentIdea.flgSelf)
-                    }
+                    disabled={voteIdeaMutation.isPending}
                     className="flex w-full items-center justify-center gap-2"
                     onClick={handleToggleVote}
                   >
