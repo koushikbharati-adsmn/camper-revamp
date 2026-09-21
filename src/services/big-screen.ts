@@ -1,5 +1,6 @@
 import apiClient from "@/lib/api-client"
 import { queryOptions } from "@tanstack/react-query"
+import type { WorkshopStatus } from "@/lib/workshop-lifecycle"
 
 export interface WorkshopScreenTeam {
   ID: string
@@ -26,6 +27,7 @@ export interface WorkshopScreen {
   font_primary_name: string | null
   font_secondary_name: string | null
   shortUrl: string | null
+  status?: WorkshopStatus | null
   teams: WorkshopScreenTeam[]
   categories: WorkshopScreenCategory[]
 }
@@ -42,6 +44,8 @@ export interface IdeaScreen {
   flgTeam: boolean | null
   flgAdmin: boolean | null
   flgCoach: boolean // isSharpened
+  // Vote count, returned once the workshop is completed.
+  TotalVote?: number
   Votes?: number
   CreatedDttm?: string
 }
@@ -55,6 +59,34 @@ export interface GetIdeasScreenParams {
   workshop_code: string
   category_id?: string | null
   team_id?: string | null
+}
+
+export interface GetResultsScreenParams {
+  code: string
+  category_id?: string | null
+  team_id?: string | null
+}
+
+// Row shape returned by usp_big_getTopResult (column aliases keep the
+// casing used in the procedure). title/flgCoach/CreatedDttm are optional
+// because the procedure doesn't select them yet.
+export interface ResultScreenIdea {
+  ID: number
+  teamName: string | null
+  Category: string | null
+  Desc: string
+  totalVote: number
+  imageFileName: string | null
+  title?: string | null
+  flgCoach?: boolean
+  CreatedDttm?: string
+}
+
+// GET /api/big/results — `data` is the winning ideas list, with image URLs
+// resolved.
+export interface GetResultsScreenResponse {
+  success: boolean
+  data: ResultScreenIdea[]
 }
 
 export interface GetWorkshopScreenResponse {
@@ -102,6 +134,13 @@ export const workshopScreenKeys = {
   detail: (code: string) => [...workshopScreenKeys.all, code] as const,
 }
 
+export const resultScreenKeys = {
+  all: ["BIG_SCREEN_RESULTS"] as const,
+
+  list: (params: GetResultsScreenParams) =>
+    [...resultScreenKeys.all, params] as const,
+}
+
 export const dashboardKeys = {
   all: ["BIG_SCREEN_DASHBOARD"] as const,
 
@@ -122,6 +161,23 @@ export const getIdeasScreenOptions = (params: GetIdeasScreenParams) =>
   queryOptions({
     queryKey: ideaScreenKeys.list(params),
     queryFn: () => getIdeasScreen(params),
+  })
+
+const getResultsScreen = async (
+  params: GetResultsScreenParams
+): Promise<GetResultsScreenResponse> => {
+  const res = await apiClient.get<GetResultsScreenResponse>(
+    "/api/big/results",
+    { params }
+  )
+
+  return res.data
+}
+
+export const getResultsScreenOptions = (params: GetResultsScreenParams) =>
+  queryOptions({
+    queryKey: resultScreenKeys.list(params),
+    queryFn: () => getResultsScreen(params),
   })
 
 const getWorkshopScreen = async (
@@ -162,6 +218,7 @@ export type ActivityType = "added" | "shortlisted" | "sharpened"
 export interface WorkshopActivity {
   ID: number
   TeamName: string
+  TeamColorCode?: string | null
   Message: string
   CreatedDttm: string
   Type: ActivityType
