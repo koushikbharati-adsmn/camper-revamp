@@ -225,7 +225,7 @@ export interface SaveIdeaPayload {
   desc: string
   title: string | null
   context: string | null
-  flgCoach?: boolean
+  flg_coach?: boolean
 }
 
 interface SaveIdeaResponse {
