@@ -231,8 +231,6 @@ function RouteComponent() {
       visitor_id: visitorId,
     }),
     select: (response) => response.data,
-    refetchOnWindowFocus: true,
-    refetchOnMount: true,
   })
 
   return (

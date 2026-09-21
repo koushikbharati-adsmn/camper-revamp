@@ -161,6 +161,8 @@ export const getIdeasScreenOptions = (params: GetIdeasScreenParams) =>
   queryOptions({
     queryKey: ideaScreenKeys.list(params),
     queryFn: () => getIdeasScreen(params),
+    refetchOnWindowFocus: true,
+    refetchOnMount: true,
   })
 
 const getResultsScreen = async (
@@ -197,6 +199,8 @@ export const getWorkshopScreenOptions = (code: string) =>
   queryOptions({
     queryKey: workshopScreenKeys.detail(code),
     queryFn: () => getWorkshopScreen(code),
+    refetchOnWindowFocus: true,
+    refetchOnMount: true,
   })
 
 const getDashboard = async (code: string): Promise<GetDashboardResponse> => {
@@ -211,6 +215,8 @@ export const getDashboardOptions = (code: string) =>
   queryOptions({
     queryKey: dashboardKeys.detail(code),
     queryFn: () => getDashboard(code),
+    refetchOnWindowFocus: true,
+    refetchOnMount: true,
   })
 
 export type ActivityType = "added" | "shortlisted" | "sharpened"
@@ -255,4 +261,6 @@ export const getActivitiesOptions = (params: GetActivitiesParams) =>
   queryOptions({
     queryKey: activityKeys.list(params),
     queryFn: () => getActivities(params),
+    refetchOnWindowFocus: true,
+    refetchOnMount: true,
   })

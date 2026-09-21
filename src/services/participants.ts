@@ -128,6 +128,8 @@ export function getParticipantWorkshopOptions(
   return queryOptions({
     queryKey: participantWorkshopKeys.detail(params),
     queryFn: () => getParticipantWorkshop(params),
+    refetchOnWindowFocus: true,
+    refetchOnMount: true,
   })
 }
 
@@ -213,6 +215,8 @@ export function getParticipantIdeasOptions(params: GetParticipantIdeasParams) {
   return queryOptions({
     queryKey: participantIdeaKeys.list(params),
     queryFn: () => getParticipantIdeas(params),
+    refetchOnWindowFocus: true,
+    refetchOnMount: true,
   })
 }
 
@@ -441,6 +445,8 @@ export function getParticipantVoteIdeasOptions(
   return queryOptions({
     queryKey: participantVoteIdeaKeys.list(params),
     queryFn: () => getParticipantVoteIdeas(params),
+    refetchOnWindowFocus: true,
+    refetchOnMount: true,
   })
 }
 
