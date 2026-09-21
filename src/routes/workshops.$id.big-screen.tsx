@@ -1,5 +1,9 @@
 import { useEffect, useState } from "react"
-import { useQuery, useQueryClient } from "@tanstack/react-query"
+import {
+  useQuery,
+  useQueryClient,
+  useSuspenseQuery,
+} from "@tanstack/react-query"
 import { createFileRoute } from "@tanstack/react-router"
 import { QRCodeSVG } from "qrcode.react"
 import {
@@ -52,6 +56,9 @@ import { ExperienceFooter } from "@/components/experience/experience-footer"
 import { IdeaPreviewDialog } from "@/components/experience/idea-preview-dialog"
 
 export const Route = createFileRoute("/workshops/$id/big-screen")({
+  loader: async ({ context, params }) => {
+    return context.queryClient.query(getWorkshopScreenOptions(params.id))
+  },
   component: RouteComponent,
 })
 
@@ -102,7 +109,7 @@ function RouteComponent() {
   // Workshop
   // --------------------------------------------------
 
-  const { data: workshopResponse } = useQuery(
+  const { data: workshopResponse } = useSuspenseQuery(
     getWorkshopScreenOptions(workshopId)
   )
   const workshop = workshopResponse?.data
