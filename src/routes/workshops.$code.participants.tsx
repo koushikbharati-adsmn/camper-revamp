@@ -3550,7 +3550,7 @@ function IdeaDialog({
         desc: description,
         title,
         context,
-        ...(hasCoachSession && { flgCoach: true }),
+        ...(hasCoachSession && { flg_coach: true }),
       },
       {
         onSuccess: (response) => {

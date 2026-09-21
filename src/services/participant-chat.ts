@@ -5,6 +5,7 @@ export type ParticipantChatMessage = {
   author: "coach" | "participant" | "system"
   text: string
   status?: "pending" | "sent" | "failed"
+  createdAt?: number
 }
 
 export type ParticipantChatSessionStatus = "active" | "ended" | "invalid"
@@ -110,7 +111,8 @@ function isParticipantChatMessage(
     (message.status === undefined ||
       message.status === "pending" ||
       message.status === "sent" ||
-      message.status === "failed")
+      message.status === "failed") &&
+    (message.createdAt === undefined || typeof message.createdAt === "number")
   )
 }
 
