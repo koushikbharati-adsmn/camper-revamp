@@ -1,4 +1,4 @@
-import axios from "axios"
+import apiClient from "@/lib/api-client"
 
 export type ParticipantChatMessage = {
   id: string
@@ -277,16 +277,6 @@ function getChatWebSocketUrl() {
   return url
 }
 
-function getChatApiBaseUrl() {
-  const url = String(import.meta.env.VITE_CHAT_API_BASE_URL ?? "").trim()
-
-  if (!/^https?:\/\//i.test(url)) {
-    throw new Error("The chat API URL is not configured.")
-  }
-
-  return url
-}
-
 export function createParticipantChatSocket() {
   return new WebSocket(getChatWebSocketUrl())
 }
@@ -371,24 +361,16 @@ async function deleteParticipantChatSession(
   assertSafePathSegment(workshopCode, "Workshop code")
   assertSafePathSegment(sessionId, "Session ID")
 
-  const response = await axios.post<{
+  const response = await apiClient.post<{
     success: boolean
-    msg: string
-  }>(
-    "/api/chat/session/delete",
-    {
-      file_key: `chat_sessions/${workshopCode}/${sessionId}.txt`,
-    },
-    {
-      baseURL: getChatApiBaseUrl(),
-      headers: {
-        "Content-Type": "application/json",
-      },
-    }
-  )
+    message?: string
+    data?: unknown
+  }>("/ai/end-chat", {
+    file_key: `chat_sessions/${workshopCode}/${sessionId}.txt`,
+  })
 
   if (!response.data.success) {
-    throw new Error(response.data.msg || "Unable to delete chat session.")
+    throw new Error(response.data.message || "Unable to delete chat session.")
   }
 }
 
