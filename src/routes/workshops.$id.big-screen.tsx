@@ -52,7 +52,6 @@ import {
 import { ExperienceButton } from "@/components/experience/experience-button"
 import { ExperienceStatsCard } from "@/components/experience/experience-stats-card"
 import { NewsroomStatsRows } from "@/components/experience/experience-stats-rows"
-import { getReadableTextColor } from "@/components/experience/activity-team-badge"
 import { ExperienceFooter } from "@/components/experience/experience-footer"
 import { IdeaPreviewDialog } from "@/components/experience/idea-preview-dialog"
 
@@ -533,18 +532,12 @@ function RouteComponent() {
                                 className="flex items-start gap-3 rounded-xl border border-neutral-200 bg-white p-3 shadow-sm"
                               >
                                 <span
-                                  className="grid size-6 shrink-0 place-items-center rounded-full bg-black text-white"
-                                  style={
-                                    activity.TeamColorCode
-                                      ? {
-                                          backgroundColor:
-                                            activity.TeamColorCode,
-                                          color: getReadableTextColor(
-                                            activity.TeamColorCode
-                                          ),
-                                        }
-                                      : undefined
-                                  }
+                                  className="grid size-6 shrink-0 place-items-center rounded-full bg-black"
+                                  style={{
+                                    backgroundColor:
+                                      activity.TeamColorCode ?? undefined,
+                                    color: bigScreenTheme.ticker_txt_color,
+                                  }}
                                 >
                                   <InfoIcon
                                     className="size-3.5"
