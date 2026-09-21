@@ -2127,6 +2127,17 @@ function IdeasScreen({
   const shortlistIdeaMutation = useShortlistIdea()
   const scoutIdeaMutation = useScoutIdea()
 
+  const scoutDisabledReason = scoutIdeaMutation.isPending
+    ? "Scout is reviewing your ideas..."
+    : isIdeasPending
+      ? "Loading ideas..."
+      : !selectedPillar
+        ? "Select a pillar to use Scout."
+        : ideas.length === 0
+          ? "Add an idea or change your filters to use Scout."
+          : undefined
+  const isScoutDisabled = Boolean(scoutDisabledReason)
+
   const fullscreenIdea =
     fullscreenIdeaId === null
       ? null
@@ -2422,25 +2433,31 @@ function IdeasScreen({
         </p>
       )}
 
-      <button
-        className="fixed right-4 bottom-16 z-20 flex items-center justify-center gap-2 drop-shadow-sm disabled:opacity-50 sm:right-6"
-        type="button"
-        disabled={
-          !selectedPillar || ideas.length === 0 || scoutIdeaMutation.isPending
-        }
-        aria-label="Scout Ideas"
-        aria-busy={scoutIdeaMutation.isPending}
-        onClick={handleScoutIdeas}
-        title={
-          selectedPillar
-            ? ideas.length === 0
-              ? "No visible ideas to scout"
-              : undefined
-            : "Select a pillar to use Scout"
-        }
-      >
-        <img className="size-12 sm:size-18" src="/scout.svg" alt="scout" />
-      </button>
+      <div className="fixed right-4 bottom-16 z-20 flex flex-col items-end gap-2 sm:right-6">
+        {scoutDisabledReason && (
+          <p
+            id="scout-disabled-reason"
+            className="max-w-64 rounded-md bg-neutral-900 px-3 py-2 text-right text-xs leading-5 text-white shadow-sm"
+            aria-live="polite"
+          >
+            {scoutDisabledReason}
+          </p>
+        )}
+
+        <button
+          className="flex items-center justify-center gap-2 drop-shadow-sm disabled:opacity-50"
+          type="button"
+          disabled={isScoutDisabled}
+          aria-label="Scout Ideas"
+          aria-busy={scoutIdeaMutation.isPending}
+          aria-describedby={
+            scoutDisabledReason ? "scout-disabled-reason" : undefined
+          }
+          onClick={handleScoutIdeas}
+        >
+          <img className="size-12 sm:size-18" src="/scout.svg" alt="scout" />
+        </button>
+      </div>
     </section>
   )
 }

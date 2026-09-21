@@ -544,12 +544,5 @@ export const useSelectTeam = () => {
             : current
       )
     },
-    onError: (error) => {
-      toast.add({
-        type: "error",
-        title: "Oops! Something went wrong",
-        description: error.message,
-      })
-    },
   })
 }
