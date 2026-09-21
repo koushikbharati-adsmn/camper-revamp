@@ -12,7 +12,7 @@ export interface User {
   Role: UserRole
   isActive: boolean
   CreatedBy: number
-  CreatedDttm: number
+  CreatedDttm: string
 }
 
 export interface UsersResponse {

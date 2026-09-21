@@ -17,7 +17,7 @@ export interface Walkthrough {
   DisplayOrder: number
   IsActive: boolean
   CreatedBy: number
-  CreatedDttm: number
+  CreatedDttm: string
 }
 
 export interface WalkthroughResponse {
