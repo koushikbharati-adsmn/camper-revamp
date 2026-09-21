@@ -41,7 +41,6 @@ import {
   useState,
 } from "react"
 import {
-  BellIcon,
   ChevronLeftIcon,
   ChevronRightIcon,
   ClockIcon,
@@ -75,6 +74,7 @@ import {
 } from "@/services/big-screen"
 import { cn } from "@/lib/utils"
 import { NewsroomStatsRows } from "@/components/experience/experience-stats-rows"
+import { ActivityTeamBadge } from "@/components/experience/activity-team-badge"
 import { ExperienceFooter } from "@/components/experience/experience-footer"
 import { SharpenDialog } from "@/components/experience/sharpen-dialog"
 import {
@@ -1285,19 +1285,20 @@ function NewsroomScreen({
                         borderColor: workshop.card_primary_border_color,
                       }}
                     >
-                      <div className="flex min-w-0 items-start gap-3">
-                        <BellIcon className="mt-1 size-5" aria-hidden="true" />
+                      <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1.5">
+                        <ActivityTeamBadge
+                          teamName={activity.TeamName}
+                          teamColorCode={activity.TeamColorCode}
+                        />
 
-                        <div>
-                          <p
-                            className="text-sm"
-                            style={{
-                              color: workshop.txt_secondary_color,
-                            }}
-                          >
-                            {activity.Message}
-                          </p>
-                        </div>
+                        <p
+                          className="min-w-0 text-sm"
+                          style={{
+                            color: workshop.txt_secondary_color,
+                          }}
+                        >
+                          {activity.Message}
+                        </p>
                       </div>
 
                       <time

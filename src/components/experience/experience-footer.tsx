@@ -1,6 +1,7 @@
 import type { WorkshopActivity } from "@/services/big-screen"
 import type { ParticipantWorkshop } from "@/services/participants"
 import { useEffect, useLayoutEffect, useRef, useState } from "react"
+import { ActivityTeamBadge } from "@/components/experience/activity-team-badge"
 
 // Constant scroll speed in px/second, independent of how many activities exist.
 const TICKER_SPEED = 60
@@ -11,30 +12,6 @@ const activitiesKey = (activities: WorkshopActivity[]) =>
       (a) => `${a.CreatedDttm}|${a.TeamName}|${a.TeamColorCode}|${a.Message}`
     )
     .join("\n")
-
-// The ticker text is light on a dark bar, so a team-colored badge needs its
-// own text color: dark on light colors (e.g. #D9FF00), white on dark ones.
-function getReadableTextColor(hex: string) {
-  const value = hex.replace("#", "")
-  const full =
-    value.length === 3
-      ? value
-          .split("")
-          .map((char) => char + char)
-          .join("")
-      : value
-
-  if (!/^[0-9a-f]{6}$/i.test(full)) return "#111111"
-
-  const [red, green, blue] = [0, 2, 4].map((start) =>
-    parseInt(full.slice(start, start + 2), 16)
-  )
-
-  // Perceived brightness (0-255)
-  return (red * 299 + green * 587 + blue * 114) / 1000 > 150
-    ? "#111111"
-    : "#ffffff"
-}
 
 function TickerMarquee({ activities }: { activities: WorkshopActivity[] }) {
   const containerRef = useRef<HTMLDivElement>(null)
@@ -164,19 +141,10 @@ function TickerMarquee({ activities }: { activities: WorkshopActivity[] }) {
                   key={`${copy}-${index}-${activity.CreatedDttm}`}
                   className="flex items-center gap-2 px-8"
                 >
-                  <span
-                    className="rounded px-2 py-0.5 text-xs font-bold"
-                    style={
-                      activity.TeamColorCode
-                        ? {
-                            backgroundColor: activity.TeamColorCode,
-                            color: getReadableTextColor(activity.TeamColorCode),
-                          }
-                        : undefined
-                    }
-                  >
-                    {activity.TeamName}
-                  </span>
+                  <ActivityTeamBadge
+                    teamName={activity.TeamName}
+                    teamColorCode={activity.TeamColorCode}
+                  />
 
                   <span className="text-xs font-semibold">
                     {activity.Message}
