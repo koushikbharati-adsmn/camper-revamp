@@ -218,6 +218,7 @@ export type ActivityType = "added" | "shortlisted" | "sharpened"
 export interface WorkshopActivity {
   ID: number
   TeamName: string
+  TeamColorCode?: string | null
   Message: string
   CreatedDttm: string
   Type: ActivityType
