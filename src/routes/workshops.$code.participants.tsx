@@ -1289,6 +1289,7 @@ function NewsroomScreen({
                         <ActivityTeamBadge
                           teamName={activity.TeamName}
                           teamColorCode={activity.TeamColorCode}
+                          textColor={workshop.ticker_txt_color}
                         />
 
                         <p
