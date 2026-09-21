@@ -213,7 +213,7 @@ function CoachSelectionView({
                 <li key={coach.ID} className="min-w-0">
                   <button
                     type="button"
-                    className="group flex h-full w-full items-center gap-4 rounded-2xl border p-4 text-left transition-[transform,box-shadow] hover:-translate-y-0.5 hover:shadow-md focus-visible:outline-2 focus-visible:outline-offset-2 sm:p-5"
+                    className="group flex h-full w-full items-center gap-4 rounded-2xl border p-4 text-left focus-visible:outline-2 focus-visible:outline-offset-2 sm:p-5"
                     style={{
                       backgroundColor: workshop.card_secondary_bg_color,
                       borderColor: workshop.card_primary_border_color,
@@ -251,7 +251,7 @@ function CoachSelectionView({
                       </span>
                     </span>
                     <ChevronRightIcon
-                      className="size-5 shrink-0 transition-transform group-hover:translate-x-0.5"
+                      className="size-5 shrink-0"
                       aria-hidden="true"
                     />
                   </button>
